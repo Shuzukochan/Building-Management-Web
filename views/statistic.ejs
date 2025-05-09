@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Thống kê</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #e8f0fe;
+      height: 100%;
+      overflow-y: hidden;
+    }
+    .container-fluid {
+      min-height: 100vh;
+      height: 100vh;
+      overflow-y: hidden;
+    }
+    .sidebar {
+      height: 100vh;
+      background-color: #ffffff;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      box-shadow: 4px 0 10px rgba(0, 0, 0, 0.12);
+    }
+    .sidebar-header {
+      padding: 20px;
+      text-align: center;
+      background: #ffffff;
+      border-bottom: 1px solid #cfd8dc;
+    }
+    .sidebar-header img {
+      max-width: 80px;
+      margin-bottom: 10px;
+    }
+    .sidebar-header h4 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .sidebar a {
+      display: block;
+      color: #333;
+      padding: 12px 20px;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .sidebar a:hover {
+      background-color: #f1f1f1;
+    }
+    .logout-button {
+      padding: 12px 20px;
+      background-color: #ef5350;
+      border-radius: 6px;
+      margin: 0 20px 20px;
+      text-align: center;
+      text-decoration: none;
+      color: white;
+      font-weight: bold;
+    }
+    .logout-button:hover {
+      background-color: #d32f2f;
+    }
+    .table-wrapper {
+      padding: 30px;
+    }
+    .card {
+      border: 1px solid #b0bec5;
+      border-radius: 12px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .card-body {
+      padding: 24px;
+    }
+    .chart-canvas {
+      width: 100%;
+      height: 250px !important;
+      margin: 0 auto;
+      display: block;
+    }
+    .form-control[type="date"],
+    .form-control[type="month"],
+    .form-select {
+      border: 1.5px solid #b0bec5;
+      box-shadow: none;
+      color: #222;
+    }
+    .form-control[type="date"]:focus,
+    .form-control[type="month"]:focus,
+    .form-select:focus {
+      border-color: #90a4ae;
+      box-shadow: 0 0 0 2px #e3eaf1;
+    }
+    .form-check-input[type="radio"] {
+      border: 1.5px solid #b0bec5;
+      background-color: #fff;
+    }
+    .form-check-input[type="radio"]:checked {
+      background-color: #1976d2;
+      border-color: #1976d2;
+    }
+    .custom-month-picker-popup {
+      position: absolute;
+      background: #fff;
+      border: 1.5px solid #b0bec5;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 12px 16px 16px 16px;
+      z-index: 9999;
+      display: none;
+      min-width: 220px;
+    }
+    .custom-month-picker-popup .year-select {
+      width: 100%;
+      margin-bottom: 10px;
+      text-align: center;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #b0bec5;
+      padding: 4px 8px;
+    }
+    .custom-month-picker-popup .months {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .custom-month-picker-popup .month-btn {
+      width: 36px;
+      height: 32px;
+      border: none;
+      background: #f1f1f1;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 400;
+      font-size: 15px;
+      transition: background 0.2s, color 0.2s;
+      padding: 0;
+    }
+    .custom-month-picker-popup .month-btn:hover {
+      background: #e3eaf1;
+    }
+    .custom-month-picker-popup .month-btn.selected {
+      background: #1976d2;
+      color: #fff;
+    }
+    .custom-month-picker-popup .picker-actions {
+      text-align: right;
+    }
+    .custom-month-picker-popup .picker-ok {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .month-picker {
+      width: 110px !important;
+      font-size: 15px !important;
+      padding: 4px 8px !important;
+      text-align: center;
+    }
+    .flatpickr-calendar .flatpickr-monthSelect-month {
+      font-size: 12px !important;
+      padding: 2px 0 !important;
+      min-width: 36px !important;
+      min-height: 28px !important;
+    }
+    .flatpickr-calendar .flatpickr-months .flatpickr-prev-month, 
+    .flatpickr-calendar .flatpickr-months .flatpickr-next-month {
+      font-size: 14px !important;
+    }
+    .flatpickr-calendar .flatpickr-current-month {
+      font-size: 16px !important;
+    }
+    .flatpickr-calendar.flatpickr-monthSelect-theme .flatpickr-innerContainer {
+      max-width: 260px !important;
+      min-width: 220px !important;
+      width: 220px !important;
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-2 sidebar">
+      <div>
+        <div class="sidebar-header">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/b/b9/Logo_Tr%C6%B0%E1%BB%9Dng_%C4%90%E1%BA%A1i_H%E1%BB%8Dc_S%C6%B0_Ph%E1%BA%A1m_K%E1%BB%B9_Thu%E1%BA%ADt_TP_H%E1%BB%93_Ch%C3%AD_Minh.png" alt="SPKT Logo">
+          <h4>Building Admin</h4>
+        </div>
+        <a href="/dashboard">📋 Quản lý phòng</a>
+        <a href="/statistic">📊 Thống kê</a>
+      </div>
+      <a href="/logout" class="logout-button">Đăng xuất</a>
+    </div>
+    <!-- Main Content -->
+    <div class="col-md-10 table-wrapper">
+      <div class="d-flex align-items-center mb-4" style="gap: 24px;">
+        <h3 class="mb-0">Thống kê</h3>
+        <form method="GET" action="/statistic" style="max-width: 400px; min-width: 300px;">
+          <label for="phoneSelect" class="form-label mb-0 me-2">Chọn số điện thoại:</label>
+          <select id="phoneSelect" name="phone" class="form-select d-inline-block" style="width: 220px; display: inline-block;" onchange="this.form.submit()">
+            <option value="">-- Chọn số điện thoại --</option>
+            <% if (typeof phoneList !== 'undefined' && Array.isArray(phoneList)) { %>
+              <% phoneList.forEach(function(phone) { %>
+                <option value="<%= phone %>" <%= (typeof selectedPhone !== 'undefined' && selectedPhone === phone) ? 'selected' : '' %>><%= phone %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Biểu đồ điện</h5>
+            <form method="GET" action="/statistic" class="d-flex align-items-center" style="gap: 8px;" id="formElectric">
+              <input type="hidden" name="phone" value="<%= selectedPhone || '' %>">
+              <% if (viewTypeElectric === 'month') { %>
+                <input type="hidden" name="fromWater" value="<%= fromWater || '' %>">
+                <input type="hidden" name="toWater" value="<%= toWater || '' %>">
+                <input type="hidden" name="viewTypeWater" value="<%= viewTypeWater || '' %>">
+                <input type="hidden" name="fromMonthWater" value="<%= String(fromMonthWater).padStart(2, '0') %>">
+                <input type="hidden" name="fromYearWater" value="<%= String(fromYearWater).padStart(4, '0') %>">
+                <input type="hidden" name="toMonthWater" value="<%= String(toMonthWater).padStart(2, '0') %>">
+                <input type="hidden" name="toYearWater" value="<%= String(toYearWater).padStart(4, '0') %>">
+              <% } %>
+              <div class="form-check form-check-inline me-2">
+                <input class="form-check-input" type="radio" name="viewTypeElectric" id="viewTypeElectricDay" value="day" <%= viewTypeElectric === 'day' ? 'checked' : '' %> onchange="this.form.submit()">
+                <label class="form-check-label" for="viewTypeElectricDay">Ngày</label>
+              </div>
+              <div class="form-check form-check-inline me-2">
+                <input class="form-check-input" type="radio" name="viewTypeElectric" id="viewTypeElectricMonth" value="month" <%= viewTypeElectric === 'month' ? 'checked' : '' %> onchange="this.form.submit()">
+                <label class="form-check-label" for="viewTypeElectricMonth">Tháng</label>
+              </div>
+              <label class="mb-0 me-1">Từ</label>
+              <% if (viewTypeElectric === 'month') { %>
+                <input type="text" name="fromMonthElectricFull" id="fromMonthElectricFull" class="form-control form-control-sm month-picker" value="<%= String(fromMonthElectric).padStart(2, '0') + '/' + String(fromYearElectric) %>" style="width: 110px;">
+                <input type="hidden" name="fromMonthElectric" id="fromMonthElectric" value="<%= String(fromMonthElectric).padStart(2, '0') %>">
+                <input type="hidden" name="fromYearElectric" id="fromYearElectric" value="<%= String(fromYearElectric).padStart(4, '0') %>">
+                <label class="mb-0 mx-1">Đến</label>
+                <input type="text" name="toMonthElectricFull" id="toMonthElectricFull" class="form-control form-control-sm month-picker" value="<%= String(toMonthElectric).padStart(2, '0') + '/' + String(toYearElectric) %>" style="width: 110px;">
+                <input type="hidden" name="toMonthElectric" id="toMonthElectric" value="<%= String(toMonthElectric).padStart(2, '0') %>">
+                <input type="hidden" name="toYearElectric" id="toYearElectric" value="<%= String(toYearElectric).padStart(4, '0') %>">
+              <% } else { %>
+                <input type="date" name="fromElectric" id="fromElectric" class="form-control form-control-sm" value="<%= fromElectric || '' %>" style="width: 140px;">
+                <label class="mb-0 mx-1">Đến</label>
+                <input type="date" name="toElectric" id="toElectric" class="form-control form-control-sm" value="<%= toElectric || '' %>" style="width: 140px;">
+              <% } %>
+              <button type="submit" class="btn btn-primary btn-sm ms-2">Xem</button>
+            </form>
+          </div>
+          <canvas id="chartElectric" class="chart-canvas"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Biểu đồ nước</h5>
+            <form method="GET" action="/statistic" class="d-flex align-items-center" style="gap: 8px;" id="formWater">
+              <input type="hidden" name="phone" value="<%= selectedPhone || '' %>">
+              <% if (viewTypeWater === 'month') { %>
+                <input type="hidden" name="fromElectric" value="<%= fromElectric || '' %>">
+                <input type="hidden" name="toElectric" value="<%= toElectric || '' %>">
+                <input type="hidden" name="viewTypeElectric" value="<%= viewTypeElectric || '' %>">
+                <input type="hidden" name="fromMonthElectric" value="<%= String(fromMonthElectric).padStart(2, '0') %>">
+                <input type="hidden" name="fromYearElectric" value="<%= String(fromYearElectric).padStart(4, '0') %>">
+                <input type="hidden" name="toMonthElectric" value="<%= String(toMonthElectric).padStart(2, '0') %>">
+                <input type="hidden" name="toYearElectric" value="<%= String(toYearElectric).padStart(4, '0') %>">
+              <% } %>
+              <div class="form-check form-check-inline me-2">
+                <input class="form-check-input" type="radio" name="viewTypeWater" id="viewTypeWaterDay" value="day" <%= viewTypeWater === 'day' ? 'checked' : '' %> onchange="this.form.submit()">
+                <label class="form-check-label" for="viewTypeWaterDay">Ngày</label>
+              </div>
+              <div class="form-check form-check-inline me-2">
+                <input class="form-check-input" type="radio" name="viewTypeWater" id="viewTypeWaterMonth" value="month" <%= viewTypeWater === 'month' ? 'checked' : '' %> onchange="this.form.submit()">
+                <label class="form-check-label" for="viewTypeWaterMonth">Tháng</label>
+              </div>
+              <label class="mb-0 me-1">Từ</label>
+              <% if (viewTypeWater === 'month') { %>
+                <input type="text" name="fromMonthWaterFull" id="fromMonthWaterFull" class="form-control form-control-sm month-picker" value="<%= String(fromMonthWater).padStart(2, '0') + '/' + String(fromYearWater) %>" style="width: 110px;">
+                <input type="hidden" name="fromMonthWater" id="fromMonthWater" value="<%= String(fromMonthWater).padStart(2, '0') %>">
+                <input type="hidden" name="fromYearWater" id="fromYearWater" value="<%= String(fromYearWater).padStart(4, '0') %>">
+                <label class="mb-0 mx-1">Đến</label>
+                <input type="text" name="toMonthWaterFull" id="toMonthWaterFull" class="form-control form-control-sm month-picker" value="<%= String(toMonthWater).padStart(2, '0') + '/' + String(toYearWater) %>" style="width: 110px;">
+                <input type="hidden" name="toMonthWater" id="toMonthWater" value="<%= String(toMonthWater).padStart(2, '0') %>">
+                <input type="hidden" name="toYearWater" id="toYearWater" value="<%= String(toYearWater).padStart(4, '0') %>">
+              <% } else { %>
+                <input type="date" name="fromWater" id="fromWater" class="form-control form-control-sm" value="<%= fromWater || '' %>" style="width: 140px;">
+                <label class="mb-0 mx-1">Đến</label>
+                <input type="date" name="toWater" id="toWater" class="form-control form-control-sm" value="<%= toWater || '' %>" style="width: 140px;">
+              <% } %>
+              <button type="submit" class="btn btn-primary btn-sm ms-2">Xem</button>
+            </form>
+          </div>
+          <canvas id="chartWater" class="chart-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+<script>
+  const waterHistory = JSON.parse('<%- JSON.stringify(waterHistory || {}) %>');
+  const electricHistory = JSON.parse('<%- JSON.stringify(electricHistory || {}) %>');
+
+  function formatMonthLabel(label) {
+    if (!label || !label.includes('-')) return label;
+    const [year, month] = label.split('-');
+    if (!year || !month) return label;
+    return `${month}/${year}`;
+  }
+  const isMonthViewWater = '<%= viewTypeWater %>' === 'month';
+  const isMonthViewElectric = '<%= viewTypeElectric %>' === 'month';
+
+  // Lấy nhãn và value cho biểu đồ giống logic ngày
+  const waterLabels = Object.keys(waterHistory);
+  const waterData = Object.values(waterHistory);
+  const electricLabels = Object.keys(electricHistory);
+  const electricData = Object.values(electricHistory);
+
+  // --- Đảm bảo biến chart là global ---
+  window.waterChart = window.waterChart || null;
+  window.electricChart = window.electricChart || null;
+
+  function clearCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function renderCharts() {
+    // Destroy chart cũ nếu có
+    if (window.waterChart) {
+      window.waterChart.destroy();
+      window.waterChart = null;
+    }
+    if (window.electricChart) {
+      window.electricChart.destroy();
+      window.electricChart = null;
+    }
+    // Clear canvas trước khi tạo mới
+    clearCanvas('chartWater');
+    clearCanvas('chartElectric');
+    // Lấy lại context canvas
+    const ctxWater = document.getElementById('chartWater').getContext('2d');
+    const ctxElectric = document.getElementById('chartElectric').getContext('2d');
+    // Tạo lại chart mới hoàn toàn
+    window.waterChart = new Chart(ctxWater, {
+      type: 'bar',
+      data: {
+        labels: waterLabels,
+        datasets: [{
+          label: 'Nước (m³)',
+          data: waterData,
+          backgroundColor: 'green'
+        }]
+      },
+      plugins: [ChartDataLabels],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            align: 'end',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'rect',
+            }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            color: '#222',
+            font: {},
+            formatter: function(value) { return value; }
+          }
+        }
+      }
+    });
+    window.electricChart = new Chart(ctxElectric, {
+      type: 'bar',
+      data: {
+        labels: electricLabels,
+        datasets: [{
+          label: 'Điện (kWh)',
+          data: electricData,
+          backgroundColor: 'blue'
+        }]
+      },
+      plugins: [ChartDataLabels],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            align: 'end',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'rect',
+            }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            color: '#222',
+            font: {},
+            formatter: function(value) { return value; }
+          }
+        }
+      }
+    });
+  }
+  window.addEventListener('DOMContentLoaded', renderCharts);
+
+  function setupCustomMonthPicker(inputId, pickerId, defaultValue) {
+    const monthInput = document.getElementById(inputId);
+    const monthPicker = document.getElementById(pickerId);
+    const now = new Date();
+    let selectedMonth = defaultValue ? defaultValue.split('/')[0] : (now.getMonth() + 1).toString().padStart(2, '0');
+    let selectedYear = defaultValue ? defaultValue.split('/')[1] : now.getFullYear();
+
+    function renderMonthPicker() {
+      let html = '';
+      html += '<select class="year-select" id="pickerYear_' + pickerId + '">';
+      for (let y = now.getFullYear() - 5; y <= now.getFullYear() + 1; y++) {
+        html += `<option value="${y}" ${y == selectedYear ? 'selected' : ''}>${y}</option>`;
+      }
+      html += '</select>';
+      html += '<div class="months">';
+      for (let m = 1; m <= 12; m++) {
+        let val = m < 10 ? '0' + m : '' + m;
+        html += `<button type="button" class="month-btn${val == selectedMonth ? ' selected' : ''}" data-month="${val}">${val}</button>`;
+      }
+      html += '</div>';
+      html += '<div class="picker-actions"><button type="button" id="pickerOk_' + pickerId + '" class="picker-ok">Chọn</button></div>';
+      monthPicker.innerHTML = html;
+      monthPicker.querySelectorAll('.month-btn').forEach(btn => {
+        btn.onclick = function() {
+          selectedMonth = this.getAttribute('data-month');
+          renderMonthPicker();
+        }
+      });
+      monthPicker.querySelector('#pickerYear_' + pickerId).onchange = function() {
+        selectedYear = this.value;
+      }
+      monthPicker.querySelector('#pickerOk_' + pickerId).onclick = function() {
+        monthInput.value = selectedMonth + '/' + selectedYear;
+        monthPicker.style.display = 'none';
+        if (monthInput.form) monthInput.form.submit();
+      }
+    }
+    monthInput.onclick = function(e) {
+      renderMonthPicker();
+      monthPicker.style.display = 'block';
+      monthPicker.style.top = (monthInput.offsetHeight + 2) + 'px';
+      monthPicker.style.left = '0px';
+    }
+    document.addEventListener('click', function(e) {
+      if (!monthPicker.contains(e.target) && e.target !== monthInput) {
+        monthPicker.style.display = 'none';
+      }
+    });
+    // Set giá trị mặc định nếu có
+    if (defaultValue) monthInput.value = defaultValue;
+  }
+  // Khởi tạo cho từng input month picker
+  var fromElectricMonthVal = "<%= fromMonthElectric && fromYearElectric ? fromMonthElectric + '/' + fromYearElectric : '' %>";
+  var toElectricMonthVal = "<%= toMonthElectric && toYearElectric ? toMonthElectric + '/' + toYearElectric : '' %>";
+  var fromWaterMonthVal = "<%= fromMonthWater && fromYearWater ? fromMonthWater + '/' + fromYearWater : '' %>";
+  var toWaterMonthVal = "<%= toMonthWater && toYearWater ? toMonthWater + '/' + toYearWater : '' %>";
+  window.addEventListener('DOMContentLoaded', function() {
+    setupCustomMonthPicker('customMonthInputElectricFrom', 'customMonthPickerElectricFrom', fromElectricMonthVal);
+    setupCustomMonthPicker('customMonthInputElectricTo', 'customMonthPickerElectricTo', toElectricMonthVal);
+    setupCustomMonthPicker('customMonthInputWaterFrom', 'customMonthPickerWaterFrom', fromWaterMonthVal);
+    setupCustomMonthPicker('customMonthInputWaterTo', 'customMonthPickerWaterTo', toWaterMonthVal);
+  });
+
+  // Đảm bảo khi chuyển radio, input ngày/tháng không còn lẫn lộn
+  // Xử lý JS: Khi chuyển sang tháng/ngày, xóa hoàn toàn input ngày/tháng khỏi DOM
+  function cleanForm(formId, mode) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    if (mode === 'month') {
+      ['fromElectric','toElectric','fromWater','toWater'].forEach(name => {
+        form.querySelectorAll(`[name="${name}"]`).forEach(el => {
+          if (el.type !== 'month') el.remove();
+        });
+      });
+    } else if (mode === 'day') {
+      ['fromElectric','toElectric','fromWater','toWater'].forEach(name => {
+        form.querySelectorAll(`[name="${name}"]`).forEach(el => {
+          if (el.type !== 'date') el.remove();
+        });
+      });
+    }
+  }
+  ['formElectric','formWater'].forEach(formId => {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.querySelectorAll('input[type=radio][name^=viewType]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        cleanForm(formId, this.value);
+      });
+    });
+  });
+
+  // Thêm sau phần import flatpickr và monthSelect plugin
+  flatpickr('.month-picker', {
+    plugins: [
+      new monthSelectPlugin({
+        shorthand: true,
+        dateFormat: 'm/Y',
+        altFormat: 'm/Y'
+      })
+    ],
+    locale: 'vn',
+    allowInput: true
+  });
+  // Khi submit form, tách lại giá trị tháng/năm cho các input hidden
+  function handleMonthInput(formId, fromId, toId, fromMonthId, fromYearId, toMonthId, toYearId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+      const fromVal = document.getElementById(fromId).value;
+      const toVal = document.getElementById(toId).value;
+      if (fromVal) {
+        const [month, year] = fromVal.split('/');
+        document.getElementById(fromMonthId).value = month;
+        document.getElementById(fromYearId).value = year;
+      }
+      if (toVal) {
+        const [month, year] = toVal.split('/');
+        document.getElementById(toMonthId).value = month;
+        document.getElementById(toYearId).value = year;
+      }
+    });
+  }
+  handleMonthInput('formElectric', 'fromMonthElectricFull', 'toMonthElectricFull', 'fromMonthElectric', 'fromYearElectric', 'toMonthElectric', 'toYearElectric');
+  handleMonthInput('formWater', 'fromMonthWaterFull', 'toMonthWaterFull', 'fromMonthWater', 'fromYearWater', 'toMonthWater', 'toYearWater');
+</script>
+</body>
+</html> 
