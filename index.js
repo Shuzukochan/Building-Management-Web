@@ -275,7 +275,8 @@ app.get('/statistic', async (req, res) => {
 
   function getLastNDays(n) {
     let arr = [];
-    let today = new Date();
+    // Lấy thời gian hiện tại theo múi giờ Việt Nam
+    let today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
     for (let i = n - 1; i >= 0; i--) {
       let d = new Date(today);
       d.setDate(d.getDate() - i);
@@ -357,10 +358,15 @@ app.get('/statistic', async (req, res) => {
             if (_fromElectric && _toElectric) {
               let range = getDateRange(_fromElectric, _toElectric);
               electricHistory = {};
+              // Thêm nhãn ngày đầu với giá trị 0
+              if (range.length > 0) {
+                const label = range[0] ? `${range[0].slice(8,10)}/${range[0].slice(5,7)}/${range[0].slice(2,4)}` : '';
+                electricHistory[label] = 0;
+              }
               for (let i = 0; i < range.length - 1; i++) {
                 const d1 = range[i];
                 const d2 = range[i + 1];
-                const label = d1 ? `${d1.slice(8,10)}/${d1.slice(5,7)}/${d1.slice(2,4)}` : '';
+                const label = d2 ? `${d2.slice(8,10)}/${d2.slice(5,7)}/${d2.slice(2,4)}` : '';
                 let value = 0;
                 if (nodeData.history && nodeData.history[d1] && nodeData.history[d2]) {
                   const v1 = nodeData.history[d1];
@@ -391,10 +397,15 @@ app.get('/statistic', async (req, res) => {
             if (fromWater && toWater) {
               let range = getDateRange(fromWater, toWater);
               waterHistory = {};
+              // Thêm nhãn ngày đầu với giá trị 0
+              if (range.length > 0) {
+                const label = range[0] ? `${range[0].slice(8,10)}/${range[0].slice(5,7)}/${range[0].slice(2,4)}` : '';
+                waterHistory[label] = 0;
+              }
               for (let i = 0; i < range.length - 1; i++) {
                 const d1 = range[i];
                 const d2 = range[i + 1];
-                const label = d1 ? `${d1.slice(8,10)}/${d1.slice(5,7)}/${d1.slice(2,4)}` : '';
+                const label = d2 ? `${d2.slice(8,10)}/${d2.slice(5,7)}/${d2.slice(2,4)}` : '';
                 let value = 0;
                 if (nodeData.history && nodeData.history[d1] && nodeData.history[d2]) {
                   const v1 = nodeData.history[d1];
@@ -497,14 +508,25 @@ app.get('/statistic', async (req, res) => {
     if (viewTypeElectric === 'day' || viewTypeWater === 'day') {
       waterHistory = {};
       electricHistory = {};
+      // Thêm nhãn ngày đầu với giá trị 0
+      if (dayRangeWater.length > 0) {
+        const label = dayRangeWater[0] ? `${dayRangeWater[0].slice(8,10)}/${dayRangeWater[0].slice(5,7)}/${dayRangeWater[0].slice(2,4)}` : '';
+        waterHistory[label] = 0;
+      }
+      if (dayRangeElectric.length > 0) {
+        const label = dayRangeElectric[0] ? `${dayRangeElectric[0].slice(8,10)}/${dayRangeElectric[0].slice(5,7)}/${dayRangeElectric[0].slice(2,4)}` : '';
+        electricHistory[label] = 0;
+      }
       for (let i = 0; i < dayRangeWater.length - 1; i++) {
         const d1 = dayRangeWater[i];
-        const label = d1 ? `${d1.slice(8,10)}/${d1.slice(5,7)}/${d1.slice(2,4)}` : '';
+        const d2 = dayRangeWater[i + 1];
+        const label = d2 ? `${d2.slice(8,10)}/${d2.slice(5,7)}/${d2.slice(2,4)}` : '';
         waterHistory[label] = nodeDayDiffs[label] ? nodeDayDiffs[label].water : 0;
       }
       for (let i = 0; i < dayRangeElectric.length - 1; i++) {
         const d1 = dayRangeElectric[i];
-        const label = d1 ? `${d1.slice(8,10)}/${d1.slice(5,7)}/${d1.slice(2,4)}` : '';
+        const d2 = dayRangeElectric[i + 1];
+        const label = d2 ? `${d2.slice(8,10)}/${d2.slice(5,7)}/${d2.slice(2,4)}` : '';
         electricHistory[label] = nodeDayDiffs[label] ? nodeDayDiffs[label].electric : 0;
       }
       _fromElectric = _fromWater = dayRangeElectric[0];
