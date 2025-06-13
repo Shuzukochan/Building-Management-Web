@@ -455,8 +455,8 @@ app.post('/add-node', requireAuth, async (req, res) => {
 
     const nodeData = {
       customName: customName,
-      lastData: getDefaultLastData(finalNodeType)
-      // Note: history is now stored at room level, not node level
+      lastData: getDefaultLastData(finalNodeType),
+      history: {}
     };
 
     await db.ref(`rooms/${roomId}/nodes/${nodeId}`).set(nodeData);
@@ -785,6 +785,90 @@ app.post('/remove-phone-from-room', requireAuth, async (req, res) => {
 
 // ==================== MONTHLY STATISTICS API ====================
 
+// Get room statistics for charts (30 days)
+app.get('/api/room-statistics/:roomId', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const roomsSnapshot = await db.ref('rooms').once('value');
+    const roomsData = roomsSnapshot.val() || {};
+    
+    console.log(`🔍 Getting room statistics for: ${roomId}`);
+    
+    let electricHistory = {};
+    let waterHistory = {};
+    
+    // Get last 30 days
+    const last30Days = getLast30Days();
+    const fromDate = last30Days[0];
+    const toDate = last30Days[last30Days.length - 1];
+    
+    console.log(`📅 Date range: ${fromDate} to ${toDate}`);
+    
+    if (roomId === 'all') {
+      // Aggregate data from all rooms
+      console.log('📊 Processing all rooms');
+      
+      Object.entries(roomsData).forEach(([roomKey, room]) => {
+        if (room.history) {
+          console.log(`🏠 Processing room ${roomKey}`);
+          const roomElectricHistory = processHistoryData(room.history, fromDate, toDate, 'electric');
+          const roomWaterHistory = processHistoryData(room.history, fromDate, toDate, 'water');
+          
+          Object.entries(roomElectricHistory).forEach(([date, value]) => {
+            electricHistory[date] = (electricHistory[date] || 0) + value;
+          });
+          
+          Object.entries(roomWaterHistory).forEach(([date, value]) => {
+            waterHistory[date] = (waterHistory[date] || 0) + value;
+          });
+        }
+      });
+    } else {
+      // Single room data
+      console.log(`🏠 Processing single room: ${roomId}`);
+      
+      if (roomsData[roomId] && roomsData[roomId].history) {
+        electricHistory = processHistoryData(roomsData[roomId].history, fromDate, toDate, 'electric');
+        waterHistory = processHistoryData(roomsData[roomId].history, fromDate, toDate, 'water');
+        console.log(`⚡ Electric data points: ${Object.keys(electricHistory).length}`);
+        console.log(`💧 Water data points: ${Object.keys(waterHistory).length}`);
+      } else {
+        console.log(`❌ No history data found for room ${roomId}`);
+      }
+    }
+    
+    res.json({
+      electricHistory,
+      waterHistory,
+      roomId: roomId,
+      dateRange: {
+        from: fromDate,
+        to: toDate
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Lỗi khi lấy thống kê phòng:', error);
+    res.status(500).json({ error: 'Lỗi server khi lấy thống kê phòng' });
+  }
+});
+
+// Helper function to get last 30 days
+function getLast30Days() {
+  const arr = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const yyyy = d.getFullYear();
+    const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+    const dd = d.getDate().toString().padStart(2, '0');
+    arr.push(`${yyyy}-${mm}-${dd}`);
+  }
+  return arr;
+}
+
 // Get monthly statistics
 app.get('/api/monthly-statistics', requireAuth, async (req, res) => {
   try {
@@ -889,6 +973,82 @@ function calculateMonthlyUsageByType(historyData, month, year, roomId, dataType)
   }
 }
 
+// Helper function to calculate monthly usage
+function calculateMonthlyUsage(historyData, month, year, nodeId) {
+  try {
+    const monthStr = month.toString().padStart(2, '0');
+    const yearStr = year.toString();
+    
+    console.log(`📅 Calculating usage for node ${nodeId} for ${monthStr}/${yearStr}`);
+    
+    // Get all dates in current month
+    const monthDates = [];
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayStr = day.toString().padStart(2, '0');
+      const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+      if (historyData[dateStr]) {
+        monthDates.push({
+          date: dateStr,
+          data: historyData[dateStr]
+        });
+      }
+    }
+    
+    console.log(`📊 Found ${monthDates.length} days of data for node ${nodeId}`);
+    
+    if (monthDates.length < 2) {
+      console.log(`⚠️ Not enough data for node ${nodeId} (need at least 2 days)`);
+      return 0; // Not enough data to calculate usage
+    }
+    
+    // Sort by date
+    monthDates.sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Get first and last readings of the month
+    const firstReading = monthDates[0].data;
+    const lastReading = monthDates[monthDates.length - 1].data;
+    
+    console.log(`🔍 Node ${nodeId} first reading (${monthDates[0].date}):`, firstReading);
+    console.log(`🔍 Node ${nodeId} last reading (${monthDates[monthDates.length - 1].date}):`, lastReading);
+    
+    let firstValue = 0;
+    let lastValue = 0;
+    
+    // Determine data type based on available properties
+    // Priority: electric -> water -> value
+    if (firstReading.electric !== undefined && lastReading.electric !== undefined) {
+      firstValue = firstReading.electric || 0;
+      lastValue = lastReading.electric || 0;
+      console.log(`⚡ Using electric values: ${firstValue} -> ${lastValue}`);
+    } else if (firstReading.water !== undefined && lastReading.water !== undefined) {
+      firstValue = firstReading.water || 0;
+      lastValue = lastReading.water || 0;
+      console.log(`💧 Using water values: ${firstValue} -> ${lastValue}`);
+    } else if (firstReading.value !== undefined && lastReading.value !== undefined) {
+      firstValue = firstReading.value || 0;
+      lastValue = lastReading.value || 0;
+      console.log(`🔧 Using custom values: ${firstValue} -> ${lastValue}`);
+    } else {
+      console.log(`❌ No compatible data found for node ${nodeId}`);
+      console.log('Available properties in first reading:', Object.keys(firstReading));
+      console.log('Available properties in last reading:', Object.keys(lastReading));
+    }
+    
+    // Calculate usage (ensure non-negative)
+    const usage = Math.max(0, lastValue - firstValue);
+    
+    console.log(`📈 Node ${nodeId} monthly usage: ${usage}`);
+    
+    return usage;
+    
+  } catch (error) {
+    console.error(`❌ Lỗi khi tính usage cho node ${nodeId}:`, error);
+    return 0;
+  }
+}
+
 app.get('/logout', (req, res) => {
   req.session.destroy(() => {
     res.redirect('/');
@@ -919,55 +1079,37 @@ app.get('/room-details/:roomId', requireAuth, async (req, res) => {
       history: {}
     };
 
-    // Xử lý nodes - lấy lastReading từ room history
+    // Xử lý nodes và lịch sử
     if (roomData.nodes) {
       for (const [nodeId, nodeData] of Object.entries(roomData.nodes)) {
         const nodeType = nodeData.type || (nodeId.includes('electric') ? 'electricity' : 'water');
-        
-        // Lấy lastReading từ room history thay vì node lastData
-        let lastReading = 0;
-        if (roomData.history) {
-          const sortedDates = Object.keys(roomData.history).sort();
-          const latestDate = sortedDates[sortedDates.length - 1];
-          if (latestDate && roomData.history[latestDate]) {
-            if (nodeType === 'electricity') {
-              lastReading = roomData.history[latestDate].electric || 0;
-            } else if (nodeType === 'water') {
-              lastReading = roomData.history[latestDate].water || 0;
-            } else {
-              // For custom nodes, try to get value from lastData if available
-              lastReading = nodeData.lastData ? (nodeData.lastData.value || 0) : 0;
-            }
-          }
-        }
         
         processedRoom.nodes[nodeType] = {
           nodeId: nodeId,
           type: nodeType,
           status: nodeData.status || 'active',
-          lastReading: lastReading,
+          lastReading: nodeData.lastData ? 
+            (nodeType === 'electricity' ? nodeData.lastData.electric : nodeData.lastData.water) : 0,
           lastUpdate: nodeData.lastUpdate || null
         };
-      }
-    }
 
-    // Xử lý lịch sử 7 ngày gần nhất từ room history
-    if (roomData.history) {
-      const last7Days = getLastNDays(7);
-      
-      // Tạo history cho từng loại dữ liệu
-      processedRoom.history.electricity = {};
-      processedRoom.history.water = {};
-      
-      last7Days.forEach(date => {
-        if (roomData.history[date]) {
-          processedRoom.history.electricity[date] = roomData.history[date].electric || 0;
-          processedRoom.history.water[date] = roomData.history[date].water || 0;
-        } else {
-          processedRoom.history.electricity[date] = 0;
-          processedRoom.history.water[date] = 0;
+        // Xử lý lịch sử 7 ngày gần nhất
+        if (nodeData.history) {
+          const last7Days = getLastNDays(7);
+          processedRoom.history[nodeType] = {};
+          
+          last7Days.forEach(date => {
+            if (nodeData.history[date]) {
+              const value = nodeType === 'electricity' ? 
+                nodeData.history[date].electric : 
+                nodeData.history[date].water;
+              processedRoom.history[nodeType][date] = value || 0;
+            } else {
+              processedRoom.history[nodeType][date] = 0;
+            }
+          });
         }
-      });
+      }
     }
 
     res.render('room-details', { room: processedRoom });
@@ -1019,55 +1161,11 @@ app.get('/statistic', requireAuth, async (req, res) => {
       fromWater = last10Days[0];
       toWater = last10Days[last10Days.length - 1];
     }
-    
-    console.log(`📅 Date ranges being used:`);
-    console.log(`⚡ Electric: ${fromElectric} to ${toElectric}`);
-    console.log(`💧 Water: ${fromWater} to ${toWater}`);
-    console.log(`🏠 Selected room: ${roomId || 'All rooms'}`);
-
-    // Parse month format from YYYY-MM to separate month and year
-    if (fromMonthElectric && fromMonthElectric.includes('-')) {
-      const [year, month] = fromMonthElectric.split('-');
-      fromYearElectric = parseInt(year);
-      fromMonthElectric = parseInt(month);
-    }
-    if (toMonthElectric && toMonthElectric.includes('-')) {
-      const [year, month] = toMonthElectric.split('-');
-      toYearElectric = parseInt(year);
-      toMonthElectric = parseInt(month);
-    }
-    if (fromMonthWater && fromMonthWater.includes('-')) {
-      const [year, month] = fromMonthWater.split('-');
-      fromYearWater = parseInt(year);
-      fromMonthWater = parseInt(month);
-    }
-    if (toMonthWater && toMonthWater.includes('-')) {
-      const [year, month] = toMonthWater.split('-');
-      toYearWater = parseInt(year);
-      toMonthWater = parseInt(month);
-    }
 
     // Set default values for month/year if not provided
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
-
-    // Xử lý default cho chế độ tháng (9 tháng gần nhất)
-    if (viewTypeElectric === 'month' && (!fromMonthElectric || !toMonthElectric)) {
-      const last9Months = getLastNMonths(9);
-      fromMonthElectric = last9Months[0].month;
-      fromYearElectric = last9Months[0].year;
-      toMonthElectric = last9Months[last9Months.length - 1].month;
-      toYearElectric = last9Months[last9Months.length - 1].year;
-    }
-
-    if (viewTypeWater === 'month' && (!fromMonthWater || !toMonthWater)) {
-      const last9Months = getLastNMonths(9);
-      fromMonthWater = last9Months[0].month;
-      fromYearWater = last9Months[0].year;
-      toMonthWater = last9Months[last9Months.length - 1].month;
-      toYearWater = last9Months[last9Months.length - 1].year;
-    }
 
     fromMonthElectric = fromMonthElectric || currentMonth;
     fromYearElectric = fromYearElectric || currentYear;
@@ -1081,108 +1179,29 @@ app.get('/statistic', requireAuth, async (req, res) => {
     // Logic xử lý thống kê theo phòng
     if (roomId && roomData[roomId]) {
       // Thống kê cho một phòng cụ thể
-      console.log(`🏠 Processing statistics for room ${roomId}`);
       const room = roomData[roomId];
-      console.log(`📊 Room data structure:`, {
-        hasHistory: !!room.history,
-        historyKeys: room.history ? Object.keys(room.history).sort() : [],
-        sampleHistoryEntry: room.history ? room.history[Object.keys(room.history)[0]] : null
-      });
 
       // Xử lý dữ liệu từ room history (new structure)
       if (room.history) {
-        console.log(`⚡ Processing electric data for room ${roomId}`);
-        if (viewTypeElectric === 'month') {
-          electricHistory = processMonthlyData(room.history, fromMonthElectric, fromYearElectric, toMonthElectric, toYearElectric, 'electric');
-        } else {
-          electricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
-        }
-        
-        console.log(`💧 Processing water data for room ${roomId}`);
-        if (viewTypeWater === 'month') {
-          waterHistory = processMonthlyData(room.history, fromMonthWater, fromYearWater, toMonthWater, toYearWater, 'water');
-        } else {
-          waterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
-        }
-      } else {
-        console.log(`❌ No history data found for room ${roomId}, creating empty charts`);
-        // Tạo dữ liệu 0 cho tất cả ngày trong range
-        if (viewTypeElectric === 'month') {
-          electricHistory = processMonthlyData(null, fromMonthElectric, fromYearElectric, toMonthElectric, toYearElectric, 'electric');
-        } else {
-          electricHistory = processHistoryData(null, fromElectric, toElectric, 'electric');
-        }
-        
-        if (viewTypeWater === 'month') {
-          waterHistory = processMonthlyData(null, fromMonthWater, fromYearWater, toMonthWater, toYearWater, 'water');
-        } else {
-          waterHistory = processHistoryData(null, fromWater, toWater, 'water');
-        }
+        electricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
+        waterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
       }
     } else {
       // Thống kê tổng hợp tất cả phòng
-      console.log(`🏢 Processing statistics for all rooms`);
-      
-      // Khởi tạo tất cả ngày/tháng với giá trị 0
-      if (viewTypeElectric === 'month') {
-        const monthRange = getMonthRange(fromMonthElectric, fromYearElectric, toMonthElectric, toYearElectric);
-        monthRange.forEach(monthInfo => {
-          const label = `${String(monthInfo.month).padStart(2, '0')}/${String(monthInfo.year).slice(-2)}`;
-          electricHistory[label] = 0;
-        });
-      } else {
-        const electricDateRange = getDateRange(fromElectric, toElectric);
-        electricDateRange.forEach(date => {
-          const label = `${date.slice(8,10)}/${date.slice(5,7)}/${date.slice(2,4)}`;
-          electricHistory[label] = 0;
-        });
-      }
-      
-      if (viewTypeWater === 'month') {
-        const monthRange = getMonthRange(fromMonthWater, fromYearWater, toMonthWater, toYearWater);
-        monthRange.forEach(monthInfo => {
-          const label = `${String(monthInfo.month).padStart(2, '0')}/${String(monthInfo.year).slice(-2)}`;
-          waterHistory[label] = 0;
-        });
-      } else {
-        const waterDateRange = getDateRange(fromWater, toWater);
-        waterDateRange.forEach(date => {
-          const label = `${date.slice(8,10)}/${date.slice(5,7)}/${date.slice(2,4)}`;
-          waterHistory[label] = 0;
-        });
-      }
-      
-      // Cộng dồn dữ liệu từ các phòng
       Object.entries(roomData).forEach(([roomKey, room]) => {
         if (room.history) {
-          console.log(`📊 Processing room ${roomKey} for aggregation`);
+          const roomElectricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
+          const roomWaterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
           
-          let roomElectricHistory, roomWaterHistory;
+                Object.entries(roomElectricHistory).forEach(([date, value]) => {
+                  electricHistory[date] = (electricHistory[date] || 0) + value;
+                });
           
-          if (viewTypeElectric === 'month') {
-            roomElectricHistory = processMonthlyData(room.history, fromMonthElectric, fromYearElectric, toMonthElectric, toYearElectric, 'electric');
-          } else {
-            roomElectricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
-          }
-          
-          if (viewTypeWater === 'month') {
-            roomWaterHistory = processMonthlyData(room.history, fromMonthWater, fromYearWater, toMonthWater, toYearWater, 'water');
-          } else {
-            roomWaterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
-          }
-          
-          Object.entries(roomElectricHistory).forEach(([date, value]) => {
-            electricHistory[date] = (electricHistory[date] || 0) + value;
-          });
-          
-          Object.entries(roomWaterHistory).forEach(([date, value]) => {
-            waterHistory[date] = (waterHistory[date] || 0) + value;
+                Object.entries(roomWaterHistory).forEach(([date, value]) => {
+                  waterHistory[date] = (waterHistory[date] || 0) + value;
           });
         }
       });
-      
-      console.log(`📊 Aggregated electric data:`, electricHistory);
-      console.log(`📊 Aggregated water data:`, waterHistory);
     }
 
     res.render('statistic', {
@@ -1242,28 +1261,12 @@ function getLastNDays(n) {
   return arr;
 }
 
-function getLastNMonths(n) {
-  const arr = [];
-  const today = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setMonth(d.getMonth() - i);
-    arr.push({
-      month: d.getMonth() + 1,
-      year: d.getFullYear(),
-      monthYear: `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`
-    });
-  }
-  return arr;
-}
-
 function getDateRange(from, to) {
   const arr = [];
   if (!from || !to) return arr;
   const d1 = new Date(from);
   const d2 = new Date(to);
-  // Không bao gồm ngày cuối (to), chỉ đến ngày trước đó
-  while (d1 < d2) {
+  while (d1 <= d2) {
     const yyyy = d1.getFullYear();
     const mm = (d1.getMonth() + 1).toString().padStart(2, '0');
     const dd = d1.getDate().toString().padStart(2, '0');
@@ -1274,65 +1277,24 @@ function getDateRange(from, to) {
 }
 
 function processHistoryData(history, fromDate, toDate, dataType) {
-  console.log(`🔍 Processing ${dataType} data from ${fromDate} to ${toDate}`);
-  console.log(`📊 Available history dates:`, Object.keys(history || {}).sort());
-  
   const result = {};
   const dateRange = getDateRange(fromDate, toDate);
   
-  console.log(`📅 Date range to process:`, dateRange);
-  
-  if (dateRange.length < 1) {
-    console.log(`⚠️ No dates in range`);
-    return result;
-  }
-  
-  if (!history) {
-    console.log(`❌ No history data provided, creating empty chart with 0 values`);
-    // Tạo chart với giá trị 0 cho tất cả ngày trong range
-    dateRange.forEach(date => {
-      const label = `${date.slice(8,10)}/${date.slice(5,7)}/${date.slice(2,4)}`;
-      result[label] = 0;
-    });
-    return result;
-  }
-  
-  // Tính consumption cho từng ngày (ngày hôm nay trừ ngày hôm qua)
-  console.log(`📊 Calculating consumption for each day in range`);
-  
-  dateRange.forEach(date => {
-    const label = `${date.slice(8,10)}/${date.slice(5,7)}/${date.slice(2,4)}`;
-    let consumption = 0;
+  for (let i = 0; i < dateRange.length - 1; i++) {
+    const d1 = dateRange[i];
+    const d2 = dateRange[i + 1];
+    const label = `${d2.slice(8,10)}/${d2.slice(5,7)}/${d2.slice(2,4)}`;
     
-    // Tìm ngày hôm qua để tính consumption
-    const currentDate = new Date(date);
-    const yesterday = new Date(currentDate);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    
-    // Tính consumption = giá trị ngày hôm nay - giá trị ngày hôm qua
-    if (history[date] && history[yesterdayStr] && 
-        history[date][dataType] !== undefined && 
-        history[yesterdayStr][dataType] !== undefined) {
-      
-      const todayValue = history[date][dataType] || 0;
-      const yesterdayValue = history[yesterdayStr][dataType] || 0;
-      consumption = Math.max(0, todayValue - yesterdayValue); // Đảm bảo không âm
-      
-      console.log(`📊 ${label}: ${dataType} consumption = ${todayValue} - ${yesterdayValue} = ${consumption}`);
-    } else if (history[date] && history[date][dataType] !== undefined) {
-      // Nếu không có dữ liệu ngày hôm qua, có thể là ngày đầu tiên
-      // Hiển thị giá trị raw (có thể là consumption từ đầu tháng)
-      consumption = history[date][dataType] || 0;
-      console.log(`📊 ${label}: ${dataType} = ${consumption} (first day or missing yesterday data)`);
-    } else {
-      console.log(`📊 ${label}: ${dataType} = 0 (missing data for consumption calculation)`);
+    let value = 0;
+    if (history[d1] && history[d2]) {
+      const v1 = history[d1][dataType] || 0;
+      const v2 = history[d2][dataType] || 0;
+      value = Math.max(0, v2 - v1); // Đảm bảo không âm
     }
     
-    result[label] = consumption;
-  });
+    result[label] = value;
+  }
   
-  console.log(`📊 Final ${dataType} consumption result:`, result);
   return result;
 }
 
@@ -1350,173 +1312,6 @@ function getDefaultLastData(nodeType) {
   }
 }
 
-// API debug - kiểm tra dữ liệu thô của phòng
-app.get('/api/debug/room/:roomId', requireAuth, async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
-    
-    if (!roomSnapshot.exists()) {
-      return res.status(404).json({ error: 'Phòng không tồn tại' });
-    }
-
-    const roomData = roomSnapshot.val();
-    
-    // Tạo response chi tiết
-    const debugInfo = {
-      roomId: roomId,
-      hasHistory: !!roomData.history,
-      historyDates: roomData.history ? Object.keys(roomData.history).sort() : [],
-      historyCount: roomData.history ? Object.keys(roomData.history).length : 0,
-      sampleHistory: roomData.history ? Object.fromEntries(
-        Object.entries(roomData.history).slice(0, 5)
-      ) : {},
-      nodes: roomData.nodes ? Object.keys(roomData.nodes) : [],
-      fullData: roomData
-    };
-
-    res.json(debugInfo);
-  } catch (error) {
-    console.error('Lỗi debug API:', error);
-    res.status(500).json({ error: 'Lỗi server debug' });
-  }
-});
-
-// API test statistic data cho phòng cụ thể
-app.get('/api/test/statistic/:roomId', requireAuth, async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const { days = 10 } = req.query; // Số ngày muốn test, mặc định 10
-    
-    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
-    if (!roomSnapshot.exists()) {
-      return res.status(404).json({ error: 'Phòng không tồn tại' });
-    }
-
-    const roomData = roomSnapshot.val();
-    
-    // Lấy ngày range
-    const lastNDays = getLastNDays(parseInt(days));
-    const fromDate = lastNDays[0];
-    const toDate = lastNDays[lastNDays.length - 1];
-    
-    console.log(`🧪 Testing statistic for room ${roomId} from ${fromDate} to ${toDate}`);
-    
-    let electricHistory = {};
-    let waterHistory = {};
-    
-    if (roomData.history) {
-      electricHistory = processHistoryData(roomData.history, fromDate, toDate, 'electric');
-      waterHistory = processHistoryData(roomData.history, fromDate, toDate, 'water');
-    }
-    
-    const testResult = {
-      roomId: roomId,
-      dateRange: { from: fromDate, to: toDate },
-      hasHistory: !!roomData.history,
-      historyDates: roomData.history ? Object.keys(roomData.history).sort() : [],
-      rawHistorySample: roomData.history ? Object.fromEntries(
-        Object.entries(roomData.history).slice(-5) // 5 entries gần nhất
-      ) : {},
-      processedData: {
-        electric: electricHistory,
-        water: waterHistory
-      },
-      chartData: {
-        electricLabels: Object.keys(electricHistory),
-        electricData: Object.values(electricHistory),
-        waterLabels: Object.keys(waterHistory),
-        waterData: Object.values(waterHistory)
-      }
-    };
-
-    res.json(testResult);
-  } catch (error) {
-    console.error('Lỗi test statistic API:', error);
-    res.status(500).json({ error: 'Lỗi server test statistic' });
-  }
-});
-
-function processMonthlyData(history, fromMonth, fromYear, toMonth, toYear, dataType) {
-  console.log(`🔍 Processing monthly ${dataType} data from ${fromMonth}/${fromYear} to ${toMonth}/${toYear}`);
-  
-  const result = {};
-  const monthRange = getMonthRange(fromMonth, fromYear, toMonth, toYear);
-  
-  console.log(`📅 Month range to process:`, monthRange);
-  
-  if (monthRange.length < 1) {
-    console.log(`⚠️ No months in range`);
-    return result;
-  }
-  
-  if (!history) {
-    console.log(`❌ No history data provided, creating empty chart with 0 values`);
-    monthRange.forEach(monthInfo => {
-      const label = `${String(monthInfo.month).padStart(2, '0')}/${String(monthInfo.year).slice(-2)}`;
-      result[label] = 0;
-    });
-    return result;
-  }
-  
-  // Tính consumption cho từng tháng (max - min)
-  console.log(`📊 Calculating monthly consumption (max - min)`);
-  
-  monthRange.forEach(monthInfo => {
-    const label = `${String(monthInfo.month).padStart(2, '0')}/${String(monthInfo.year).slice(-2)}`;
-    
-    // Lấy tất cả giá trị trong tháng này
-    const monthlyValues = [];
-    const daysInMonth = new Date(monthInfo.year, monthInfo.month, 0).getDate();
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${monthInfo.year}-${String(monthInfo.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      
-      if (history[dateStr] && history[dateStr][dataType] !== undefined) {
-        monthlyValues.push(history[dateStr][dataType]);
-      }
-    }
-    
-    let monthlyConsumption = 0;
-    if (monthlyValues.length > 0) {
-      const maxValue = Math.max(...monthlyValues);
-      const minValue = Math.min(...monthlyValues);
-      monthlyConsumption = Math.max(0, maxValue - minValue);
-      
-      console.log(`📊 ${label}: ${dataType} values [${minValue} -> ${maxValue}] = ${monthlyConsumption}`);
-    } else {
-      console.log(`📊 ${label}: ${dataType} = 0 (no data in month)`);
-    }
-    
-    result[label] = monthlyConsumption;
-  });
-  
-  console.log(`📊 Final monthly ${dataType} result:`, result);
-  return result;
-}
-
-function getMonthRange(fromMonth, fromYear, toMonth, toYear) {
-  const months = [];
-  let currentMonth = fromMonth;
-  let currentYear = fromYear;
-  
-  while (currentYear < toYear || (currentYear === toYear && currentMonth <= toMonth)) {
-    months.push({
-      month: currentMonth,
-      year: currentYear
-    });
-    
-    currentMonth++;
-    if (currentMonth > 12) {
-      currentMonth = 1;
-      currentYear++;
-    }
-  }
-  
-  return months;
-}
-
 app.listen(PORT, () => {
   console.log(`🚀 Admin site is running at http://localhost:${PORT}`);
 });
-
