@@ -1762,12 +1762,12 @@ app.get('/room-details/:roomId', requireAuth, async (req, res) => {
           lastUpdate: nodeData.lastUpdate || null
         };
 
-        // Xử lý lịch sử 7 ngày gần nhất
+        // Xử lý lịch sử 9 ngày gần nhất
         if (nodeData.history) {
-          const last7Days = getLastNDays(7);
+          const last9Days = getLastNDays(9);
           processedRoom.history[nodeType] = {};
           
-          last7Days.forEach(date => {
+          last9Days.forEach(date => {
             if (nodeData.history[date]) {
               const value = nodeType === 'electricity' ? 
                 nodeData.history[date].electric : 
@@ -1818,17 +1818,17 @@ app.get('/statistic', requireAuth, async (req, res) => {
     let waterHistory = {};
     let electricHistory = {};
 
-    // Nếu không có filter ngày, lấy 10 ngày gần nhất
+    // Nếu không có filter ngày, lấy 9 ngày gần nhất
     if (!fromElectric || !toElectric) {
-      const last10Days = getLastNDays(10);
-      fromElectric = last10Days[0];
-      toElectric = last10Days[last10Days.length - 1];
+      const last9Days = getLastNDays(9);
+      fromElectric = last9Days[0];
+      toElectric = last9Days[last9Days.length - 1];
     }
 
     if (!fromWater || !toWater) {
-      const last10Days = getLastNDays(10);
-      fromWater = last10Days[0];
-      toWater = last10Days[last10Days.length - 1];
+      const last9Days = getLastNDays(9);
+      fromWater = last9Days[0];
+      toWater = last9Days[last9Days.length - 1];
     }
 
     // Set default values for month/year if not provided

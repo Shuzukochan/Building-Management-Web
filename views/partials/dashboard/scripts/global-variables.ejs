@@ -840,7 +840,14 @@
         `;
       }
       
-      new bootstrap.Modal(document.getElementById('addNodeModal')).show();
+      const modal = new bootstrap.Modal(document.getElementById('addNodeModal'));
+      
+      // Fix viewport overflow issue when modal closes
+      document.getElementById('addNodeModal').addEventListener('hidden.bs.modal', function () {
+        fixViewportOverflow();
+      }, { once: true });
+      
+      modal.show();
     }
 
     // Toggle custom node type input
@@ -919,6 +926,60 @@
     } catch (error) {
       console.warn('Could not set up addNodeForm event listener:', error);
     }
+
+    // Fix viewport overflow after modal closes
+    function fixViewportOverflow() {
+      // Force remove any modal-related classes and styles
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      
+      // Remove any leftover backdrops
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      backdrops.forEach(backdrop => backdrop.remove());
+      
+      // Reset main content overflow
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) {
+        mainContent.style.overflow = 'hidden';
+        mainContent.style.overflowY = 'auto';
+        mainContent.style.overflowX = 'hidden';
+      }
+      
+      // Reset dashboard grid
+      const dashboardGrid = document.querySelector('.dashboard-grid');
+      if (dashboardGrid) {
+        dashboardGrid.style.overflow = 'hidden';
+      }
+      
+      console.log('✅ Fixed viewport overflow');
+    }
+
+    // Global fix for all modals - add event listeners when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // List of all modal IDs in dashboard
+      const modalIds = [
+        'addNodeModal',
+        'manageNodeModal', 
+        'addRoomModal',
+        'confirmDeleteModal',
+        'confirmDeleteRoomModal',
+        'addPhoneModal',
+        'addPhoneToRoomModal',
+        'managePhoneModal',
+        'broadcastNotificationModal'
+      ];
+      
+      modalIds.forEach(modalId => {
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+          modalElement.addEventListener('hidden.bs.modal', function () {
+            fixViewportOverflow();
+          });
+          console.log(`✅ Added overflow fix listener to ${modalId}`);
+        }
+      });
+    });
 
     // Open Manage Node Modal
     function openManageNodeModal(roomId, roomNumber, nodeId, nodeType, customName = '') {
@@ -1014,6 +1075,11 @@
           if (modalInstance) {
             modalInstance.dispose();
           }
+        }, { once: true });
+        
+        // Fix viewport overflow issue when modal closes
+        modal.addEventListener('hidden.bs.modal', function () {
+          fixViewportOverflow();
         }, { once: true });
         
         // Show modal and focus on Node ID input
@@ -1319,37 +1385,5 @@
       }
     }
 
-    // Load phone numbers (from index.js)
-    async function loadPhoneNumbers() {
-      try {
-        console.log('📞 Loading phone numbers...');
-        const response = await fetch('/api/phone-numbers');
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const phoneNumbers = await response.json();
-        console.log('📞 Phone numbers loaded:', phoneNumbers.length);
-        return phoneNumbers;
-      } catch (error) {
-        console.error('Lỗi khi load phone numbers:', error);
-        return [];
-      }
-    }
 
-    // Load available rooms (from index.js)
-    async function loadAvailableRooms() {
-      try {
-        console.log('🏠 Loading available rooms...');
-        const response = await fetch('/api/available-rooms');
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const availableRooms = await response.json();
-        console.log('🏠 Available rooms loaded:', availableRooms.length);
-        return availableRooms;
-      } catch (error) {
-        console.error('Lỗi khi load available rooms:', error);
-        return [];
-      }
-    }
 

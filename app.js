@@ -403,15 +403,7 @@ app.post('/mark-payment', requireAuth, async (req, res) => {
       roomNumber: roomId,
       status: 'PAID',
       timestamp: new Date().toISOString(),
-      method: paymentMethod, // Trường chính
-      paymentMethod: paymentMethod, // Trường backup để đảm bảo
-      electricUsage: electricUsage,
-      waterUsage: waterUsage,
-      electricCost: electricUsage * 3300,
-      waterCost: waterUsage * 15000,
-      paidAt: Date.now(),
-      paidBy: 'admin', // Người đánh dấu thanh toán
-      note: `Thanh toán ${paymentMethod === 'cash' ? 'tiền mặt' : 'chuyển khoản'} tháng ${currentMonth}/${currentYear}`
+      paymentMethod: paymentMethod, 
     };
      
     console.log(`📝 Payment data to save:`, paymentData);
@@ -425,7 +417,7 @@ app.post('/mark-payment', requireAuth, async (req, res) => {
     const savedData = await db.ref(`rooms/${roomId}/payments/${month}`).once('value');
     console.log(`🔍 Verified saved data:`, savedData.val());
     
-    res.redirect(`/payments?month=${month}&success=Đã đánh dấu thanh toán thành công cho phòng ${roomId} - ${finalAmount.toLocaleString('vi-VN')}đ`);
+    res.redirect(`/payments?month=${month}&success=Thanh toán tiền mặt thành công cho phòng ${roomId} - ${finalAmount.toLocaleString('vi-VN')}đ`);
   } catch (error) {
     console.error('Lỗi khi đánh dấu thanh toán:', error);
     res.redirect('/payments?error=Lỗi khi đánh dấu thanh toán: ' + error.message);

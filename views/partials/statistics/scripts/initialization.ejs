@@ -3,6 +3,11 @@
   document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Statistics page initializing...');
     
+    // Set default values first
+    setTimeout(() => {
+      setDefaultDateRanges();
+    }, 100);
+    
     // Initialize date pickers based on current view type
     setTimeout(() => {
       // Electric chart date picker
@@ -39,4 +44,95 @@
     
     console.log('✅ Statistics page initialized');
   });
+
+  // Function to set default date ranges
+  function setDefaultDateRanges() {
+    console.log('📅 Setting default date ranges...');
+    
+    // Electric chart defaults
+    const electricViewType = '<%= viewTypeElectric || "day" %>';
+    if (electricViewType === 'month') {
+      const fromElectricInput = document.getElementById('fromElectricHidden');
+      const toElectricInput = document.getElementById('toElectricHidden');
+      
+      if (fromElectricInput && toElectricInput) {
+        // Always use last 9 months as default if no specific range set
+        if (!fromElectricInput.value || !toElectricInput.value || 
+            (fromElectricInput.value === toElectricInput.value)) {
+          const last9Months = getLast9Months();
+          fromElectricInput.value = last9Months[0].monthYear;
+          toElectricInput.value = last9Months[last9Months.length - 1].monthYear;
+          console.log('⚡ Set default electric month range to last 9 months:', fromElectricInput.value, 'to', toElectricInput.value);
+        }
+      }
+    } else {
+      const fromElectricDateInput = document.getElementById('fromElectricDateHidden');
+      const toElectricDateInput = document.getElementById('toElectricDateHidden');
+      
+      if (fromElectricDateInput && toElectricDateInput && (!fromElectricDateInput.value || !toElectricDateInput.value)) {
+        const today = new Date();
+        const lastWeek = new Date(today);
+        lastWeek.setDate(today.getDate() - 7);
+        
+        fromElectricDateInput.value = lastWeek.toISOString().split('T')[0];
+        toElectricDateInput.value = today.toISOString().split('T')[0];
+        console.log('⚡ Set default electric date range:', fromElectricDateInput.value, 'to', toElectricDateInput.value);
+      }
+    }
+    
+    // Water chart defaults
+    const waterViewType = '<%= viewTypeWater || "day" %>';
+    if (waterViewType === 'month') {
+      const fromWaterInput = document.getElementById('fromWaterHidden');
+      const toWaterInput = document.getElementById('toWaterHidden');
+      
+      if (fromWaterInput && toWaterInput) {
+        // Always use last 9 months as default if no specific range set
+        if (!fromWaterInput.value || !toWaterInput.value || 
+            (fromWaterInput.value === toWaterInput.value)) {
+          const last9Months = getLast9Months();
+          fromWaterInput.value = last9Months[0].monthYear;
+          toWaterInput.value = last9Months[last9Months.length - 1].monthYear;
+          console.log('💧 Set default water month range to last 9 months:', fromWaterInput.value, 'to', toWaterInput.value);
+        }
+      }
+    } else {
+      const fromWaterDateInput = document.getElementById('fromWaterDateHidden');
+      const toWaterDateInput = document.getElementById('toWaterDateHidden');
+      
+      if (fromWaterDateInput && toWaterDateInput && (!fromWaterDateInput.value || !toWaterDateInput.value)) {
+        const today = new Date();
+        const lastWeek = new Date(today);
+        lastWeek.setDate(today.getDate() - 7);
+        
+        fromWaterDateInput.value = lastWeek.toISOString().split('T')[0];
+        toWaterDateInput.value = today.toISOString().split('T')[0];
+        console.log('💧 Set default water date range:', fromWaterDateInput.value, 'to', toWaterDateInput.value);
+      }
+    }
+    
+    console.log('✅ Default date ranges set');
+    
+    // Auto-submit forms if we set default 9-month ranges
+    const currentElectricViewType = '<%= viewTypeElectric || "day" %>';
+    const currentWaterViewType = '<%= viewTypeWater || "day" %>';
+    
+    // Check if we need to reload data with default ranges
+    const needsElectricReload = currentElectricViewType === 'month' && 
+      (!window.location.search.includes('fromMonthElectric') || !window.location.search.includes('toMonthElectric'));
+    const needsWaterReload = currentWaterViewType === 'month' && 
+      (!window.location.search.includes('fromMonthWater') || !window.location.search.includes('toMonthWater'));
+    
+    if (needsElectricReload) {
+      console.log('🔄 Auto-submitting electric form with default 9-month range');
+      setTimeout(() => {
+        document.getElementById('electricForm').submit();
+      }, 1000);
+    } else if (needsWaterReload) {
+      console.log('🔄 Auto-submitting water form with default 9-month range');
+      setTimeout(() => {
+        document.getElementById('waterForm').submit();
+      }, 1000);
+    }
+  }
 </script> 

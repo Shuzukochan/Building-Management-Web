@@ -339,13 +339,16 @@
   .chart-body {
     padding: 15px;
     flex: 1;
-    min-height: 320px;
+    min-height: 0; /* Allow flex to control height */
     position: relative;
+    display: flex;
+    flex-direction: column;
   }
   
   .chart-canvas {
     width: 100% !important;
     height: 100% !important;
+    max-height: 100% !important;
   }
 
   /* Chart container sizing */
@@ -353,7 +356,17 @@
     position: relative;
     height: 100%;
     width: 100%;
-    min-height: 300px;
+    flex: 1;
+    min-height: 0; /* Essential for flex child */
+  }
+  
+  /* Ensure canvas fits container */
+  .chart-container canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   /* Vietnamese Month Picker Styling */

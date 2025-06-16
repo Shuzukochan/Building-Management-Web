@@ -1,6 +1,20 @@
 <script>
   // Check for unpaid previous months
   function checkUnpaidPreviousMonths() {
+    // Ensure toast manager is available
+    if (typeof toastManager === 'undefined') {
+      console.warn('ToastManager not yet available, retrying...');
+      setTimeout(checkUnpaidPreviousMonths, 1000);
+      return;
+    }
+    
+    // Không hiển thị toast nếu user đã chọn tháng cụ thể
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('month')) {
+      console.log('🔍 Month parameter found in URL, skipping unpaid warnings');
+      return;
+    }
+    
     fetch('/api/unpaid-previous-months')
       .then(response => response.json())
       .then(data => {
@@ -17,45 +31,44 @@
       });
   }
 
-  // Create unpaid month warning toast
+  // Create unpaid month warning toast using shared toast system
   function createUnpaidToast(item, delay) {
     setTimeout(() => {
-      const container = document.querySelector('.toast-container');
-      if (!container) return;
-      
       const toastId = `toast-unpaid-${item.monthKey}`;
-      const toast = document.createElement('div');
-      toast.className = 'toast toast-warning';
-      toast.id = toastId;
-      
-      toast.innerHTML = `
-        <div class="toast-header">
-          <div class="toast-title">
-            <div class="toast-icon">
-              <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            Cảnh báo thanh toán
-          </div>
-          <button class="toast-close" onclick="hideToast('${toastId}')">
-            <i class="fas fa-times"></i>
+      const message = `
+        Còn <strong>${item.count} phòng</strong> tháng <strong>${item.month}</strong> chưa thanh toán!
+        <div style="margin-top: 8px;">
+          <button class="btn btn-warning btn-sm" onclick="viewUnpaidMonth('${item.monthKey}', '${toastId}')" style="font-size: 0.75em; padding: 4px 8px;">
+            <i class="fas fa-eye"></i> Xem ngay
           </button>
         </div>
-        <div class="toast-message">
-          Còn <strong>${item.count} phòng</strong> tháng <strong>${item.month}</strong> chưa thanh toán!
-          <div style="margin-top: 8px;">
-            <button class="btn btn-warning btn-sm" onclick="changeMonth('${item.monthKey}')" style="font-size: 0.75em; padding: 4px 8px;">
-              <i class="fas fa-eye"></i> Xem ngay
-            </button>
-          </div>
-        </div>
-        <div class="toast-progress" style="width: 100%;"></div>
       `;
       
-      container.appendChild(toast);
-      
-      setTimeout(() => {
-        toast.classList.add('show');
-      }, 100);
+      // Use shared toast system với custom title
+      if (typeof toastManager !== 'undefined') {
+        const toast = toastManager.show(message, 'warning', 8000, 'Cảnh báo thanh toán');
+        // Set ID cho toast để có thể tìm và ẩn sau
+        if (toast) {
+          toast.id = toastId;
+        }
+      } else {
+        console.error('ToastManager is not defined');
+      }
     }, delay);
+  }
+
+  // Function to handle "Xem ngay" button click
+  function viewUnpaidMonth(monthKey, toastId) {
+    // Ẩn toast trước khi chuyển trang
+    const toast = document.getElementById(toastId);
+    if (toast) {
+      toast.classList.add('hide');
+      setTimeout(() => {
+        changeMonth(monthKey);
+      }, 300); // Đợi toast ẩn xong rồi mới chuyển trang
+    } else {
+      // Fallback nếu không tìm thấy toast
+      changeMonth(monthKey);
+    }
   }
 </script> 

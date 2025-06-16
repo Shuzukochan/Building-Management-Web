@@ -1,0 +1,156 @@
+<script>
+// Shared Toast Notification System
+class ToastManager {
+  constructor() {
+    this.container = document.getElementById('toastContainer');
+    this.toastCount = 0;
+  }
+
+  show(message, type, duration, customTitle) {
+    type = type || 'success';
+    duration = duration || 4000;
+    
+    const toast = this.createToast(message, type, duration, customTitle);
+    this.container.appendChild(toast);
+
+    setTimeout(function() {
+      toast.classList.add('show');
+    }, 50);
+
+    setTimeout(function() {
+      toast.classList.add('hide');
+      setTimeout(function() {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 400);
+    }, duration);
+
+    return toast;
+  }
+
+  createToast(message, type, duration, customTitle) {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.id = 'toast-' + (++this.toastCount);
+
+    const icons = {
+      success: 'fas fa-check',
+      error: 'fas fa-times',
+      warning: 'fas fa-exclamation-triangle',
+      info: 'fas fa-info'
+    };
+
+    const titles = {
+      success: 'Thành công',
+      error: 'Lỗi',
+      warning: 'Cảnh báo',
+      info: 'Thông tin'
+    };
+
+    const title = customTitle || titles[type];
+
+    toast.innerHTML = 
+      '<div class="toast-header">' +
+        '<div class="toast-title">' +
+          '<div class="toast-icon">' +
+            '<i class="' + icons[type] + '"></i>' +
+          '</div>' +
+          title +
+        '</div>' +
+        '<button class="toast-close" onclick="this.closest(\'.toast\').classList.add(\'hide\')">' +
+          '<i class="fas fa-times"></i>' +
+        '</button>' +
+      '</div>' +
+      '<div class="toast-message">' + message + '</div>' +
+      '<div class="toast-progress" style="width: 100%; animation: progress-shrink ' + duration + 'ms linear;"></div>';
+
+    return toast;
+  }
+
+  success(message, duration) {
+    return this.show(message, 'success', duration || 4000);
+  }
+
+  error(message, duration) {
+    return this.show(message, 'error', duration || 5000);
+  }
+
+  warning(message, duration) {
+    return this.show(message, 'warning', duration || 4500);
+  }
+
+  info(message, duration) {
+    return this.show(message, 'info', duration || 4000);
+  }
+}
+
+// Initialize toast manager
+var toastManager = new ToastManager();
+
+// Global function để các form có thể gọi
+window.showToast = function(message, type) {
+  toastManager.show(message, type || 'success');
+};
+
+// Helper functions để tương thích với code cũ
+function showToast(type, title, message, duration) {
+  return toastManager.show(message, type, duration, title);
+}
+
+function showSuccessToast(message) {
+  return toastManager.success(message);
+}
+
+function showErrorToast(message) {
+  return toastManager.error(message);
+}
+
+function showWarningToast(message) {
+  return toastManager.warning(message);
+}
+
+function showInfoToast(message) {
+  return toastManager.info(message);
+}
+
+function hideToast(toastId) {
+  const toast = document.getElementById(toastId);
+  if (toast) {
+    toast.classList.remove('show');
+    toast.classList.add('hide');
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 400);
+  }
+}
+
+// Check for messages from server on page load
+document.addEventListener('DOMContentLoaded', function() {
+  var successMessage = document.getElementById('successMessage');
+  var errorMessage = document.getElementById('errorMessage');
+
+  if (successMessage && successMessage.value) {
+    toastManager.success(successMessage.value);
+    // Clean URL after showing toast
+    cleanUrl();
+  }
+
+  if (errorMessage && errorMessage.value) {
+    toastManager.error(errorMessage.value);
+    // Clean URL after showing toast
+    cleanUrl();
+  }
+});
+
+// Function to clean URL parameters
+function cleanUrl() {
+  if (window.history && window.history.replaceState) {
+    // Remove query parameters and go back to clean URL
+    var cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+}
+</script> 

@@ -1,4 +1,74 @@
 <script>
+  // Function to enable/disable correct hidden inputs
+  function setupFormInputs(formId, viewType, chartType) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    
+    console.log(`🔧 Setting up form inputs for ${chartType} chart, view type: ${viewType}`);
+    
+    if (viewType === 'month') {
+      // Disable day inputs, enable month inputs
+      const dayInputNames = [`from${chartType === 'electric' ? 'Electric' : 'Water'}`, `to${chartType === 'electric' ? 'Electric' : 'Water'}`];
+      const monthInputNames = [`fromMonth${chartType === 'electric' ? 'Electric' : 'Water'}`, `toMonth${chartType === 'electric' ? 'Electric' : 'Water'}`];
+      
+      dayInputNames.forEach(name => {
+        const input = form.querySelector(`input[name="${name}"]`);
+        if (input) {
+          input.disabled = true;
+          console.log(`🚫 Disabled day input: ${name}`);
+        }
+      });
+      
+      monthInputNames.forEach(name => {
+        let input = form.querySelector(`input[name="${name}"]`);
+        if (!input) {
+          // Create month input if it doesn't exist
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.id = name === `fromMonth${chartType === 'electric' ? 'Electric' : 'Water'}` ? 
+                    `from${chartType === 'electric' ? 'Electric' : 'Water'}Hidden` : 
+                    `to${chartType === 'electric' ? 'Electric' : 'Water'}Hidden`;
+          form.appendChild(input);
+          console.log(`➕ Created month input: ${name}`);
+        } else {
+          input.disabled = false;
+          console.log(`✅ Enabled month input: ${name}`);
+        }
+      });
+    } else {
+      // Disable month inputs, enable day inputs
+      const dayInputNames = [`from${chartType === 'electric' ? 'Electric' : 'Water'}`, `to${chartType === 'electric' ? 'Electric' : 'Water'}`];
+      const monthInputNames = [`fromMonth${chartType === 'electric' ? 'Electric' : 'Water'}`, `toMonth${chartType === 'electric' ? 'Electric' : 'Water'}`];
+      
+      monthInputNames.forEach(name => {
+        const input = form.querySelector(`input[name="${name}"]`);
+        if (input) {
+          input.disabled = true;
+          console.log(`🚫 Disabled month input: ${name}`);
+        }
+      });
+      
+      dayInputNames.forEach(name => {
+        let input = form.querySelector(`input[name="${name}"]`);
+        if (!input) {
+          // Create day input if it doesn't exist
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.id = name === `from${chartType === 'electric' ? 'Electric' : 'Water'}` ? 
+                    `from${chartType === 'electric' ? 'Electric' : 'Water'}DateHidden` : 
+                    `to${chartType === 'electric' ? 'Electric' : 'Water'}DateHidden`;
+          form.appendChild(input);
+          console.log(`➕ Created day input: ${name}`);
+        } else {
+          input.disabled = false;
+          console.log(`✅ Enabled day input: ${name}`);
+        }
+      });
+    }
+  }
+
   // Handler functions cho radio button changes
   window.handleElectricViewChange = function() {
     console.log('⚡ Electric view change triggered');
@@ -7,14 +77,19 @@
       const selectedValue = document.querySelector('input[name="viewTypeElectric"]:checked').value;
       console.log('⚡ Electric view changed to:', selectedValue);
       
+      // Setup correct form inputs
+      setupFormInputs('electricForm', selectedValue, 'electric');
+      
       if (selectedValue === 'month') {
         const last9Months = getLast9Months();
-        const fromInput = document.getElementById('fromElectricHidden');
-        const toInput = document.getElementById('toElectricHidden');
+        const fromInput = document.querySelector('input[name="fromMonthElectric"]');
+        const toInput = document.querySelector('input[name="toMonthElectric"]');
         
         if (fromInput && toInput) {
+          // Always set default values to last 9 months when switching to month view
           fromInput.value = last9Months[0].monthYear;
           toInput.value = last9Months[last9Months.length - 1].monthYear;
+          console.log('⚡ Set electric month range to last 9 months:', fromInput.value, 'to', toInput.value);
           
           setTimeout(() => {
             if (pickerRoots.electricRange) {
@@ -23,9 +98,28 @@
             pickerRoots.electricRange = createMonthRangePicker('electricRangePicker', 'fromElectricHidden', 'toElectricHidden', () => {
               setTimeout(() => document.getElementById('electricForm').submit(), 100);
             });
+            
+            // Submit form with month parameters after picker is ready
+            setTimeout(() => {
+              document.getElementById('electricForm').submit();
+            }, 150);
           }, 50);
         }
       } else {
+        // Set default date range for day view if empty
+        const fromDateInput = document.querySelector('input[name="fromElectric"]');
+        const toDateInput = document.querySelector('input[name="toElectric"]');
+        
+        if (fromDateInput && toDateInput && (!fromDateInput.value || !toDateInput.value)) {
+          const today = new Date();
+          const last9Days = new Date(today);
+          last9Days.setDate(today.getDate() - 8); // 9 ngày: hôm nay + 8 ngày trước
+          
+          fromDateInput.value = last9Days.toISOString().split('T')[0];
+          toDateInput.value = today.toISOString().split('T')[0];
+          console.log('⚡ Set default electric date range:', fromDateInput.value, 'to', toDateInput.value);
+        }
+        
         setTimeout(() => {
           if (pickerRoots.electricDateRange) {
             pickerRoots.electricDateRange.unmount();
@@ -33,12 +127,13 @@
           pickerRoots.electricDateRange = createDateRangePicker('electricDateRangePicker', 'fromElectricDateHidden', 'toElectricDateHidden', () => {
             setTimeout(() => document.getElementById('electricForm').submit(), 100);
           });
+          
+          // Submit form with date parameters after picker is ready
+          setTimeout(() => {
+            document.getElementById('electricForm').submit();
+          }, 150);
         }, 50);
       }
-      
-      setTimeout(() => {
-        document.getElementById('electricForm').submit();
-      }, 200);
     }, 100);
   };
   
@@ -49,14 +144,19 @@
       const selectedValue = document.querySelector('input[name="viewTypeWater"]:checked').value;
       console.log('💧 Water view changed to:', selectedValue);
       
+      // Setup correct form inputs
+      setupFormInputs('waterForm', selectedValue, 'water');
+      
       if (selectedValue === 'month') {
         const last9Months = getLast9Months();
-        const fromInput = document.getElementById('fromWaterHidden');
-        const toInput = document.getElementById('toWaterHidden');
+        const fromInput = document.querySelector('input[name="fromMonthWater"]');
+        const toInput = document.querySelector('input[name="toMonthWater"]');
         
         if (fromInput && toInput) {
+          // Always set default values to last 9 months when switching to month view
           fromInput.value = last9Months[0].monthYear;
           toInput.value = last9Months[last9Months.length - 1].monthYear;
+          console.log('💧 Set water month range to last 9 months:', fromInput.value, 'to', toInput.value);
           
           setTimeout(() => {
             if (pickerRoots.waterRange) {
@@ -65,9 +165,28 @@
             pickerRoots.waterRange = createMonthRangePicker('waterRangePicker', 'fromWaterHidden', 'toWaterHidden', () => {
               setTimeout(() => document.getElementById('waterForm').submit(), 100);
             });
+            
+            // Submit form with month parameters after picker is ready
+            setTimeout(() => {
+              document.getElementById('waterForm').submit();
+            }, 150);
           }, 50);
         }
       } else {
+        // Set default date range for day view if empty
+        const fromDateInput = document.querySelector('input[name="fromWater"]');
+        const toDateInput = document.querySelector('input[name="toWater"]');
+        
+        if (fromDateInput && toDateInput && (!fromDateInput.value || !toDateInput.value)) {
+          const today = new Date();
+          const last9Days = new Date(today);
+          last9Days.setDate(today.getDate() - 8); // 9 ngày: hôm nay + 8 ngày trước
+          
+          fromDateInput.value = last9Days.toISOString().split('T')[0];
+          toDateInput.value = today.toISOString().split('T')[0];
+          console.log('💧 Set default water date range:', fromDateInput.value, 'to', toDateInput.value);
+        }
+        
         setTimeout(() => {
           if (pickerRoots.waterDateRange) {
             pickerRoots.waterDateRange.unmount();
@@ -75,12 +194,13 @@
           pickerRoots.waterDateRange = createDateRangePicker('waterDateRangePicker', 'fromWaterDateHidden', 'toWaterDateHidden', () => {
             setTimeout(() => document.getElementById('waterForm').submit(), 100);
           });
+          
+          // Submit form with date parameters after picker is ready
+          setTimeout(() => {
+            document.getElementById('waterForm').submit();
+          }, 150);
         }, 50);
       }
-      
-      setTimeout(() => {
-        document.getElementById('waterForm').submit();
-      }, 200);
     }, 100);
   };
 

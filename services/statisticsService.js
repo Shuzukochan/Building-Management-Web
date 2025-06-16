@@ -103,9 +103,49 @@ function processHistoryData(history, fromDate, toDate, dataType) {
   return result;
 }
 
+// Process monthly history data for charts
+function processMonthlyHistoryData(history, fromMonth, fromYear, toMonth, toYear, dataType) {
+  const result = {};
+  
+  // Generate month range
+  const months = [];
+  let currentYear = parseInt(fromYear);
+  let currentMonth = parseInt(fromMonth);
+  const endYear = parseInt(toYear);
+  const endMonth = parseInt(toMonth);
+  
+  while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+    months.push({
+      year: currentYear,
+      month: currentMonth,
+      key: `${currentYear}-${currentMonth.toString().padStart(2, '0')}`
+    });
+    
+    currentMonth++;
+    if (currentMonth > 12) {
+      currentMonth = 1;
+      currentYear++;
+    }
+  }
+  
+  console.log(`📅 Processing monthly data for ${dataType} from ${fromMonth}/${fromYear} to ${toMonth}/${toYear}`);
+  console.log(`📊 Month range:`, months.map(m => m.key));
+  
+  // Calculate usage for each month
+  for (const monthInfo of months) {
+    const usage = calculateMonthlyUsageByType(history, monthInfo.month, monthInfo.year, 'room', dataType);
+    const label = `${monthInfo.month}/${monthInfo.year}`;
+    result[label] = usage;
+    console.log(`📈 ${dataType} usage for ${label}: ${usage}`);
+  }
+  
+  return result;
+}
+
 module.exports = {
   calculateMonthlyUsageByType,
   getLastNDays,
   getDateRange,
-  processHistoryData
+  processHistoryData,
+  processMonthlyHistoryData
 };

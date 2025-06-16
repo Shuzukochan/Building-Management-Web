@@ -33,9 +33,13 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        aspectRatio: 1, // Force chart to use available height
         layout: {
           padding: {
-            top: 40
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0
           }
         },
         animation: {
@@ -152,9 +156,13 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        aspectRatio: 1, // Force chart to use available height
         layout: {
           padding: {
-            top: 40
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0
           }
         },
         animation: {
@@ -255,5 +263,27 @@
     });
     
     console.log('✅ Charts created successfully');
+    
+    // Force chart resize after creation
+    setTimeout(() => {
+      if (window.waterChart) {
+        window.waterChart.resize();
+        console.log('🔄 Water chart resized');
+      }
+      if (window.electricChart) {
+        window.electricChart.resize();
+        console.log('🔄 Electric chart resized');
+      }
+    }, 100);
   }
+  
+  // Add resize listener to ensure charts fill container
+  window.addEventListener('resize', function() {
+    if (window.waterChart) {
+      window.waterChart.resize();
+    }
+    if (window.electricChart) {
+      window.electricChart.resize();
+    }
+  });
 </script> 

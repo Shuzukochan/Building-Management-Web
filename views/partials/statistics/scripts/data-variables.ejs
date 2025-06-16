@@ -38,39 +38,118 @@
   const { createElement: h } = React;
   const { createRoot } = ReactDOM;
   
-  // Vietnamese locale for Ant Design
+  // Vietnamese locale for Ant Design - Complete official locale
   const vietnameseLocale = {
-    "locale": "vi_VN",
-    "DatePicker": {
-      "lang": {
-        "placeholder": "Chọn thời điểm",
-        "rangePlaceholder": ["Từ tháng", "Đến tháng"],
-        "locale": "vi_VN",
-        "today": "Hôm nay",
-        "now": "Bây giờ",
-        "backToToday": "Về hôm nay",
-        "ok": "Ok",
-        "clear": "Xóa",
-        "month": "Tháng",
-        "year": "Năm",
-        "monthSelect": "Chọn tháng",
-        "yearSelect": "Chọn năm",
-        "yearFormat": "YYYY",
-        "dateFormat": "D/M/YYYY",
-        "dayFormat": "D",
-        "monthBeforeYear": true,
-        "previousMonth": "Tháng trước (PageUp)",
-        "nextMonth": "Tháng sau (PageDown)",
-        "previousYear": "Năm trước (Control + left)",
-        "nextYear": "Năm sau (Control + right)",
-        "shortWeekDays": ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
-        "shortMonths": ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"]
+    locale: 'vi',
+    Pagination: {
+      items_per_page: '/ trang',
+      jump_to: 'Đến',
+      jump_to_confirm: 'xác nhận',
+      page: '',
+      prev_page: 'Trang trước',
+      next_page: 'Trang sau',
+      prev_5: 'Về 5 trang trước',
+      next_5: 'Đến 5 trang sau',
+      prev_3: 'Về 3 trang trước',
+      next_3: 'Đến 3 trang sau',
+    },
+    DatePicker: {
+      lang: {
+        placeholder: 'Chọn ngày',
+        yearPlaceholder: 'Chọn năm',
+        quarterPlaceholder: 'Chọn quý',
+        monthPlaceholder: 'Chọn tháng',
+        weekPlaceholder: 'Chọn tuần',
+        rangePlaceholder: ['Từ ngày', 'Đến ngày'],
+        rangeYearPlaceholder: ['Từ năm', 'Đến năm'],
+        rangeQuarterPlaceholder: ['Từ quý', 'Đến quý'],
+        rangeMonthPlaceholder: ['Từ tháng', 'Đến tháng'],
+        rangeWeekPlaceholder: ['Từ tuần', 'Đến tuần'],
+        locale: 'vi_VN',
+        today: 'Hôm nay',
+        now: 'Bây giờ',
+        backToToday: 'Về hôm nay',
+        ok: 'Xác nhận',
+        clear: 'Xóa',
+        month: 'Tháng',
+        year: 'Năm',
+        timeSelect: 'Chọn thời gian',
+        dateSelect: 'Chọn ngày',
+        weekSelect: 'Chọn tuần',
+        monthSelect: 'Chọn tháng',
+        yearSelect: 'Chọn năm',
+        decadeSelect: 'Chọn thập kỷ',
+        yearFormat: 'YYYY',
+        dateFormat: 'DD/MM/YYYY',
+        dayFormat: 'DD',
+        dateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+        monthBeforeYear: false,
+        previousMonth: 'Tháng trước (PageUp)',
+        nextMonth: 'Tháng sau (PageDown)',
+        previousYear: 'Năm trước (Control + left)',
+        nextYear: 'Năm sau (Control + right)',
+        previousDecade: 'Thập kỷ trước',
+        nextDecade: 'Thập kỷ sau',
+        previousCentury: 'Thế kỷ trước',
+        nextCentury: 'Thế kỷ sau',
+        shortWeekDays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+        shortMonths: ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'],
+        weekDays: ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'],
+        months: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
       },
-      "timePickerLocale": {
-        "placeholder": "Chọn thời gian"
-      }
-    }
+      timePickerLocale: {
+        placeholder: 'Chọn thời gian',
+        rangePlaceholder: ['Từ thời gian', 'Đến thời gian'],
+      },
+    },
+    TimePicker: {
+      placeholder: 'Chọn thời gian',
+      rangePlaceholder: ['Từ thời gian', 'Đến thời gian'],
+    },
+    Calendar: {
+      lang: {
+        placeholder: 'Chọn ngày',
+        rangePlaceholder: ['Từ ngày', 'Đến ngày'],
+        locale: 'vi_VN',
+        today: 'Hôm nay',
+        now: 'Bây giờ',
+        backToToday: 'Về hôm nay',
+        ok: 'Xác nhận',
+        clear: 'Xóa',
+        month: 'Tháng',
+        year: 'Năm',
+        timeSelect: 'Chọn thời gian',
+        dateSelect: 'Chọn ngày',
+        monthSelect: 'Chọn tháng',
+        yearSelect: 'Chọn năm',
+        decadeSelect: 'Chọn thập kỷ',
+        yearFormat: 'YYYY',
+        dateFormat: 'DD/MM/YYYY',
+        dayFormat: 'DD',
+        dateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+        monthBeforeYear: false,
+        previousMonth: 'Tháng trước (PageUp)',
+        nextMonth: 'Tháng sau (PageDown)',
+        previousYear: 'Năm trước (Control + left)',
+        nextYear: 'Năm sau (Control + right)',
+        previousDecade: 'Thập kỷ trước',
+        nextDecade: 'Thập kỷ sau',
+        previousCentury: 'Thế kỷ trước',
+        nextCentury: 'Thế kỷ sau',
+        shortWeekDays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+        shortMonths: ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'],
+        weekDays: ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'],
+        months: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
+      },
+      timePickerLocale: {
+        placeholder: 'Chọn thời gian',
+      },
+    },
   };
+
+  // Debug: Kiểm tra xem antd có sẵn không
+  console.log('🌐 Ant Design loaded:', typeof antd !== 'undefined');
+  console.log('🌐 Vietnamese locale config:', vietnameseLocale);
 
   // Global picker roots storage
   const pickerRoots = {};

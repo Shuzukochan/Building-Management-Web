@@ -120,11 +120,11 @@ const getPayments = async (req, res) => {
           const paymentInfo = paymentsData[currentMonthKey];
           isPaid = paymentInfo.status === 'PAID';
           
-          // Đọc paymentMethod - ưu tiên method trước
-          if (paymentInfo.method) {
-            paymentMethod = paymentInfo.method;
-          } else if (paymentInfo.paymentMethod) {
+          // Đọc paymentMethod - ưu tiên paymentMethod trước
+          if (paymentInfo.paymentMethod) {
             paymentMethod = paymentInfo.paymentMethod;
+          } else if (paymentInfo.method) {
+            paymentMethod = paymentInfo.method;
           } else {
             paymentMethod = 'transfer'; // Default fallback
           }
@@ -190,6 +190,28 @@ const getPayments = async (req, res) => {
     const totalRevenue = paidRooms.reduce((sum, room) => sum + room.payment.totalCost, 0);
     const pendingRevenue = unpaidRooms.reduce((sum, room) => sum + room.payment.totalCost, 0);
     
+    // Tính doanh thu theo phương thức thanh toán
+    console.log('🔍 Debug payment methods:');
+    paidRooms.forEach(room => {
+      console.log(`Room ${room.roomNumber}: paymentMethod = "${room.payment.paymentMethod}", totalCost = ${room.payment.totalCost}`);
+    });
+    
+    const cashRevenue = paidRooms
+      .filter(room => {
+        const method = room.payment.paymentMethod;
+        return method && (method.toLowerCase() === 'cash' || method.toUpperCase() === 'CASH');
+      })
+      .reduce((sum, room) => sum + room.payment.totalCost, 0);
+    
+    const transferRevenue = paidRooms
+      .filter(room => {
+        const method = room.payment.paymentMethod;
+        return !method || (method.toLowerCase() !== 'cash' && method.toUpperCase() !== 'CASH');
+      })
+      .reduce((sum, room) => sum + room.payment.totalCost, 0);
+      
+    console.log(`💰 Revenue breakdown: Cash = ${cashRevenue}, Transfer = ${transferRevenue}, Total = ${totalRevenue}`);
+    
     res.render("payments", {
       rooms,
       currentMonth,
@@ -203,6 +225,8 @@ const getPayments = async (req, res) => {
         overdueRooms: overdueRooms.length,
         totalRevenue: totalRevenue,
         pendingRevenue: pendingRevenue,
+        cashRevenue: cashRevenue,
+        transferRevenue: transferRevenue,
         paymentRate: occupiedRooms.length > 0 ? Math.round((paidRooms.length / occupiedRooms.length) * 100) : 0
       },
       success: req.query.success || null,
@@ -224,6 +248,8 @@ const getPayments = async (req, res) => {
         overdueRooms: 0,
         totalRevenue: 0,
         pendingRevenue: 0,
+        cashRevenue: 0,
+        transferRevenue: 0,
         paymentRate: 0
       },
       success: null,

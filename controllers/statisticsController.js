@@ -2,7 +2,8 @@ const { db } = require("../config/database");
 const { 
   calculateMonthlyUsageByType,
   getLastNDays,
-  processHistoryData
+  processHistoryData,
+  processMonthlyHistoryData
 } = require("../services/statisticsService");
 
 // Get statistic page - migrated from index.js
@@ -48,17 +49,46 @@ const getStatistic = async (req, res) => {
       toWater = last10Days[last10Days.length - 1];
     }
 
-    // Set default values for month/year if not provided
+    // Parse month/year from YYYY-MM format if provided
+    if (fromMonthElectric && fromMonthElectric.includes('-')) {
+      const [year, month] = fromMonthElectric.split('-');
+      fromYearElectric = parseInt(year);
+      fromMonthElectric = parseInt(month);
+    }
+    if (toMonthElectric && toMonthElectric.includes('-')) {
+      const [year, month] = toMonthElectric.split('-');
+      toYearElectric = parseInt(year);
+      toMonthElectric = parseInt(month);
+    }
+    if (fromMonthWater && fromMonthWater.includes('-')) {
+      const [year, month] = fromMonthWater.split('-');
+      fromYearWater = parseInt(year);
+      fromMonthWater = parseInt(month);
+    }
+    if (toMonthWater && toMonthWater.includes('-')) {
+      const [year, month] = toMonthWater.split('-');
+      toYearWater = parseInt(year);
+      toMonthWater = parseInt(month);
+    }
+
+    // Set default values for month/year if not provided - use last 9 months
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    fromMonthElectric = fromMonthElectric || currentMonth;
-    fromYearElectric = fromYearElectric || currentYear;
+    // Calculate 9 months ago for default range
+    const startDate = new Date(currentYear, currentMonth - 9, 1); // 9 months ago
+    const defaultFromMonth = startDate.getMonth() + 1;
+    const defaultFromYear = startDate.getFullYear();
+
+    console.log(`📅 Default month range: ${defaultFromMonth}/${defaultFromYear} to ${currentMonth}/${currentYear}`);
+
+    fromMonthElectric = fromMonthElectric || defaultFromMonth;
+    fromYearElectric = fromYearElectric || defaultFromYear;
     toMonthElectric = toMonthElectric || currentMonth;
     toYearElectric = toYearElectric || currentYear;
-    fromMonthWater = fromMonthWater || currentMonth;
-    fromYearWater = fromYearWater || currentYear;
+    fromMonthWater = fromMonthWater || defaultFromMonth;
+    fromYearWater = fromYearWater || defaultFromYear;
     toMonthWater = toMonthWater || currentMonth;
     toYearWater = toYearWater || currentYear;
 
@@ -69,15 +99,41 @@ const getStatistic = async (req, res) => {
 
       // Xử lý dữ liệu từ room history (new structure)
       if (room.history) {
-        electricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
-        waterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
+        // Xử lý electric data theo view type
+        if (viewTypeElectric === 'month') {
+          // Process monthly data from fromMonthElectric to toMonthElectric
+          electricHistory = processMonthlyHistoryData(room.history, fromMonthElectric, fromYearElectric, toMonthElectric, toYearElectric, 'electric');
+        } else {
+          electricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
+        }
+        
+        // Xử lý water data theo view type
+        if (viewTypeWater === 'month') {
+          // Process monthly data from fromMonthWater to toMonthWater
+          waterHistory = processMonthlyHistoryData(room.history, fromMonthWater, fromYearWater, toMonthWater, toYearWater, 'water');
+        } else {
+          waterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
+        }
       }
     } else {
       // Thống kê tổng hợp tất cả phòng
       Object.entries(roomData).forEach(([roomKey, room]) => {
         if (room.history) {
-          const roomElectricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
-          const roomWaterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
+          let roomElectricHistory, roomWaterHistory;
+          
+          // Xử lý electric data theo view type
+          if (viewTypeElectric === 'month') {
+            roomElectricHistory = processMonthlyHistoryData(room.history, fromMonthElectric, fromYearElectric, toMonthElectric, toYearElectric, 'electric');
+          } else {
+            roomElectricHistory = processHistoryData(room.history, fromElectric, toElectric, 'electric');
+          }
+          
+          // Xử lý water data theo view type
+          if (viewTypeWater === 'month') {
+            roomWaterHistory = processMonthlyHistoryData(room.history, fromMonthWater, fromYearWater, toMonthWater, toYearWater, 'water');
+          } else {
+            roomWaterHistory = processHistoryData(room.history, fromWater, toWater, 'water');
+          }
           
           Object.entries(roomElectricHistory).forEach(([date, value]) => {
             electricHistory[date] = (electricHistory[date] || 0) + value;

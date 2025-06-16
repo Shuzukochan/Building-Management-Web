@@ -30,29 +30,7 @@
 
   // ==================== UTILITY FUNCTIONS ====================
 
-  // Format số điện thoại từ +84 về 0
-  function formatPhoneNumber(phone) {
-    if (!phone) return '';
-    // Chuyển +84 thành 0
-    if (phone.startsWith('+84')) {
-      return '0' + phone.substring(3);
-    }
-    // Chuyển 84 thành 0 (trường hợp không có dấu +)
-    if (phone.startsWith('84') && phone.length >= 10) {
-      return '0' + phone.substring(2);
-    }
-    return phone;
-  }
 
-  // Normalize phone number for storage: convert 0 prefix to +84
-  function normalizePhoneForStorage(phone) {
-    if (!phone) return '';
-    phone = phone.trim();
-    if (phone.startsWith('0') && phone.length >= 10) {
-      return '+84' + phone.substring(1);
-    }
-    return phone;
-  }
 
   // Debug test functions
   window.testManageModal = function() {

@@ -4,8 +4,8 @@ const { requireAuth } = require("../middleware/auth");
 const { getDashboard } = require("../controllers/dashboardController");
 
 // Get admin credentials from environment variables
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin'; // Change this in production!
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 router.get("/", (req, res) => {
   res.render("login");
