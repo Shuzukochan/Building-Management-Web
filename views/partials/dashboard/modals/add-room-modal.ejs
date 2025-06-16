@@ -1,0 +1,32 @@
+<!-- Modal Add Room -->
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-home"></i> Thêm phòng mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/add-room" method="POST" id="addRoomForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="newRoomNumber" class="form-label">Số phòng</label>
+            <input type="text" class="form-control" id="newRoomNumber" name="roomNumber" required 
+                   placeholder="VD: 101, 205, 301, 999..." maxlength="10">
+            <div class="form-text">Nhập số phòng từ 101-999 (tầng 1-9, mỗi tầng có 99 phòng)</div>
+          </div>
+          
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Lưu ý:</strong> Phòng mới sẽ được tạo với trạng thái trống, chưa có số điện thoại
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-plus"></i> Thêm phòng
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

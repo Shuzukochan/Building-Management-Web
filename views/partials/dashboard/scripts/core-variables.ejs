@@ -1,0 +1,95 @@
+<script>
+  // ==================== GLOBAL VARIABLES ====================
+  
+  // Firebase variables
+  let database = null;
+  let feedbackRef = null;
+  let feedbackListener = null;
+  
+  // Biến toàn cục
+  var allRooms = [];
+  var filteredRooms = [];
+
+  // Global variables for context menu
+  var contextMenuRoomId = null;
+  var contextMenuNodeId = null;
+  
+  // Variables for current managed node
+  var currentManagedRoomId = null;
+  var currentManagedNodeId = null;
+  var currentManagedNodeType = null;
+
+  // Variables for current managed phone
+  var currentManagedPhoneRoomId = null;
+  var currentManagedPhoneNumber = null;
+
+  // Variables for notification
+  var currentNotificationRoomId = null;
+  var currentNotificationRoomNumber = null;
+  var currentNotificationPhoneNumber = null;
+
+  // ==================== UTILITY FUNCTIONS ====================
+
+  // Format số điện thoại từ +84 về 0
+  function formatPhoneNumber(phone) {
+    if (!phone) return '';
+    // Chuyển +84 thành 0
+    if (phone.startsWith('+84')) {
+      return '0' + phone.substring(3);
+    }
+    // Chuyển 84 thành 0 (trường hợp không có dấu +)
+    if (phone.startsWith('84') && phone.length >= 10) {
+      return '0' + phone.substring(2);
+    }
+    return phone;
+  }
+
+  // Normalize phone number for storage: convert 0 prefix to +84
+  function normalizePhoneForStorage(phone) {
+    if (!phone) return '';
+    phone = phone.trim();
+    if (phone.startsWith('0') && phone.length >= 10) {
+      return '+84' + phone.substring(1);
+    }
+    return phone;
+  }
+
+  // Debug test functions
+  window.testManageModal = function() {
+    console.log('🧪 Test function called');
+    
+    // Kiểm tra Bootstrap
+    if (typeof bootstrap === 'undefined') {
+      alert('❌ Bootstrap chưa được load!');
+      console.error('Bootstrap is not defined');
+      return;
+    }
+    console.log('✅ Bootstrap loaded:', bootstrap);
+    
+    try {
+      console.log('🧪 Testing openManageNodeModal...');
+      openManageNodeModal('test_room', '101', 'test_node', 'electricity', '');
+      console.log('✅ openManageNodeModal completed');
+    } catch (error) {
+      console.error('❌ Error in openManageNodeModal:', error);
+      alert('Lỗi: ' + error.message);
+    }
+  };
+
+  // Debug function để test Firebase realtime
+  window.testFirebaseRealtime = function() {
+    console.log('🔥 Testing Firebase Realtime...');
+    console.log('Firebase available:', typeof firebase !== 'undefined');
+    console.log('Database ref:', feedbackRef);
+    console.log('Listener active:', feedbackListener !== null);
+    
+    if (feedbackRef) {
+      console.log('📡 Testing direct Firebase read...');
+      feedbackRef.once('value').then(snapshot => {
+        console.log('✅ Firebase read successful:', snapshot.val());
+      }).catch(error => {
+        console.error('❌ Firebase read failed:', error);
+      });
+    }
+  };
+</script> 

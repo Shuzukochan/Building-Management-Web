@@ -1,0 +1,52 @@
+<!-- Modal Broadcast Notification -->
+<div class="modal fade" id="broadcastNotificationModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-bullhorn"></i> Gửi thông báo toàn toà nhà</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="broadcastTarget" class="form-label"><strong>Gửi tới:</strong></label>
+          <select class="form-select" id="broadcastTarget" onchange="updateBroadcastInfo()">
+            <option value="all_residents">Toàn toà nhà</option>
+            <option value="floor_1">Tầng 1</option>
+            <option value="floor_2">Tầng 2</option>
+            <option value="floor_3">Tầng 3</option>
+            <option value="floor_4">Tầng 4</option>
+            <option value="floor_5">Tầng 5</option>
+            <option value="floor_6">Tầng 6</option>
+            <option value="floor_7">Tầng 7</option>
+            <option value="floor_8">Tầng 8</option>
+            <option value="floor_9">Tầng 9</option>
+          </select>
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Gửi thông báo tới:</strong> <span id="broadcastTargetInfo">Toàn toà nhà</span>
+        </div>
+        
+        <div class="mb-3">
+          <label for="broadcastTitle" class="form-label"><strong>Tiêu đề thông báo:</strong></label>
+          <input type="text" class="form-control" id="broadcastTitle" value="Quản lí toà nhà" placeholder="VD: Thông báo quan trọng" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="broadcastMessage" class="form-label"><strong>Nội dung thông báo:</strong></label>
+          <textarea class="form-control" id="broadcastMessage" rows="5" placeholder="Nhập nội dung thông báo..." required></textarea>
+          <div class="form-text">Tối đa 500 ký tự</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-primary" onclick="sendBroadcastNotification()">
+          <i class="fas fa-paper-plane"></i> Gửi thông báo
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

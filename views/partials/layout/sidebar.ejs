@@ -1,0 +1,33 @@
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-container">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/b/b9/Logo_Tr%C6%B0%E1%BB%9Dng_%C4%90%E1%BA%A1i_H%E1%BB%8Dc_S%C6%B0_Ph%E1%BA%A1m_K%E1%BB%B9_Thu%E1%BA%ADt_TP_H%E1%BB%93_Ch%C3%AD_Minh.png" alt="SPKT Logo" class="logo-spkt">
+      <img src="https://iotvision.vn/images/IoTVision-Logo.png" alt="IoTVision Logo" class="logo-iotvision">
+    </div>
+    <h4>Building Management</h4>
+  </div>
+  
+  <div class="sidebar-nav">
+    <a href="/dashboard" <%= (typeof currentPage !== 'undefined' && currentPage === 'dashboard') ? 'class="active"' : '' %>>
+      <i class="fas fa-home"></i>
+      Quản lý phòng
+    </a>
+    <a href="/statistic" <%= (typeof currentPage !== 'undefined' && currentPage === 'statistic') ? 'class="active"' : '' %>>
+      <i class="fas fa-chart-bar"></i>
+      Biểu đồ
+    </a>
+    <a href="/payments" <%= (typeof currentPage !== 'undefined' && currentPage === 'payments') ? 'class="active"' : '' %>>
+      <i class="fas fa-money-bill-wave"></i>
+      Thanh toán
+    </a>
+    <a href="/settings" <%= (typeof currentPage !== 'undefined' && currentPage === 'settings') ? 'class="active"' : '' %>>
+      <i class="fas fa-cog"></i>
+      Cài đặt
+    </a>
+  </div>
+  
+  <a href="/logout" class="logout-btn">
+    <i class="fas fa-sign-out-alt"></i>
+    Đăng xuất
+  </a>
+</div> 

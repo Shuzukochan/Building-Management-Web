@@ -1,0 +1,21 @@
+<!-- Filter Section -->
+<div class="filter-section">
+  <div class="filter-card">
+    <form class="filter-form" action="/statistic" method="GET" id="roomFilterForm">
+      <div class="form-group">
+        <label class="form-label">
+          <i class="fas fa-door-open"></i>
+          Chọn phòng:
+        </label>
+        <select name="roomId" class="form-select" onchange="document.getElementById('roomFilterForm').submit()">
+          <option value="">Tất cả phòng</option>
+          <% if (typeof roomList !== 'undefined' && Array.isArray(roomList)) { %>
+            <% roomList.forEach(room => { %>
+              <option value="<%= room %>" <%= (typeof selectedRoom !== 'undefined' && selectedRoom === room) ? 'selected' : '' %>>Phòng <%= room %></option>
+            <% }); %>
+          <% } %>
+        </select>
+      </div>
+    </form>
+  </div>
+</div> 

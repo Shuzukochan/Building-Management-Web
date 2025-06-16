@@ -1,0 +1,37 @@
+<!-- Modal Manage Phone -->
+<div class="modal fade" id="managePhoneModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="managePhoneModalTitle"><i class="fas fa-phone-alt"></i> Quản lý số điện thoại</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="currentPhone" class="form-label"><strong>Thay đổi số điện thoại:</strong></label>
+          <input type="text" class="form-control" id="currentPhone" placeholder="Nhập số điện thoại">
+        </div>
+        
+        <div class="mb-3">
+          <label for="newPhone" class="form-label"><strong>Thêm từ số điện thoại đã đăng kí:</strong></label>
+          <select class="form-select" id="newPhone">
+            <option value="">Chọn số điện thoại đã đăng ký</option>
+          </select>
+        </div>
+        
+        <div class="alert alert-warning">
+          <i class="fas fa-info-circle"></i>
+          <strong>Lưu ý:</strong> Thay đổi số điện thoại sẽ chuyển phòng về trạng thái trống nếu để trống
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="savePhoneChanges()">
+          <i class="fas fa-save"></i> Lưu thay đổi
+        </button>
+        <button type="button" class="btn btn-danger" onclick="removePhoneFromRoom()">
+          <i class="fas fa-trash"></i> Xóa số điện thoại
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

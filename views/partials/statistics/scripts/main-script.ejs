@@ -1,0 +1,247 @@
+<script>
+  const waterHistory = JSON.parse('<%- JSON.stringify(waterHistory || {}) %>');
+  const electricHistory = JSON.parse('<%- JSON.stringify(electricHistory || {}) %>');
+
+  // Debug logs để kiểm tra dữ liệu
+  console.log('🔍 Debug - Raw data from server:');
+  console.log('💧 waterHistory:', waterHistory);
+  console.log('⚡ electricHistory:', electricHistory);
+  console.log('📊 Server date ranges:');
+  console.log('⚡ Electric range: <%= fromElectric %> to <%= toElectric %>');
+  console.log('💧 Water range: <%= fromWater %> to <%= toWater %>');
+
+  // Hàm tạo 9 tháng gần nhất
+  function getLast9Months() {
+    const months = [];
+    const today = new Date();
+    for (let i = 8; i >= 0; i--) {
+      const d = new Date(today);
+      d.setMonth(d.getMonth() - i);
+      months.push({
+        month: d.getMonth() + 1,
+        year: d.getFullYear(),
+        monthYear: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      });
+    }
+    return months;
+  }
+
+  // Handler functions cho radio button changes - ĐỊNH NGHĨA SỚM TRƯỚC KHI HTML SỬ DỤNG
+  window.handleElectricViewChange = function() {
+    console.log('⚡ Electric view change triggered');
+    
+    // Delay nhỏ để đảm bảo DOM đã update
+    setTimeout(() => {
+      const selectedValue = document.querySelector('input[name="viewTypeElectric"]:checked').value;
+      console.log('⚡ Electric view changed to:', selectedValue);
+      
+      if (selectedValue === 'month') {
+        // Set ngay lập tức giá trị 9 tháng gần nhất
+        const last9Months = getLast9Months();
+        const fromInput = document.getElementById('fromElectricHidden');
+        const toInput = document.getElementById('toElectricHidden');
+        
+        console.log('🔍 Found month hidden inputs:', fromInput, toInput);
+        
+        if (fromInput && toInput) {
+          fromInput.value = last9Months[0].monthYear;
+          toInput.value = last9Months[last9Months.length - 1].monthYear;
+          
+          console.log('📅 Set electric month range:', fromInput.value, 'to', toInput.value);
+          
+          // Recreate month range picker
+          setTimeout(() => {
+            if (pickerRoots.electricRange) {
+              pickerRoots.electricRange.unmount();
+            }
+            
+            pickerRoots.electricRange = createMonthRangePicker('electricRangePicker', 'fromElectricHidden', 'toElectricHidden', () => {
+              setTimeout(() => document.getElementById('electricForm').submit(), 100);
+            });
+          }, 50);
+        } else {
+          console.log('❌ Month hidden inputs not found!');
+        }
+      } else {
+        // Day mode - recreate date range picker if needed
+        setTimeout(() => {
+          if (pickerRoots.electricDateRange) {
+            pickerRoots.electricDateRange.unmount();
+          }
+          
+          pickerRoots.electricDateRange = createDateRangePicker('electricDateRangePicker', 'fromElectricDateHidden', 'toElectricDateHidden', () => {
+            setTimeout(() => document.getElementById('electricForm').submit(), 100);
+          });
+        }, 50);
+      }
+      
+      // Submit form sau khi set giá trị và recreate pickers
+      setTimeout(() => {
+        document.getElementById('electricForm').submit();
+      }, 200);
+    }, 100);
+  };
+  
+  window.handleWaterViewChange = function() {
+    console.log('💧 Water view change triggered');
+    
+    // Delay nhỏ để đảm bảo DOM đã update
+    setTimeout(() => {
+      const selectedValue = document.querySelector('input[name="viewTypeWater"]:checked').value;
+      console.log('💧 Water view changed to:', selectedValue);
+      
+      if (selectedValue === 'month') {
+        // Set ngay lập tức giá trị 9 tháng gần nhất
+        const last9Months = getLast9Months();
+        const fromInput = document.getElementById('fromWaterHidden');
+        const toInput = document.getElementById('toWaterHidden');
+        
+        console.log('🔍 Found month hidden inputs:', fromInput, toInput);
+        
+        if (fromInput && toInput) {
+          fromInput.value = last9Months[0].monthYear;
+          toInput.value = last9Months[last9Months.length - 1].monthYear;
+          
+          console.log('📅 Set water month range:', fromInput.value, 'to', toInput.value);
+          
+          // Recreate month range picker
+          setTimeout(() => {
+            if (pickerRoots.waterRange) {
+              pickerRoots.waterRange.unmount();
+            }
+            
+            pickerRoots.waterRange = createMonthRangePicker('waterRangePicker', 'fromWaterHidden', 'toWaterHidden', () => {
+              setTimeout(() => document.getElementById('waterForm').submit(), 100);
+            });
+          }, 50);
+        } else {
+          console.log('❌ Month hidden inputs not found!');
+        }
+      } else {
+        // Day mode - recreate date range picker if needed
+        setTimeout(() => {
+          if (pickerRoots.waterDateRange) {
+            pickerRoots.waterDateRange.unmount();
+          }
+          
+          pickerRoots.waterDateRange = createDateRangePicker('waterDateRangePicker', 'fromWaterDateHidden', 'toWaterDateHidden', () => {
+            setTimeout(() => document.getElementById('waterForm').submit(), 100);
+          });
+        }, 50);
+      }
+      
+      // Submit form sau khi set giá trị và recreate pickers
+      setTimeout(() => {
+        document.getElementById('waterForm').submit();
+      }, 200);
+    }, 100);
+  };
+
+  // Set Vietnamese locale for browser
+  document.documentElement.lang = 'vi';
+  
+  // Set Vietnamese locale for dayjs FIRST
+  dayjs.locale('vi');
+  
+  // Configure Ant Design locale
+  const { ConfigProvider, DatePicker } = antd;
+  const { RangePicker } = DatePicker;
+  const { createElement: h } = React;
+  const { createRoot } = ReactDOM;
+  
+  // Vietnamese locale for Ant Design
+  const vietnameseLocale = {
+    "locale": "vi_VN",
+    "Pagination": {
+      "items_per_page": "/ trang",
+      "jump_to": "Đến",
+      "jump_to_confirm": "xác nhận",
+      "page": "",
+      "prev_page": "Trang Trước",
+      "next_page": "Trang Kế",
+      "prev_5": "Về 5 Trang Trước",
+      "next_5": "Đến 5 Trang Kế",
+      "prev_3": "Về 3 Trang Trước",
+      "next_3": "Đến 3 Trang Kế"
+    },
+    "DatePicker": {
+      "lang": {
+        "placeholder": "Chọn thời điểm",
+        "rangePlaceholder": ["Từ tháng", "Đến tháng"],
+        "locale": "vi_VN",
+        "today": "Hôm nay",
+        "now": "Bây giờ",
+        "backToToday": "Về hôm nay",
+        "ok": "Ok",
+        "clear": "Xóa",
+        "month": "Tháng",
+        "year": "Năm",
+        "timeSelect": "Chọn thời gian",
+        "dateSelect": "Chọn ngày",
+        "weekSelect": "Chọn tuần",
+        "monthSelect": "Chọn tháng",
+        "yearSelect": "Chọn năm",
+        "decadeSelect": "Chọn thập kỷ",
+        "yearFormat": "YYYY",
+        "dateFormat": "D/M/YYYY",
+        "dayFormat": "D",
+        "dateTimeFormat": "D/M/YYYY HH:mm:ss",
+        "monthBeforeYear": true,
+        "previousMonth": "Tháng trước (PageUp)",
+        "nextMonth": "Tháng sau (PageDown)",
+        "previousYear": "Năm trước (Control + left)",
+        "nextYear": "Năm sau (Control + right)",
+        "previousDecade": "Thập kỷ trước",
+        "nextDecade": "Thập kỷ sau",
+        "previousCentury": "Thế kỷ trước",
+        "nextCentury": "Thế kỷ sau",
+        "shortWeekDays": ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
+        "shortMonths": ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"]
+      },
+      "timePickerLocale": {
+        "placeholder": "Chọn thời gian"
+      }
+    },
+    "TimePicker": {
+      "placeholder": "Chọn thời gian"
+    },
+    "Calendar": {
+      "lang": {
+        "placeholder": "Chọn thời điểm",
+        "rangePlaceholder": ["Từ tháng", "Đến tháng"],
+        "locale": "vi_VN",
+        "today": "Hôm nay",
+        "now": "Bây giờ",
+        "backToToday": "Về hôm nay",
+        "ok": "Ok",
+        "clear": "Xóa",
+        "month": "Tháng",
+        "year": "Năm",
+        "timeSelect": "Chọn thời gian",
+        "dateSelect": "Chọn ngày",
+        "weekSelect": "Chọn tuần",
+        "monthSelect": "Chọn tháng",
+        "yearSelect": "Chọn năm",
+        "decadeSelect": "Chọn thập kỷ",
+        "yearFormat": "YYYY",
+        "dateFormat": "D/M/YYYY",
+        "dayFormat": "D",
+        "dateTimeFormat": "D/M/YYYY HH:mm:ss",
+        "monthBeforeYear": true,
+        "previousMonth": "Tháng trước (PageUp)",
+        "nextMonth": "Tháng sau (PageDown)",
+        "previousYear": "Năm trước (Control + left)",
+        "nextYear": "Năm sau (Control + right)",
+        "previousDecade": "Thập kỷ trước",
+        "nextDecade": "Thập kỷ sau",
+        "previousCentury": "Thế kỷ trước",
+        "nextCentury": "Thế kỷ sau",
+        "shortWeekDays": ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
+        "shortMonths": ["Th1", "Th2", "Th3", "Th4", "Th5", "Th6", "Th7", "Th8", "Th9", "Th10", "Th11", "Th12"]
+      },
+      "timePickerLocale": {
+        "placeholder": "Chọn thời gian"
+      }
+    }
+  };
+</script> 

@@ -1,0 +1,36 @@
+<!-- Modal Manage Node -->
+<div class="modal fade" id="manageNodeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="manageNodeModalTitle"><i class="fas fa-cog"></i> Quản lý node</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="editNodeId" class="form-label"><strong>Node ID:</strong></label>
+          <input type="text" class="form-control" id="editNodeId" placeholder="Nhập Node ID">
+          <input type="hidden" id="originalNodeId">
+        </div>
+        
+        <div class="mb-3" id="manageCustomNameSection" style="display: none;">
+          <label for="editCustomName" class="form-label"><strong>Tên custom:</strong></label>
+          <input type="text" class="form-control" id="editCustomName" placeholder="Nhập tên custom">
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Lưu ý:</strong> Node ID phải duy nhất trong phòng
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="saveNodeChanges()">
+          <i class="fas fa-save"></i> Lưu thay đổi
+        </button>
+        <button type="button" class="btn btn-danger" onclick="showDeleteConfirm()">
+          <i class="fas fa-trash"></i> Xóa node
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

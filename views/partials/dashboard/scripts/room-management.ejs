@@ -1,0 +1,84 @@
+    // ==================== ROOM MANAGEMENT FUNCTIONS ====================
+    
+    // Open Add Room Modal
+    function openAddRoomModal() {
+      // Reset form
+      document.getElementById('addRoomForm').reset();
+      
+      // Open modal
+      new bootstrap.Modal(document.getElementById('addRoomModal')).show();
+      
+      // Focus on room number input
+      setTimeout(() => {
+        document.getElementById('newRoomNumber').focus();
+      }, 500);
+    }
+    
+    // Validate room number format
+    function validateRoomNumber(roomNumber) {
+      // Basic validation: should be 3 digits
+      if (!/^\d{3}$/.test(roomNumber)) {
+        return {
+          valid: false,
+          message: 'Số phòng phải là 3 chữ số (VD: 101, 201, 301)'
+        };
+      }
+      
+      // Check floor logic and range
+      const firstDigit = roomNumber.charAt(0);
+      const floor = parseInt(firstDigit);
+      const roomNum = parseInt(roomNumber);
+      
+      if (floor < 1 || floor > 9) {
+        return {
+          valid: false,
+          message: 'Số phòng phải bắt đầu từ 1-9 (tầng 1-9)'
+        };
+      }
+      
+      // Check if room number is valid for its floor
+      const expectedMin = floor * 100 + 1;  // 101, 201, 301, etc.
+      const expectedMax = floor * 100 + 99; // 199, 299, 399, etc.
+      
+      if (roomNum < expectedMin || roomNum > expectedMax) {
+        return {
+          valid: false,
+          message: `Phòng tầng ${floor} phải từ ${expectedMin}-${expectedMax}`
+        };
+      }
+      
+      return { valid: true };
+    }
+    
+    // Add room form validation
+    document.addEventListener('DOMContentLoaded', function() {
+      const addRoomForm = document.getElementById('addRoomForm');
+      if (addRoomForm) {
+        addRoomForm.addEventListener('submit', function(e) {
+          const roomNumber = document.getElementById('newRoomNumber').value.trim();
+          
+          if (!roomNumber) {
+            e.preventDefault();
+            alert('Vui lòng nhập số phòng');
+            return false;
+          }
+          
+          // Validate room number format
+          const validation = validateRoomNumber(roomNumber);
+          if (!validation.valid) {
+            e.preventDefault();
+            alert(validation.message);
+            return false;
+          }
+          
+          // Show loading state
+          const submitBtn = addRoomForm.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo...';
+          }
+        });
+      }
+    });
+  </script>
+

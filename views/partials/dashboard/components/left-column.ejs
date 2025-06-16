@@ -1,0 +1,74 @@
+      <div class="left-column">
+        <!-- Statistics Cards -->
+        <div class="stats-cards">
+          <div class="stat-card total">
+            <div class="icon"><i class="fas fa-building"></i></div>
+            <h3 id="totalRooms"><%= totalRooms %></h3>
+            <p>Tổng số phòng</p>
+          </div>
+          <div class="stat-card occupied">
+            <div class="icon"><i class="fas fa-user-check"></i></div>
+            <h3 id="occupiedRooms"><%= occupiedRooms %></h3>
+            <p>Đã thuê</p>
+          </div>
+          <div class="stat-card vacant">
+            <div class="icon"><i class="fas fa-door-open"></i></div>
+            <h3 id="vacantRooms"><%= vacantRooms %></h3>
+            <p>Trống</p>
+          </div>
+          <div class="stat-card maintenance">
+            <div class="icon"><i class="fas fa-tools"></i></div>
+            <h3 id="maintenanceRooms"><%= maintenanceRooms %></h3>
+            <p>Bảo trì</p>
+          </div>
+        </div>
+
+        <!-- Cho thuê phòng Form -->
+        <div class="add-room-card">
+          <div class="card-header">
+            <h5 id="monthlyStatsHeader"><i class="fas fa-chart-line"></i> Thống kê tổng sử dụng tháng <span id="currentMonthName">...</span></h5>
+          </div>
+          <div class="card-body">
+            <div class="monthly-stats">
+              <div class="stat-item">
+                <div class="stat-icon electricity">
+                  <i class="fas fa-bolt"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="monthlyElectricity">--- kWh</div>
+                  <div class="stat-label">Điện tiêu thụ</div>
+                </div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-icon water">
+                  <i class="fas fa-tint"></i>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value" id="monthlyWater">--- m³</div>
+                  <div class="stat-label">Nước tiêu thụ</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Hộp thư góp ý -->
+        <div class="feedback-card">
+          <div class="card-header">
+            <h5><i class="fas fa-inbox"></i> Hộp thư góp ý</h5>
+          </div>
+          <div class="card-body">
+            <div class="feedback-list-container">
+              <div id="feedbackList" class="feedback-items">
+                <!-- Feedback items will be loaded here -->
+                <div class="text-center text-muted py-3">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <div>Đang tải góp ý...</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+

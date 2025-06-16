@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Login - Building Management</title>
+  <link rel="icon" type="image/png" href="https://hcmute.edu.vn/Resources/Imagephoto/logo.png">
+  <style>
+    body {
+      background: #f2f2f2;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .login-container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+      width: 320px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .logo-wrapper {
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .logo-wrapper img {
+      max-width: 140px;
+      max-height: 140px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 20px auto;
+    }
+
+    h2 {
+      margin-bottom: 24px;
+      color: #333;
+      user-select: none;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 14px;
+      outline: none;
+    }
+
+    input[type="text"]:focus, input[type="password"]:focus {
+      box-shadow: 0 0 0 2px #90caf9;
+      border-color: #42a5f5;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #1976D2;
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background: #1565C0;
+    }
+
+    .footer {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo-wrapper">
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/b/b9/Logo_Tr%C6%B0%E1%BB%9Dng_%C4%90%E1%BA%A1i_H%E1%BB%8Dc_S%C6%B0_Ph%E1%BA%A1m_K%E1%BB%B9_Thu%E1%BA%ADt_TP_H%E1%BB%93_Ch%C3%AD_Minh.png"
+        alt="SPKT Logo"
+      >
+    </div>
+    <h2>Admin Login</h2>
+    <form method="POST" action="/login">
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <button type="submit">Đăng nhập</button>
+    </form>
+    <div class="footer">© 2025 Building Management</div>
+  </div>
+</body>
+</html>

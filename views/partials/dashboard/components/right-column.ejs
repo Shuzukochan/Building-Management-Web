@@ -1,0 +1,255 @@
+      <div class="right-column">
+        <!-- Rooms Table -->
+        <div class="rooms-table-card">
+          <!-- Table Controls -->
+          <div class="table-controls">
+            <div class="search-filters">
+              <div class="filter-group">
+                <div class="search-input">
+                  <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Tìm theo số phòng hoặc SĐT...">
+                </div>
+                <div class="filter-select">
+                  <select class="form-select form-select-sm" id="statusFilter">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="occupied">Đã thuê</option>
+                    <option value="vacant">Trống</option>
+                    <option value="maintenance">Bảo trì</option>
+                  </select>
+                </div>
+                <div class="filter-select">
+                  <select class="form-select form-select-sm" id="floorFilter">
+                    <option value="">Tất cả tầng</option>
+                    <option value="1">Tầng 1</option>
+                    <option value="2">Tầng 2</option>
+                    <option value="3">Tầng 3</option>
+                    <option value="4">Tầng 4</option>
+                    <option value="5">Tầng 5</option>
+                    <option value="6">Tầng 6</option>
+                    <option value="7">Tầng 7</option>
+                    <option value="8">Tầng 8</option>
+                    <option value="9">Tầng 9</option>
+                  </select>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" onclick="clearFilters()" title="Xóa bộ lọc">
+                  <i class="fas fa-eraser"></i>
+                </button>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-primary btn-sm" onclick="openBroadcastNotificationModal()" title="Gửi thông báo toàn toà nhà">
+                  <i class="fas fa-bullhorn"></i> Gửi thông báo
+                </button>
+                <button class="btn btn-success btn-sm" onclick="openAddRoomModal()" title="Thêm phòng mới">
+                  <i class="fas fa-plus"></i> Thêm phòng
+                </button>
+              </div>
+          </div>
+        </div>
+
+        <!-- Table Responsive Container -->
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="thead-border">
+              <tr>
+                    <th width="10%">Phòng</th>
+                    <th width="25%">Số điện thoại</th>
+                    <th width="12%">Trạng thái</th>
+                    <th width="45%">Quản lý Nodes</th>
+                    <th width="8%">Hành động</th>
+              </tr>
+            </thead>
+                <tbody id="roomsTableBody">
+              <% if (rooms && rooms.length > 0) { %>
+                <% rooms.forEach((room, index) => { %>
+                      <tr class="room-row" 
+                          data-room-number="<%= room.roomNumber %>"
+                          data-phone="<%= room.phoneNumber %>"
+                          data-status="<%= room.status %>"
+                          data-floor="<%= room.floor %>">
+                    <td>
+                      <div class="room-number"><%= room.roomNumber %></div>
+                      <div class="floor-info">Tầng <%= room.floor %></div>
+                    </td>
+                    
+                    <td>
+                      <div class="phone-button-container">
+                        <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
+                          <button type="button" 
+                                  class="phone-button has-phone manage-phone-btn"
+                                  data-room-id="<%= room.id %>" 
+                                  data-room-number="<%= room.roomNumber %>" 
+                                  data-phone="<%= room.phoneNumber %>"
+                                  title="Quản lý số điện thoại">
+                            <%= room.phoneNumber %>
+                          </button>
+                        <% } else { %>
+                          <button type="button" 
+                                  class="phone-button no-phone" 
+                                  onclick="openAddPhoneModal('<%= room.id %>', '<%= room.roomNumber %>')"
+                                  title="Thêm số điện thoại">
+                            + Thêm số điện thoại
+                          </button>
+                        <% } %>
+                      </div>
+                    </td>
+                    
+                    <td>
+                          <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
+                            <!-- Phòng có SĐT = Đã thuê, chỉ có thể chuyển sang Bảo trì -->
+                            <% if (room.status === 'maintenance') { %>
+                      <form action="/update-room-status" method="POST" class="d-inline">
+                        <input type="hidden" name="roomId" value="<%= room.id %>">
+                                <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+                                  <option value="occupied">Đã thuê</option>
+                                  <option value="maintenance" selected>Bảo trì</option>
+                        </select>
+                      </form>
+                        <% } else { %>
+                              <form action="/update-room-status" method="POST" class="d-inline">
+                            <input type="hidden" name="roomId" value="<%= room.id %>">
+                                <select name="status" class="form-select form-select-sm status-badge status-occupied" onchange="this.form.submit()">
+                                  <option value="occupied" selected>Đã thuê</option>
+                                  <option value="maintenance">Bảo trì</option>
+                                </select>
+                          </form>
+                        <% } %>
+                          <% } else { %>
+                            <!-- Phòng không có SĐT = Trống, chỉ có thể chuyển sang Bảo trì -->
+                            <% if (room.status === 'maintenance') { %>
+                              <form action="/update-room-status" method="POST" class="d-inline">
+                                <input type="hidden" name="roomId" value="<%= room.id %>">
+                                <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+                                  <option value="vacant">Trống</option>
+                                  <option value="maintenance" selected>Bảo trì</option>
+                                </select>
+                              </form>
+                            <% } else { %>
+                              <form action="/update-room-status" method="POST" class="d-inline">
+                                <input type="hidden" name="roomId" value="<%= room.id %>">
+                                <select name="status" class="form-select form-select-sm status-badge status-vacant" onchange="this.form.submit()">
+                                  <option value="vacant" selected>Trống</option>
+                                  <option value="maintenance">Bảo trì</option>
+                                </select>
+                              </form>
+                            <% } %>
+                          <% } %>
+                    </td>
+                    
+                    <td>
+                          <div class="nodes-quick-actions">
+                            <!-- Quick action buttons với state thông minh -->
+                            <% 
+                              let hasElectricity = false;
+                              let hasWater = false;
+                              let electricityNodeId = null;
+                              let waterNodeId = null;
+                              
+                              if (room.nodes && Object.keys(room.nodes).length > 0) {
+                                Object.values(room.nodes).forEach(node => {
+                                  if (node.type === 'electricity') {
+                                    hasElectricity = true;
+                                    electricityNodeId = node.id;
+                                  } else if (node.type === 'water') {
+                                    hasWater = true;
+                                    waterNodeId = node.id;
+                                  }
+                                });
+                              }
+                            %>
+                            
+                            <!-- Button điện -->
+                            <% if (hasElectricity) { %>
+                              <button type="button"
+                                 class="quick-action-btn electricity has-node manage-node-btn" 
+                                 data-room-id="<%= room.id %>" 
+                                 data-room-number="<%= room.roomNumber %>" 
+                                 data-node-id="<%= electricityNodeId %>" 
+                                 data-node-type="electricity"
+                                 title="Quản lý node điện: <%= electricityNodeId %>">
+                                <i class="fas fa-check"></i> Điện
+                              </button>
+                          <% } else { %>
+                                <button type="button" class="quick-action-btn electricity" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'electricity')" title="Thêm node điện">
+                                  <i class="fas fa-plus"></i> Điện
+                              </button>
+                          <% } %>
+                              
+                            <!-- Button nước -->
+                            <% if (hasWater) { %>
+                              <button type="button"
+                                 class="quick-action-btn water has-node manage-node-btn" 
+                                 data-room-id="<%= room.id %>" 
+                                 data-room-number="<%= room.roomNumber %>" 
+                                 data-node-id="<%= waterNodeId %>" 
+                                 data-node-type="water"
+                                 title="Quản lý node nước: <%= waterNodeId %>">
+                                <i class="fas fa-check"></i> Nước
+                              </button>
+                            <% } else { %>
+                              <button type="button" class="quick-action-btn water" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'water')" title="Thêm node nước">
+                                <i class="fas fa-plus"></i> Nước
+                              </button>
+                            <% } %>
+                            
+                            <!-- Custom nodes nếu có -->
+                            <% if (room.nodes && Object.keys(room.nodes).length > 0) { %>
+                              <% Object.values(room.nodes).forEach(node => { %>
+                                <% if (node.type === 'custom') { %>
+                                  <button type="button"
+                                     class="quick-action-btn custom has-node manage-node-btn" 
+                                     data-room-id="<%= room.id %>" 
+                                     data-room-number="<%= room.roomNumber %>" 
+                                     data-node-id="<%= node.id %>" 
+                                     data-node-type="custom"
+                                     data-custom-name="<%= node.customName %>"
+                                     title="Quản lý node: <%= node.nodeId %>">
+                                    <i class="fas fa-check"></i> <%= node.customName || 'Custom' %>
+                                  </button>
+                                <% } %>
+                              <% }) %>
+                            <% } %>
+                            
+                            <!-- Button thêm custom -->
+                            <button type="button" class="quick-action-btn custom" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'custom')" title="Thêm node tùy chỉnh">
+                              <i class="fas fa-plus"></i> Custom
+                            </button>
+                      </div>
+                    </td>
+                    
+                    <td>
+                      <div class="action-buttons d-flex gap-1">
+                        <!-- Nút gửi thông báo - chỉ hiển thị nếu phòng có số điện thoại -->
+                        <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
+                          <button type="button" 
+                                  class="btn btn-outline-primary btn-sm" 
+                                  onclick="openSendNotificationModal('<%= room.id %>', '<%= room.roomNumber %>', '<%= room.phoneNumber %>')"
+                                  title="Gửi thông báo tới phòng <%= room.roomNumber %>">
+                            <i class="fas fa-bell"></i>
+                          </button>
+                        <% } %>
+                        
+                        <!-- Nút xóa phòng -->
+                        <button type="button" 
+                                class="btn btn-outline-danger btn-sm" 
+                                onclick="confirmDeleteRoom('<%= room.id %>')"
+                                title="Xóa phòng">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } else { %>
+                    <tr id="noDataRow">
+                      <td colspan="5" class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-lg mb-2"></i><br>
+                        Chưa có phòng nào
+                  </td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+

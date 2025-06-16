@@ -1,0 +1,42 @@
+<script>
+  // Initialize everything when DOM is loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Statistics page initializing...');
+    
+    // Initialize date pickers based on current view type
+    setTimeout(() => {
+      // Electric chart date picker
+      const electricViewType = '<%= viewTypeElectric || "day" %>';
+      if (electricViewType === 'day') {
+        pickerRoots.electricDateRange = createDateRangePicker('electricDateRangePicker', 'fromElectricDateHidden', 'toElectricDateHidden', () => {
+          setTimeout(() => document.getElementById('electricForm').submit(), 100);
+        });
+      } else {
+        pickerRoots.electricRange = createMonthRangePicker('electricRangePicker', 'fromElectricHidden', 'toElectricHidden', () => {
+          setTimeout(() => document.getElementById('electricForm').submit(), 100);
+        });
+      }
+      
+      // Water chart date picker
+      const waterViewType = '<%= viewTypeWater || "day" %>';
+      if (waterViewType === 'day') {
+        pickerRoots.waterDateRange = createDateRangePicker('waterDateRangePicker', 'fromWaterDateHidden', 'toWaterDateHidden', () => {
+          setTimeout(() => document.getElementById('waterForm').submit(), 100);
+        });
+      } else {
+        pickerRoots.waterRange = createMonthRangePicker('waterRangePicker', 'fromWaterHidden', 'toWaterHidden', () => {
+          setTimeout(() => document.getElementById('waterForm').submit(), 100);
+        });
+      }
+      
+      console.log('✅ Date pickers initialized');
+    }, 500);
+    
+    // Create charts
+    setTimeout(() => {
+      createCharts();
+    }, 800);
+    
+    console.log('✅ Statistics page initialized');
+  });
+</script> 

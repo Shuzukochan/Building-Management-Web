@@ -1,0 +1,158 @@
+<!-- Payments Table -->
+<div class="payments-table">
+  <div class="table-header">
+    <h3 class="table-title">
+      <i class="fas fa-list"></i> Danh sách thanh toán tháng <%= currentMonth %>/<%= currentYear %>
+    </h3>
+  </div>
+  
+  <div class="table-responsive">
+    <% if (rooms.length === 0) { %>
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h3>Chưa có dữ liệu</h3>
+        <p>Không có phòng nào để hiển thị</p>
+      </div>
+    <% } else { %>
+      <table class="table" id="paymentsTable">
+        <thead>
+          <tr>
+            <th>Phòng</th>
+            <th>Trạng thái</th>
+            <th>Chi tiết thanh toán</th>
+            <th>Ngày thanh toán</th>
+            <th>Thanh toán</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rooms.forEach(room => { %>
+            <tr>
+              <td>
+                <div class="room-info">
+                  <div>
+                    <div class="room-number">Phòng <%= room.roomNumber %></div>
+                    <% if (room.phoneNumber) { %>
+                      <div class="room-phone"><i class="fas fa-phone"></i> <%= room.phoneNumber %></div>
+                    <% } %>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <% if (room.status === 'vacant') { %>
+                  <span class="status-badge status-vacant">Trống</span>
+                <% } else if (room.payment.totalCost === 0) { %>
+                  <span class="status-badge status-no-charge">Không phát sinh</span>
+                <% } else if (room.payment.isPaid) { %>
+                  <span class="status-badge status-paid">Đã thanh toán</span>
+                <% } else { %>
+                  <% 
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const dueDate = new Date(room.payment.dueDate);
+                    dueDate.setHours(0, 0, 0, 0);
+                    const isOverdue = today > dueDate;
+                  %>
+                  <% if (isOverdue) { %>
+                    <span class="status-badge status-overdue">Quá hạn</span>
+                  <% } else { %>
+                    <span class="status-badge status-pending">Chưa tới hạn</span>
+                  <% } %>
+                <% } %>
+              </td>
+              <td>
+                <% if (room.status !== 'vacant') { %>
+                  <div class="payment-details">
+                    <div class="payment-amount"><%= (room.payment.totalCost).toLocaleString('vi-VN') %>đ</div>
+                    <div class="payment-breakdown">
+                      Điện: <%= room.payment.electricUsage %>kWh - <%= (room.payment.electricCost).toLocaleString('vi-VN') %>đ<br>
+                      Nước: <%= room.payment.waterUsage %>m³ - <%= (room.payment.waterCost).toLocaleString('vi-VN') %>đ
+                    </div>
+                  </div>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (room.status !== 'vacant' && room.payment.isPaid && room.payment.paymentDate && room.payment.totalCost > 0) { %>
+                  <div class="payment-date">
+                    <i class="fas fa-calendar-check text-success"></i>
+                    <%= room.payment.paymentDate.toLocaleDateString('vi-VN') %>
+                  </div>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (room.status !== 'vacant') { %>
+                  <% 
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const dueDate = new Date(room.payment.dueDate);
+                    dueDate.setHours(0, 0, 0, 0);
+                    const isDueToday = today.getTime() === dueDate.getTime();
+                    const isOverdue = today > dueDate;
+                    const canSelectMethod = isDueToday || isOverdue;
+                  %>
+                  
+                  <% if (room.payment.totalCost === 0) { %>
+                    <div class="payment-method-display">
+                      <i class="fas fa-check-circle text-success"></i>
+                      Không cần thanh toán
+                    </div>
+                  <% } else if (room.payment.isPaid) { %>
+                    <div class="payment-method-display">
+                      <% 
+                        const paymentMethod = room.payment.paymentMethod;
+                        const isCash = paymentMethod && paymentMethod.toString().toLowerCase() === 'cash';
+                      %>
+                      <% if (isCash) { %>
+                        <i class="fas fa-money-bill-wave text-success"></i>
+                        Tiền mặt
+                      <% } else { %>
+                        <i class="fas fa-university text-success"></i>
+                        Chuyển khoản
+                      <% } %>
+                    </div>
+                  <% } else if (canSelectMethod) { %>
+                    <button class="btn-cash-payment" 
+                            onclick="showCashPaymentModal('<%= room.id %>', '<%= room.roomNumber %>', '<%= room.payment.totalCost %>')">
+                      <i class="fas fa-money-bill-wave"></i>
+                      Thanh toán tiền mặt
+                    </button>
+                  <% } else { %>
+                    <span class="text-muted">Chưa tới hạn</span>
+                  <% } %>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <% if (room.status !== 'vacant') { %>
+                    <% 
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const dueDate = new Date(room.payment.dueDate);
+                      dueDate.setHours(0, 0, 0, 0);
+                      const isDueToday = today.getTime() === dueDate.getTime();
+                      const isOverdue = today > dueDate;
+                      const canRemind = (isDueToday || isOverdue) && !room.payment.isPaid && room.payment.totalCost > 0;
+                    %>
+                    <button class="btn-remind-payment <%= !canRemind ? 'disabled' : '' %>" 
+                            onclick="remindPayment('<%= room.id %>', '<%= room.roomNumber %>')"
+                            <%= !canRemind ? 'disabled' : '' %>>
+                      <i class="fas fa-bell"></i> Nhắc thanh toán
+                    </button>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div> 

@@ -1,0 +1,39 @@
+<!-- Modal Add Phone to Room -->
+<div class="modal fade" id="addPhoneToRoomModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addPhoneToRoomModalTitle"><i class="fas fa-phone"></i> Thêm số điện thoại cho phòng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/assign-phone-to-room" method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="roomId" id="addPhoneRoomId">
+          
+          <div class="mb-3">
+            <label for="directPhoneInput" class="form-label"><strong>Thêm số điện thoại:</strong></label>
+            <input type="text" class="form-control" id="directPhoneInput" name="phoneNumber" placeholder="Nhập số điện thoại">
+          </div>
+          
+          <div class="mb-3">
+            <label for="phoneNumberSelect" class="form-label"><strong>Thêm từ số điện thoại đã đăng kí:</strong></label>
+            <select class="form-select" id="phoneNumberSelect">
+              <option value="">Chọn số điện thoại đã đăng ký</option>
+            </select>
+          </div>
+          
+          <div class="alert alert-warning">
+            <i class="fas fa-info-circle"></i>
+            <strong>Lưu ý:</strong> Thêm số điện thoại sẽ chuyển phòng sang trạng thái đã thuê
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Thêm số điện thoại
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

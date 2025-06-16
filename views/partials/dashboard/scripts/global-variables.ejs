@@ -1,0 +1,1355 @@
+  <script>
+    // ==================== GLOBAL VARIABLES ====================
+    
+    // Firebase variables
+    let database = null;
+    let feedbackRef = null;
+    let feedbackListener = null;
+    
+    // Biến toàn cục
+    var allRooms = [];
+    var filteredRooms = [];
+
+    // Global variables for context menu
+    var contextMenuRoomId = null;
+    var contextMenuNodeId = null;
+    
+    // Variables for current managed node
+    var currentManagedRoomId = null;
+    var currentManagedNodeId = null;
+    var currentManagedNodeType = null;
+
+    // Variables for current managed phone
+    var currentManagedPhoneRoomId = null;
+    var currentManagedPhoneNumber = null;
+
+    // Variables for notification
+    var currentNotificationRoomId = null;
+    var currentNotificationRoomNumber = null;
+    var currentNotificationPhoneNumber = null;
+
+    // Format số điện thoại từ +84 về 0
+    function formatPhoneNumber(phone) {
+      if (!phone) return '';
+      // Chuyển +84 thành 0
+      if (phone.startsWith('+84')) {
+        return '0' + phone.substring(3);
+      }
+      // Chuyển 84 thành 0 (trường hợp không có dấu +)
+      if (phone.startsWith('84') && phone.length >= 10) {
+        return '0' + phone.substring(2);
+      }
+      return phone;
+    }
+
+    // Normalize phone number for storage: convert 0 prefix to +84
+    function normalizePhoneForStorage(phone) {
+      if (!phone) return '';
+      phone = phone.trim();
+      if (phone.startsWith('0') && phone.length >= 10) {
+        return '+84' + phone.substring(1);
+      }
+      return phone;
+    }
+
+    // Load phone numbers on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Prevent hash scroll behavior
+      if (window.location.hash) {
+        history.replaceState(null, null, window.location.pathname);
+      }
+      
+      // Prevent future hash additions
+      window.addEventListener('hashchange', function() {
+        history.replaceState(null, null, window.location.pathname);
+      });
+      
+      loadPhoneNumbers();
+      loadAvailableRooms();
+      initializeRoomsData();
+      setupEventListeners();
+      
+      // Auto-load monthly statistics immediately
+      refreshMonthlyStats();
+      
+      // Auto-load feedback list immediately
+      initializeFeedbackSystem();
+      
+      // Debug Firebase after 5 seconds
+      setTimeout(() => {
+        console.log('🔍 Firebase Debug Check:');
+        console.log('- Firebase available:', typeof firebase !== 'undefined');
+        console.log('- Database ref:', feedbackRef);
+        console.log('- Listener active:', feedbackListener !== null);
+        console.log('- Firebase apps:', firebase.apps.length);
+        
+        if (typeof window.testFirebaseRealtime === 'function') {
+          console.log('🧪 Running Firebase test...');
+          window.testFirebaseRealtime();
+        }
+      }, 5000);
+      
+      // Cleanup listeners when page is unloaded
+      window.addEventListener('beforeunload', function() {
+        cleanupFeedbackListener();
+      });
+      
+      // Event listener cho manage node buttons - Using event delegation
+      document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.manage-node-btn');
+        if (target) {
+          e.preventDefault();
+          
+          const roomId = target.dataset.roomId;
+          const roomNumber = target.dataset.roomNumber;
+          const nodeId = target.dataset.nodeId;
+          const nodeType = target.dataset.nodeType;
+          const customName = target.dataset.customName || '';
+          
+          if (roomId && roomNumber && nodeId && nodeType) {
+            openManageNodeModal(roomId, roomNumber, nodeId, nodeType, customName);
+          } else {
+            alert('Thiếu thông tin node. Vui lòng reload trang.');
+          }
+          
+          return false;
+        }
+      });
+      
+      // Event listener cho manage phone buttons
+      document.body.addEventListener('click', function(e) {
+        const target = e.target.closest('.manage-phone-btn');
+        if (target) {
+          e.preventDefault();
+          
+          const roomId = target.dataset.roomId;
+          const roomNumber = target.dataset.roomNumber;
+          const phoneNumber = target.dataset.phone;
+          
+          if (roomId && roomNumber && phoneNumber) {
+            openManagePhoneModal(roomId, roomNumber, phoneNumber);
+          } else {
+            alert('Thiếu thông tin SĐT. Vui lòng reload trang.');
+          }
+          
+          return false;
+        }
+      });
+      
+      // Backup click handler for direct button clicks
+      setTimeout(() => {
+        const manageButtons = document.querySelectorAll('.manage-node-btn');
+        
+        manageButtons.forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const roomId = this.dataset.roomId;
+            const roomNumber = this.dataset.roomNumber;
+            const nodeId = this.dataset.nodeId;
+            const nodeType = this.dataset.nodeType;
+            const customName = this.dataset.customName || '';
+            
+            openManageNodeModal(roomId, roomNumber, nodeId, nodeType, customName);
+            return false;
+          });
+        });
+      }, 1500);
+      
+      // Remove additional backup listener
+      /* Removed to reduce noise */
+    });
+
+    // Global test function để debug
+    window.testManageModal = function() {
+      console.log('🧪 Test function called');
+      
+      // Kiểm tra Bootstrap
+      if (typeof bootstrap === 'undefined') {
+        alert('❌ Bootstrap chưa được load!');
+        console.error('Bootstrap is not defined');
+        return;
+      }
+      console.log('✅ Bootstrap loaded:', bootstrap);
+      
+      try {
+        console.log('🧪 Testing openManageNodeModal...');
+        openManageNodeModal('test_room', '101', 'test_node', 'electricity', '');
+        console.log('✅ openManageNodeModal completed');
+      } catch (error) {
+        console.error('❌ Error in openManageNodeModal:', error);
+        alert('Lỗi: ' + error.message);
+      }
+    };
+
+    // Debug function để test Firebase realtime
+    window.testFirebaseRealtime = function() {
+      console.log('🔥 Testing Firebase Realtime...');
+      console.log('Firebase available:', typeof firebase !== 'undefined');
+      console.log('Database ref:', feedbackRef);
+      console.log('Listener active:', feedbackListener !== null);
+      
+      if (feedbackRef) {
+        console.log('📡 Testing direct Firebase read...');
+        feedbackRef.once('value').then(snapshot => {
+          console.log('✅ Firebase read successful:', snapshot.val());
+        }).catch(error => {
+          console.error('❌ Firebase read failed:', error);
+        });
+      }
+    };
+
+    // Emergency function để fix backdrop issue
+    window.fixModalBackdrop = function() {
+      console.log('🚑 Emergency modal backdrop fix...');
+      
+      // Remove all backdrops
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      console.log('Found backdrops:', backdrops.length);
+      backdrops.forEach(backdrop => backdrop.remove());
+      
+      // Reset body state
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      
+      // Close any open modals
+      const openModals = document.querySelectorAll('.modal.show');
+      openModals.forEach(modal => {
+        const modalInstance = bootstrap.Modal.getInstance(modal);
+        if (modalInstance) {
+          modalInstance.hide();
+          modalInstance.dispose();
+        }
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+      });
+      
+      console.log('🧹 Emergency cleanup completed!');
+      alert('Đã fix backdrop issue! Trang có thể sử dụng bình thường.');
+    };
+
+    // Debug function để test button điện
+    window.testElectricityButton = function() {
+      console.log('🔍 Testing electricity buttons...');
+      
+      const electricButtons = document.querySelectorAll('.quick-action-btn.electricity.has-node');
+      console.log('Found electricity buttons:', electricButtons.length);
+      
+      electricButtons.forEach((btn, index) => {
+        console.log(`Electric Button ${index}:`, {
+          classes: btn.className,
+          hasManageClass: btn.classList.contains('manage-node-btn'),
+          roomId: btn.dataset.roomId,
+          nodeType: btn.dataset.nodeType,
+          nodeId: btn.dataset.nodeId,
+          innerHTML: btn.innerHTML
+        });
+      });
+      
+      if (electricButtons.length > 0) {
+        console.log('🧪 Simulating click on first electricity button...');
+        const firstBtn = electricButtons[0];
+        
+        // Simulate click
+        firstBtn.click();
+      } else {
+        console.log('❌ No electricity buttons found');
+      }
+    };
+
+    // Tự động xác định tầng dựa trên số phòng
+    function autoDetectFloor() {
+      const roomNumberInput = document.getElementById('roomNumber');
+      const floorSelect = document.getElementById('floor');
+      
+      if (!roomNumberInput || !floorSelect) {
+        return;
+      }
+      
+      roomNumberInput.addEventListener('input', function() {
+        const roomNumber = this.value.trim();
+        
+        if (roomNumber.length >= 3) {
+          const firstDigit = roomNumber.charAt(0);
+          
+          // Chỉ chấp nhận tầng 1 và 2
+          if (firstDigit === '1' || firstDigit === '2') {
+            floorSelect.value = firstDigit;
+            
+            // Visual feedback
+            floorSelect.style.backgroundColor = '#e6fffa';
+            setTimeout(() => {
+              floorSelect.style.backgroundColor = '';
+            }, 1000);
+          } else {
+            // Hiển thị warning nếu không phải tầng 1 hoặc 2
+            this.style.borderColor = '#dc3545';
+            setTimeout(() => {
+              this.style.borderColor = '';
+            }, 2000);
+          }
+        }
+      });
+    }
+
+    // Validation số phòng và tầng
+    function validateRoomAndFloor() {
+      const roomNumber = document.getElementById('roomNumber').value.trim();
+      const floor = document.getElementById('floor').value;
+      
+      if (roomNumber.length >= 3) {
+        const firstDigit = roomNumber.charAt(0);
+        
+        if (firstDigit !== floor) {
+          return {
+            valid: false,
+            message: `Số phòng ${roomNumber} không phù hợp với tầng ${floor}. Phòng ${roomNumber} nên ở tầng ${firstDigit}.`
+          };
+        }
+        
+        // Kiểm tra format số phòng (101-199, 201-299)
+        if (!/^[12]\d{2}$/.test(roomNumber)) {
+          return {
+            valid: false,
+            message: `Số phòng phải từ 101-199 hoặc 201-299.`
+          };
+        }
+      }
+      
+      return { valid: true };
+    }
+
+    // Form validation nâng cao
+    document.getElementById('addRoomForm').addEventListener('submit', function(e) {
+      const roomNumber = document.getElementById('roomNumber').value.trim();
+      
+      if (!roomNumber) {
+        e.preventDefault();
+        alert('Vui lòng nhập số phòng');
+        return false;
+      }
+      
+      // Validate room number and floor consistency
+      const validation = validateRoomAndFloor();
+      if (!validation.valid) {
+        e.preventDefault();
+        alert(validation.message);
+        return false;
+      }
+    });
+
+    // Khởi tạo dữ liệu phòng
+    function initializeRoomsData() {
+      const rows = document.querySelectorAll('.room-row');
+      allRooms = Array.from(rows).map((row) => ({
+        element: row,
+        roomNumber: row.dataset.roomNumber?.toLowerCase() || '',
+        phone: row.dataset.phone?.toLowerCase() || '',
+        status: row.dataset.status || '',
+        floor: row.dataset.floor || ''
+      }));
+      filteredRooms = [...allRooms];
+      updateDisplay();
+    }
+
+    // Thiết lập event listeners
+    function setupEventListeners() {
+      // Tìm kiếm
+      try {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+          searchInput.addEventListener('input', handleSearch);
+        }
+      } catch (e) {
+        console.warn('Could not setup search input listener:', e);
+      }
+      
+      // Lọc trạng thái
+      try {
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+          statusFilter.addEventListener('change', handleFilter);
+        }
+      } catch (e) {
+        console.warn('Could not setup status filter listener:', e);
+      }
+      
+      // Lọc tầng
+      try {
+        const floorFilter = document.getElementById('floorFilter');
+        if (floorFilter) {
+          floorFilter.addEventListener('change', handleFilter);
+        }
+      } catch (e) {
+        console.warn('Could not setup floor filter listener:', e);
+      }
+      
+      // Auto detect floor
+      try {
+        autoDetectFloor();
+      } catch (e) {
+        console.warn('Could not setup auto detect floor:', e);
+      }
+    }
+
+    // Xử lý tìm kiếm
+    function handleSearch() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+      
+      if (searchTerm === '') {
+        filteredRooms = [...allRooms];
+      } else {
+        filteredRooms = allRooms.filter(room => {
+          // Tìm theo số phòng hoặc số điện thoại
+          return room.roomNumber.includes(searchTerm) || 
+                 room.phone.includes(searchTerm);
+        });
+      }
+      
+      // Apply filters nếu có
+      applyFilters();
+      
+      // Visual feedback
+      const searchInput = document.getElementById('searchInput');
+      if (searchTerm && filteredRooms.length === 0) {
+        searchInput.style.borderColor = '#dc3545';
+        setTimeout(() => {
+          searchInput.style.borderColor = '';
+        }, 1500);
+      }
+    }
+
+    // Xử lý lọc
+    function handleFilter() {
+      applyFilters();
+    }
+
+    // Áp dụng bộ lọc
+    function applyFilters() {
+      const statusFilter = document.getElementById('statusFilter').value;
+      const floorFilter = document.getElementById('floorFilter').value;
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+      
+      filteredRooms = allRooms.filter(room => {
+        const matchesSearch = searchTerm === '' || 
+          room.roomNumber.includes(searchTerm) || 
+          room.phone.includes(searchTerm);
+        
+        const matchesStatus = statusFilter === '' || room.status === statusFilter;
+        const matchesFloor = floorFilter === '' || room.floor === floorFilter;
+        
+        return matchesSearch && matchesStatus && matchesFloor;
+      });
+      
+      updateDisplay();
+    }
+
+    // Xóa bộ lọc
+    function clearFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('statusFilter').value = '';
+      document.getElementById('floorFilter').value = '';
+      filteredRooms = [...allRooms];
+      updateDisplay();
+    }
+
+    // Cập nhật hiển thị
+    function updateDisplay() {
+      // Ẩn tất cả các dòng
+      allRooms.forEach(room => {
+        room.element.style.display = 'none';
+      });
+      
+      // Hiển thị dòng no data nếu không có kết quả
+      const noDataRow = document.getElementById('noDataRow');
+      if (filteredRooms.length === 0) {
+        if (noDataRow) {
+          noDataRow.style.display = 'table-row';
+          const searchTerm = document.getElementById('searchInput').value.trim();
+          const statusFilter = document.getElementById('statusFilter').value;
+          const floorFilter = document.getElementById('floorFilter').value;
+          
+          let message = '<i class="fas fa-search fa-2x mb-2"></i><br>';
+          if (searchTerm || statusFilter || floorFilter) {
+            message += 'Không tìm thấy phòng nào phù hợp với bộ lọc';
+          } else {
+            message += 'Chưa có phòng nào';
+          }
+          
+          noDataRow.querySelector('td').innerHTML = message;
+        }
+      } else {
+        if (noDataRow) {
+          noDataRow.style.display = 'none';
+        }
+        
+        // Hiển thị tất cả phòng được lọc
+        filteredRooms.forEach((room) => {
+          room.element.style.display = 'table-row';
+        });
+      }
+    }
+
+    // Cập nhật thông tin phân trang
+    function updatePaginationInfo() {
+      // Pagination info removed - no longer needed
+    }
+
+    // Cập nhật điều khiển phân trang
+    function updatePaginationControls() {
+      const totalPages = Math.ceil(filteredRooms.length / roomsPerPage);
+      const pagination = document.getElementById('pagination');
+      
+      if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+      }
+      
+      let paginationHTML = '';
+      
+      // Nút Previous
+      if (currentPage > 1) {
+        paginationHTML += `
+          <li class="page-item">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+        `;
+      }
+      
+      // Các số trang
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      
+      if (startPage > 1) {
+        paginationHTML += `
+          <li class="page-item">
+            <a class="page-link" href="#" onclick="changePage(1)">1</a>
+          </li>
+        `;
+        if (startPage > 2) {
+          paginationHTML += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `
+          <li class="page-item ${i === currentPage ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+          </li>
+        `;
+      }
+      
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          paginationHTML += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+        paginationHTML += `
+          <li class="page-item">
+            <a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>
+          </li>
+        `;
+      }
+      
+      // Nút Next
+      if (currentPage < totalPages) {
+        paginationHTML += `
+          <li class="page-item">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        `;
+      }
+      
+      pagination.innerHTML = paginationHTML;
+    }
+
+    // Thay đổi trang
+    function changePage(page) {
+      currentPage = page;
+      updateDisplay();
+      
+      // Cuộn lên đầu bảng
+      document.querySelector('.rooms-table-card').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    // Load phone numbers from API (chỉ số chưa có phòng)
+    async function loadPhoneNumbers() {
+      try {
+        const response = await fetch('/api/phone-numbers');
+        const phoneNumbers = await response.json();
+        
+        const select = document.getElementById('phoneNumber');
+        select.innerHTML = '<option value="">Chọn số điện thoại</option>';
+        
+        // Chỉ hiển thị số điện thoại chưa có phòng
+        const availablePhones = phoneNumbers.filter(phone => !phone.hasRoom);
+        
+        if (availablePhones.length === 0) {
+          select.innerHTML = '<option value="">Không có số điện thoại khả dụng</option>';
+          return;
+        }
+        
+        availablePhones.forEach(phone => {
+          const option = document.createElement('option');
+          option.value = phone.phoneNumber;
+          option.textContent = `${phone.phoneNumber} - ${phone.tenantName}`;
+          option.dataset.tenantName = phone.tenantName;
+          option.dataset.email = phone.email;
+          
+          select.appendChild(option);
+        });
+        
+        // Show tenant info when phone is selected
+        select.addEventListener('change', function() {
+          const selectedOption = this.options[this.selectedIndex];
+          if (selectedOption.value) {
+            showTenantInfo(selectedOption.dataset.tenantName, selectedOption.dataset.email);
+          } else {
+            hideTenantInfo();
+          }
+        });
+        
+      } catch (error) {
+        console.error('Lỗi khi load số điện thoại:', error);
+        document.getElementById('phoneNumber').innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+      }
+    }
+
+    // Show tenant information
+    function showTenantInfo(name, email) {
+      const infoDiv = document.getElementById('tenantInfo');
+      infoDiv.innerHTML = `
+        <strong><i class="fas fa-user"></i> Thông tin khách thuê:</strong><br>
+        <i class="fas fa-user-tag"></i> Tên: ${name || 'Chưa có'}<br>
+        <i class="fas fa-envelope"></i> Email: ${email || 'Chưa có'}
+      `;
+      infoDiv.style.display = 'block';
+    }
+
+    function hideTenantInfo() {
+      document.getElementById('tenantInfo').style.display = 'none';
+    }
+
+    // Edit room function
+    async function editRoom(roomId) {
+      try {
+        const response = await fetch(`/api/room/${roomId}`);
+        const room = await response.json();
+        
+        document.getElementById('editRoomId').value = room.id;
+        document.getElementById('editRoomNumber').value = room.roomNumber;
+        document.getElementById('editPhoneNumber').value = room.phoneNumber;
+        document.getElementById('editFloor').value = room.floor;
+        
+        new bootstrap.Modal(document.getElementById('editRoomModal')).show();
+      } catch (error) {
+        alert('Lỗi khi tải thông tin phòng: ' + error.message);
+      }
+    }
+
+    // View room details
+    function viewRoomDetails(roomId) {
+      window.location.href = `/room-details/${roomId}`;
+    }
+
+    // Auto refresh every 5 minutes
+    setInterval(() => {
+      location.reload();
+    }, 300000);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Ctrl/Cmd + F để focus vào search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        const searchInput = document.getElementById('searchInput');
+        searchInput.focus();
+        searchInput.select();
+      }
+      
+      // ESC để clear search và filters
+      if (e.key === 'Escape') {
+        const searchInput = document.getElementById('searchInput');
+        if (document.activeElement === searchInput || searchInput.value.trim()) {
+          clearFilters();
+          searchInput.blur();
+        }
+      }
+      
+      // Enter trong search để highlight kết quả đầu tiên
+      if (e.key === 'Enter' && document.activeElement === document.getElementById('searchInput')) {
+        const firstRoom = document.querySelector('.room-row[style*="table-row"]');
+        if (firstRoom) {
+          firstRoom.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          firstRoom.style.backgroundColor = '#fff3cd';
+          setTimeout(() => {
+            firstRoom.style.backgroundColor = '';
+          }, 2000);
+        }
+      }
+    });
+
+    // Load available rooms (vacant only)
+    async function loadAvailableRooms() {
+      try {
+        const response = await fetch('/api/available-rooms');
+        const availableRooms = await response.json();
+        
+        const select = document.getElementById('availableRoom');
+        select.innerHTML = '<option value="">Chọn phòng trống</option>';
+        
+        if (availableRooms.length === 0) {
+          select.innerHTML = '<option value="">Không có phòng trống</option>';
+          return;
+        }
+        
+        // Group by floor for better UX
+        const roomsByFloor = {};
+        availableRooms.forEach(room => {
+          const floor = room.floor;
+          if (!roomsByFloor[floor]) {
+            roomsByFloor[floor] = [];
+          }
+          roomsByFloor[floor].push(room);
+        });
+        
+        // Add rooms grouped by floor
+        Object.keys(roomsByFloor).sort().forEach(floor => {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = `Tầng ${floor}`;
+          
+          roomsByFloor[floor].forEach(room => {
+            const option = document.createElement('option');
+            option.value = room.id;
+            option.textContent = `Phòng ${room.roomNumber}`;
+            option.dataset.roomNumber = room.roomNumber;
+            option.dataset.floor = room.floor;
+            optgroup.appendChild(option);
+          });
+          
+          select.appendChild(optgroup);
+        });
+        
+      } catch (error) {
+        console.error('Lỗi khi load phòng trống:', error);
+        document.getElementById('availableRoom').innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+      }
+    }
+
+    // Form validation for assign tenant
+    try {
+      const assignTenantForm = document.getElementById('assignTenantForm');
+      if (assignTenantForm) {
+        assignTenantForm.addEventListener('submit', function(e) {
+          const roomId = document.getElementById('availableRoom').value;
+      const phoneNumber = document.getElementById('phoneNumber').value;
+      
+          if (!roomId) {
+        e.preventDefault();
+            alert('Vui lòng chọn phòng trống');
+            return false;
+          }
+          
+          if (!phoneNumber) {
+            e.preventDefault();
+            alert('Vui lòng chọn số điện thoại khách thuê');
+        return false;
+      }
+    });
+      }
+    } catch (error) {
+      console.warn('Could not set up assignTenantForm event listener:', error);
+    }
+
+    // Open Add Node Modal
+    function openAddNodeModal(roomId, roomNumber, nodeType = '') {
+      document.getElementById('addNodeRoomId').value = roomId;
+      document.getElementById('addNodeRoomInfo').value = `Phòng ${roomNumber}`;
+      
+      // Reset form
+      document.getElementById('addNodeForm').reset();
+      document.getElementById('addNodeRoomId').value = roomId; // Set lại sau reset
+      document.getElementById('customNodeTypeGroup').style.display = 'none';
+      
+      // Pre-select node type nếu có
+      if (nodeType) {
+        document.getElementById('nodeType').value = nodeType;
+        
+        // Update modal title với tên phòng
+        const modalTitle = document.getElementById('addNodeModalTitle');
+        switch(nodeType) {
+          case 'electricity':
+            modalTitle.innerHTML = `<i class="fas fa-bolt text-warning"></i> Thêm node điện - Phòng ${roomNumber}`;
+            break;
+          case 'water':
+            modalTitle.innerHTML = `<i class="fas fa-tint text-info"></i> Thêm node nước - Phòng ${roomNumber}`;
+            break;
+          case 'custom':
+            modalTitle.innerHTML = `<i class="fas fa-cog text-secondary"></i> Thêm node tùy chỉnh - Phòng ${roomNumber}`;
+            break;
+          default:
+            modalTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Thêm node mới';
+        }
+        
+        // Ẩn field phòng và loại node vì đã rõ rồi
+        document.getElementById('roomInfoGroup').style.display = 'none';
+        document.getElementById('nodeTypeGroup').style.display = 'none';
+        
+        // Hiển thị custom input nếu là custom
+        if (nodeType === 'custom') {
+          document.getElementById('customNodeTypeGroup').style.display = 'block';
+          document.getElementById('customNodeType').required = true;
+          
+          // Update alert message cho custom
+          document.getElementById('nodeIdAlert').innerHTML = `
+            <i class="fas fa-info-circle"></i> 
+            <strong>Lưu ý:</strong> Nhập tên loại node và Node ID duy nhất trong phòng ${roomNumber}
+          `;
+        } else {
+          // Update alert message với tên loại node
+          const nodeTypeName = nodeType === 'electricity' ? 'điện' : 'nước';
+          document.getElementById('nodeIdAlert').innerHTML = `
+            <i class="fas fa-info-circle"></i> 
+            <strong>Lưu ý:</strong> Nhập Node ID ${nodeTypeName} duy nhất trong phòng ${roomNumber}
+          `;
+        }
+        
+        // Auto-focus vào input phù hợp
+        setTimeout(() => {
+          if (nodeType === 'custom') {
+            document.getElementById('customNodeType').focus();
+          } else {
+            document.getElementById('nodeId').focus();
+          }
+        }, 200);
+      } else {
+        // Reset title và hiển thị tất cả fields nếu không có node type
+        document.getElementById('addNodeModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Thêm node mới';
+        document.getElementById('roomInfoGroup').style.display = 'block';
+        document.getElementById('nodeTypeGroup').style.display = 'block';
+        document.getElementById('nodeIdAlert').innerHTML = `
+          <i class="fas fa-info-circle"></i> 
+          <strong>Lưu ý:</strong> Node ID phải duy nhất trong phòng
+        `;
+      }
+      
+      new bootstrap.Modal(document.getElementById('addNodeModal')).show();
+    }
+
+    // Toggle custom node type input
+    function toggleCustomInput() {
+      const nodeType = document.getElementById('nodeType').value;
+      const customGroup = document.getElementById('customNodeTypeGroup');
+      const customInput = document.getElementById('customNodeType');
+      
+      if (nodeType === 'custom') {
+        customGroup.style.display = 'block';
+        customInput.required = true;
+      } else {
+        customGroup.style.display = 'none';
+        customInput.required = false;
+        customInput.value = '';
+      }
+    }
+
+    // Delete node function
+    function deleteNode(roomId, nodeId) {
+      try {
+        // Tạo form để submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/delete-node';
+        form.style.display = 'none';
+        
+        const roomIdInput = document.createElement('input');
+        roomIdInput.type = 'hidden';
+        roomIdInput.name = 'roomId';
+        roomIdInput.value = roomId;
+        
+        const nodeIdInput = document.createElement('input');
+        nodeIdInput.type = 'hidden';
+        nodeIdInput.name = 'nodeId';
+        nodeIdInput.value = nodeId;
+        
+        form.appendChild(roomIdInput);
+        form.appendChild(nodeIdInput);
+        document.body.appendChild(form);
+        form.submit();
+      } catch (error) {
+        console.error('Lỗi:', error);
+        alert('Lỗi khi xóa node');
+      }
+    }
+
+    // Form validation for add node
+    try {
+      const addNodeForm = document.getElementById('addNodeForm');
+      if (addNodeForm) {
+        addNodeForm.addEventListener('submit', function(e) {
+          const nodeType = document.getElementById('nodeType').value;
+          const nodeId = document.getElementById('nodeId').value.trim();
+          const customNodeType = document.getElementById('customNodeType').value.trim();
+          
+          if (!nodeType) {
+            e.preventDefault();
+            alert('Vui lòng chọn loại node');
+            return false;
+          }
+          
+          if (!nodeId) {
+            e.preventDefault();
+            alert('Vui lòng nhập Node ID');
+            return false;
+          }
+          
+          if (nodeType === 'custom' && !customNodeType) {
+            e.preventDefault();
+            alert('Vui lòng nhập tên loại node tùy chỉnh');
+            return false;
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Could not set up addNodeForm event listener:', error);
+    }
+
+    // Open Manage Node Modal
+    function openManageNodeModal(roomId, roomNumber, nodeId, nodeType, customName = '') {
+      try {
+        // Kiểm tra modal tồn tại
+        const modal = document.getElementById('manageNodeModal');
+        if (!modal) {
+          throw new Error('Modal manageNodeModal không tìm thấy!');
+        }
+        
+        // Dispose existing modal instance nếu có
+        const existingModalInstance = bootstrap.Modal.getInstance(modal);
+        if (existingModalInstance) {
+          existingModalInstance.dispose();
+        }
+        
+        // Remove any existing backdrops
+        const existingBackdrops = document.querySelectorAll('.modal-backdrop');
+        existingBackdrops.forEach(backdrop => backdrop.remove());
+        
+        // Reset body state
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Store current node info
+        currentManagedRoomId = roomId;
+        currentManagedNodeId = nodeId;
+        currentManagedNodeType = nodeType;
+        
+        // Update modal title
+        const titleElement = document.getElementById('manageNodeModalTitle');
+        if (titleElement) {
+          let typeIcon = '';
+          switch(nodeType) {
+            case 'electricity':
+              typeIcon = '🔌';
+              break;
+            case 'water':
+              typeIcon = '💧';
+              break;
+            case 'custom':
+              typeIcon = '🔧';
+              break;
+            default:
+              typeIcon = '⚙️';
+          }
+          titleElement.innerHTML = `${typeIcon} Quản lý node - Phòng ${roomNumber}`;
+        }
+        
+        // Populate Node ID input
+        const editNodeIdInput = document.getElementById('editNodeId');
+        const originalNodeIdInput = document.getElementById('originalNodeId');
+        
+        if (editNodeIdInput && originalNodeIdInput) {
+          editNodeIdInput.value = nodeId;
+          originalNodeIdInput.value = nodeId;
+        }
+        
+        // Handle custom name for custom nodes
+        const customNameSection = document.getElementById('manageCustomNameSection');
+        const editCustomNameInput = document.getElementById('editCustomName');
+        
+        if (nodeType === 'custom' && customNameSection && editCustomNameInput) {
+          customNameSection.style.display = 'block';
+          editCustomNameInput.value = customName || '';
+        } else if (customNameSection) {
+          customNameSection.style.display = 'none';
+        }
+        
+        // Create new modal instance with proper options
+        const bootstrapModal = new bootstrap.Modal(modal, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+        
+        // Add cleanup listeners
+        modal.addEventListener('hidden.bs.modal', function() {
+          // Force remove backdrops
+          setTimeout(() => {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Reset body classes and styles
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+          }, 100);
+          
+          // Dispose modal instance
+          const modalInstance = bootstrap.Modal.getInstance(modal);
+          if (modalInstance) {
+            modalInstance.dispose();
+          }
+        }, { once: true });
+        
+        // Show modal and focus on Node ID input
+        bootstrapModal.show();
+        
+        // Focus on Node ID input after modal is shown
+        modal.addEventListener('shown.bs.modal', function() {
+          if (editNodeIdInput) {
+            editNodeIdInput.focus();
+            editNodeIdInput.select();
+          }
+        }, { once: true });
+        
+      } catch (error) {
+        // Emergency cleanup if error occurs
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        alert('Lỗi khi mở modal: ' + error.message);
+      }
+      
+      hideContextMenu();
+    }
+
+    // Edit current node ID
+    function editCurrentNodeId() {
+      if (!currentManagedRoomId || !currentManagedNodeId) {
+        alert('Không có thông tin node để sửa');
+        return;
+      }
+      
+      const newNodeId = prompt('Nhập Node ID mới:', currentManagedNodeId);
+      if (!newNodeId || newNodeId.trim() === '' || newNodeId.trim() === currentManagedNodeId) {
+        return;
+      }
+      
+      // TODO: Implement edit node ID functionality
+      alert('Tính năng sửa Node ID sẽ được phát triển sau');
+    }
+
+    // Delete current node
+    function deleteCurrentNode() {
+      if (!currentManagedRoomId || !currentManagedNodeId) {
+        alert('Không có thông tin node để xóa');
+        return;
+      }
+      
+      deleteNode(currentManagedRoomId, currentManagedNodeId);
+    }
+
+    // Delete node from context menu
+    function deleteNodeFromContext() {
+      if (contextMenuRoomId && contextMenuNodeId) {
+        deleteNode(contextMenuRoomId, contextMenuNodeId);
+      }
+      hideContextMenu();
+    }
+
+    // Hide context menu
+    function hideContextMenu() {
+      document.getElementById('nodeContextMenu').classList.remove('show');
+      contextMenuRoomId = null;
+      contextMenuNodeId = null;
+    }
+
+    // Hide context menu when clicking outside
+    try {
+      document.addEventListener('click', function(event) {
+        if (!event.target.closest('.node-context-menu')) {
+          hideContextMenu();
+        }
+      });
+
+      // Prevent context menu from closing when clicking inside it
+      document.addEventListener('click', function(event) {
+        if (event.target.closest('.node-context-menu')) {
+          event.stopPropagation();
+        }
+      });
+    } catch (error) {
+      // Silent fail
+    }
+
+    // Confirm delete room function
+    var roomToDelete = null;
+    
+    function confirmDeleteRoom(roomId) {
+      console.log('🗑️ confirmDeleteRoom called with roomId:', roomId);
+      
+      roomToDelete = roomId;
+      
+      // Tìm số phòng thực tế từ bảng
+      let roomInfo = `Phòng ID: ${roomId}`; // fallback
+      
+      // Tìm button được click để lấy row tương ứng
+      const deleteButton = document.querySelector(`button[onclick="confirmDeleteRoom('${roomId}')"]`);
+      if (deleteButton) {
+        const row = deleteButton.closest('tr');
+        if (row) {
+          const roomNumberElement = row.querySelector('.room-number');
+          if (roomNumberElement) {
+            const roomNumber = roomNumberElement.textContent.trim();
+            roomInfo = `Phòng ${roomNumber}`;
+            console.log('🏠 Found room number:', roomNumber);
+        }
+      }
+      }
+      
+      // Cập nhật thông tin hiển thị
+      document.getElementById('deleteRoomInfo').textContent = roomInfo;
+      
+      console.log('📝 Room info set:', roomInfo);
+      console.log('🎯 Trying to show modal...');
+      
+      try {
+        // Hiện modal đơn giản
+        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteRoomModal'));
+        modal.show();
+        console.log('✅ Modal should be shown');
+      } catch (error) {
+        console.error('❌ Error showing modal:', error);
+        alert('Lỗi hiển thị modal: ' + error.message);
+      }
+    }
+    
+    function executeDeleteRoom() {
+      console.log('💥 executeDeleteRoom called with roomToDelete:', roomToDelete);
+      
+      if (!roomToDelete) {
+        alert('Không có thông tin phòng để xóa');
+        return;
+      }
+      
+      // Đóng modal xác nhận
+      const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteRoomModal'));
+      if (modal) {
+        modal.hide();
+        console.log('📴 Modal hidden');
+      }
+      
+      console.log('🚀 Creating form to submit...');
+      
+      // Tạo form để submit
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/delete-room';
+      form.style.display = 'none';
+      
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'roomId';
+      input.value = roomToDelete;
+      
+      form.appendChild(input);
+      document.body.appendChild(form);
+      
+      console.log('📤 Submitting form with roomId:', roomToDelete);
+      form.submit();
+    }
+
+    // Quick add node function
+    async function quickAddNode(roomId, nodeType) {
+      const nodeId = prompt(`Nhập Node ID cho ${nodeType === 'electricity' ? 'điện' : 'nước'}:`, 
+                           `${nodeType === 'electricity' ? 'elec' : 'water'}_${Date.now().toString().slice(-4)}`);
+      
+      if (!nodeId || !nodeId.trim()) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/add-node', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            roomId: roomId,
+            nodeId: nodeId.trim(),
+            nodeType: nodeType
+          })
+        });
+        
+        if (response.ok) {
+          location.reload();
+        } else {
+          alert('Lỗi khi thêm node');
+        }
+      } catch (error) {
+        console.error('Lỗi:', error);
+        alert('Lỗi khi thêm node');
+      }
+    }
+
+    // Save node changes
+    function saveNodeChanges() {
+      if (!currentManagedRoomId || !currentManagedNodeId) {
+        alert('Không có thông tin node để lưu');
+        return;
+      }
+      
+      const editNodeIdInput = document.getElementById('editNodeId');
+      const originalNodeIdInput = document.getElementById('originalNodeId');
+      const editCustomNameInput = document.getElementById('editCustomName');
+      
+      if (!editNodeIdInput || !originalNodeIdInput) {
+        alert('Không tìm thấy input fields');
+        return;
+      }
+      
+      const newNodeId = editNodeIdInput.value.trim();
+      const originalNodeId = originalNodeIdInput.value.trim();
+      const newCustomName = editCustomNameInput ? editCustomNameInput.value.trim() : '';
+      
+      // Validate node ID
+      if (!newNodeId) {
+        alert('Node ID không được để trống');
+        editNodeIdInput.focus();
+        return;
+      }
+      
+      // Check if anything changed
+      const nodeIdChanged = newNodeId !== originalNodeId;
+      const customNameChanged = (currentManagedNodeType === 'custom') && (newCustomName !== (editCustomNameInput.defaultValue || ''));
+      
+      if (!nodeIdChanged && !customNameChanged) {
+        // Nothing changed, just close modal
+        const modal = document.getElementById('manageNodeModal');
+        const modalInstance = bootstrap.Modal.getInstance(modal);
+        if (modalInstance) {
+          modalInstance.hide();
+        }
+        return;
+      }
+      
+      // Show loading state
+      const saveButton = document.querySelector('button[onclick="saveNodeChanges()"]');
+      if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+      }
+      
+      // Tạo form để submit
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/update-node';
+      form.style.display = 'none';
+      
+      const roomIdInput = document.createElement('input');
+      roomIdInput.type = 'hidden';
+      roomIdInput.name = 'roomId';
+      roomIdInput.value = currentManagedRoomId;
+      
+      const oldNodeIdInput = document.createElement('input');
+      oldNodeIdInput.type = 'hidden';
+      oldNodeIdInput.name = 'oldNodeId';
+      oldNodeIdInput.value = originalNodeId;
+      
+      const newNodeIdInput = document.createElement('input');
+      newNodeIdInput.type = 'hidden';
+      newNodeIdInput.name = 'newNodeId';
+      newNodeIdInput.value = newNodeId;
+      
+      if (currentManagedNodeType === 'custom' && customNameChanged) {
+        const customNameInput = document.createElement('input');
+        customNameInput.type = 'hidden';
+        customNameInput.name = 'customName';
+        customNameInput.value = newCustomName;
+        form.appendChild(customNameInput);
+      }
+      
+      form.appendChild(roomIdInput);
+      form.appendChild(oldNodeIdInput);
+      form.appendChild(newNodeIdInput);
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    // Show delete confirmation
+    function showDeleteConfirm() {
+      const nodeId = currentManagedNodeId;
+      
+      document.getElementById('deleteNodeInfo').textContent = `Node ID: "${nodeId}"`;
+      
+      const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+      confirmModal.show();
+    }
+
+    // Confirm delete node
+    function confirmDeleteNode() {
+      const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+      if (confirmModal) {
+        confirmModal.hide();
+      }
+      
+      deleteNode(currentManagedRoomId, currentManagedNodeId);
+      
+      const manageModal = bootstrap.Modal.getInstance(document.getElementById('manageNodeModal'));
+      if (manageModal) {
+        manageModal.hide();
+      }
+    }
+
+    // Load phone numbers (from index.js)
+    async function loadPhoneNumbers() {
+      try {
+        console.log('📞 Loading phone numbers...');
+        const response = await fetch('/api/phone-numbers');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const phoneNumbers = await response.json();
+        console.log('📞 Phone numbers loaded:', phoneNumbers.length);
+        return phoneNumbers;
+      } catch (error) {
+        console.error('Lỗi khi load phone numbers:', error);
+        return [];
+      }
+    }
+
+    // Load available rooms (from index.js)
+    async function loadAvailableRooms() {
+      try {
+        console.log('🏠 Loading available rooms...');
+        const response = await fetch('/api/available-rooms');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const availableRooms = await response.json();
+        console.log('🏠 Available rooms loaded:', availableRooms.length);
+        return availableRooms;
+      } catch (error) {
+        console.error('Lỗi khi load available rooms:', error);
+        return [];
+      }
+    }
+

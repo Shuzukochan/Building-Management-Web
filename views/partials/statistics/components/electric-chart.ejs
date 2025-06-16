@@ -1,0 +1,45 @@
+<!-- Electric Chart -->
+<div class="chart-card">
+  <div class="chart-header">
+    <div class="chart-title">
+      <h5><i class="fas fa-bolt"></i> Biểu đồ điện</h5>
+    </div>
+    <div class="chart-controls">
+      <form class="chart-form" action="/statistic" method="GET" id="electricForm">
+        <!-- Hidden fields to preserve other parameters -->
+        <input type="hidden" name="roomId" value="<%= selectedRoom || '' %>">
+        <input type="hidden" name="fromWater" value="<%= fromWater || '' %>">
+        <input type="hidden" name="toWater" value="<%= toWater || '' %>">
+        <input type="hidden" name="viewTypeWater" value="<%= viewTypeWater || 'day' %>">
+        
+        <div class="view-type-selector">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="viewTypeElectric" value="day" id="electricDay" <%= (viewTypeElectric || 'day') === 'day' ? 'checked' : '' %> onchange="handleElectricViewChange()">
+            <label class="form-check-label" for="electricDay">Ngày</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="viewTypeElectric" value="month" id="electricMonth" <%= viewTypeElectric === 'month' ? 'checked' : '' %> onchange="handleElectricViewChange()">
+            <label class="form-check-label" for="electricMonth">Tháng</label>
+          </div>
+        </div>
+        
+        <div class="date-range-selector">
+          <% if ((viewTypeElectric || 'day') === 'day') { %>
+            <div id="electricDateRangePicker" class="antd-range-picker"></div>
+            <input type="hidden" name="fromElectric" id="fromElectricDateHidden" value="<%= fromElectric || '' %>">
+            <input type="hidden" name="toElectric" id="toElectricDateHidden" value="<%= toElectric || '' %>">
+          <% } else { %>
+            <div id="electricRangePicker" class="antd-range-picker"></div>
+            <input type="hidden" name="fromMonthElectric" id="fromElectricHidden" value="<%= fromYearElectric && fromMonthElectric ? fromYearElectric + '-' + String(fromMonthElectric).padStart(2, '0') : '' %>">
+            <input type="hidden" name="toMonthElectric" id="toElectricHidden" value="<%= toYearElectric && toMonthElectric ? toYearElectric + '-' + String(toMonthElectric).padStart(2, '0') : '' %>">
+          <% } %>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="chart-body">
+    <div class="chart-container">
+      <canvas id="electricChart" class="chart-canvas"></canvas>
+    </div>
+  </div>
+</div> 

@@ -1,0 +1,296 @@
+    // ==================== PHONE MANAGEMENT FUNCTIONS ====================
+    
+    // Open Add Phone Modal
+    function openAddPhoneModal(roomId, roomNumber) {
+      document.getElementById('addPhoneRoomId').value = roomId;
+      
+      // Clear inputs
+      document.getElementById('directPhoneInput').value = '';
+      document.getElementById('phoneNumberSelect').value = '';
+      
+      // Update modal title
+      document.getElementById('addPhoneToRoomModalTitle').innerHTML = `<i class="fas fa-phone"></i> Thêm số điện thoại cho phòng ${roomNumber}`;
+      
+      // Load available phone numbers for dropdown
+      loadAvailablePhoneNumbers('phoneNumberSelect');
+      
+      // Add event listener for dropdown selection to copy to direct input
+      setTimeout(() => {
+        const phoneSelect = document.getElementById('phoneNumberSelect');
+        const directInput = document.getElementById('directPhoneInput');
+        
+        // Remove existing listeners to prevent duplicates
+        phoneSelect.removeEventListener('change', handlePhoneSelectChange);
+        phoneSelect.addEventListener('change', handlePhoneSelectChange);
+        
+        function handlePhoneSelectChange() {
+          const selectedPhone = this.value;
+          
+          if (selectedPhone) {
+            // Format and copy selected phone to direct input - ensure display format (0 prefix)
+            let formattedPhone = selectedPhone;
+            if (formattedPhone.startsWith('+84')) {
+              formattedPhone = '0' + formattedPhone.substring(3);
+            } else if (formattedPhone.startsWith('84') && formattedPhone.length >= 10) {
+              formattedPhone = '0' + formattedPhone.substring(2);
+            }
+            // Ensure it starts with 0 for display
+            if (!formattedPhone.startsWith('0') && formattedPhone.length >= 9) {
+              // If somehow it doesn't start with 0, add it
+              if (formattedPhone.match(/^[1-9]/)) {
+                formattedPhone = '0' + formattedPhone;
+              }
+            }
+            directInput.value = formattedPhone;
+          }
+        }
+      }, 500);
+      
+      new bootstrap.Modal(document.getElementById('addPhoneToRoomModal')).show();
+    }
+    
+    // Open Manage Phone Modal
+    function openManagePhoneModal(roomId, roomNumber, phoneNumber) {
+      try {
+        currentManagedPhoneRoomId = roomId;
+        currentManagedPhoneNumber = phoneNumber;
+        
+        // Format phone number for display: +84 -> 0
+        let displayPhone = phoneNumber;
+        if (displayPhone.startsWith('+84')) {
+          displayPhone = '0' + displayPhone.substring(3);
+        } else if (displayPhone.startsWith('84') && displayPhone.length >= 10) {
+          displayPhone = '0' + displayPhone.substring(2);
+        }
+        
+        // Update modal title and content
+        document.getElementById('managePhoneModalTitle').innerHTML = `<i class="fas fa-phone-alt"></i> Quản lý số điện thoại - Phòng ${roomNumber}`;
+        document.getElementById('currentPhone').value = displayPhone;
+        
+        // Clear dropdown selection
+        document.getElementById('newPhone').value = '';
+        
+        // Load available phone numbers for replacement
+        loadAvailablePhoneNumbers('newPhone');
+        
+        // Add event listener for dropdown selection
+        setTimeout(() => {
+          const newPhoneSelect = document.getElementById('newPhone');
+          const currentPhoneInput = document.getElementById('currentPhone');
+          
+          // Remove any existing listeners
+          newPhoneSelect.removeEventListener('change', handleNewPhoneSelectChange);
+          newPhoneSelect.addEventListener('change', handleNewPhoneSelectChange);
+          
+          function handleNewPhoneSelectChange() {
+            const selectedPhone = this.value;
+            if (selectedPhone) {
+              // Format and copy selected phone to direct input - ensure display format (0 prefix)
+              let formattedPhone = selectedPhone;
+              if (formattedPhone.startsWith('+84')) {
+                formattedPhone = '0' + formattedPhone.substring(3);
+              } else if (formattedPhone.startsWith('84') && formattedPhone.length >= 10) {
+                formattedPhone = '0' + formattedPhone.substring(2);
+              }
+              // Ensure it starts with 0 for display
+              if (!formattedPhone.startsWith('0') && formattedPhone.length >= 9) {
+                // If somehow it doesn't start with 0, add it
+                if (formattedPhone.match(/^[1-9]/)) {
+                  formattedPhone = '0' + formattedPhone;
+                }
+              }
+              currentPhoneInput.value = formattedPhone;
+            }
+          }
+        }, 500);
+        
+        new bootstrap.Modal(document.getElementById('managePhoneModal')).show();
+        
+      } catch (error) {
+        alert('Lỗi khi mở modal quản lý số điện thoại: ' + error.message);
+      }
+    }
+    
+    // Load available phone numbers
+    async function loadAvailablePhoneNumbers(selectId = 'phoneNumberSelect') {
+      try {
+        const response = await fetch('/api/phone-numbers');
+        const phoneNumbers = await response.json();
+        
+        const select = document.getElementById(selectId);
+        
+        // Different default text based on which modal is calling
+        if (selectId === 'newPhone') {
+          select.innerHTML = '<option value="">Chọn số điện thoại đã đăng ký...</option>';
+        } else {
+          select.innerHTML = '<option value="">Chọn số điện thoại đã đăng ký</option>';
+        }
+        
+        // Only show available phones (not assigned to rooms)
+        const availablePhones = phoneNumbers.filter(phone => !phone.hasRoom);
+        
+        if (availablePhones.length === 0) {
+          select.innerHTML = '<option value="">Không có số điện thoại khả dụng</option>';
+          return;
+        }
+        
+        availablePhones.forEach(phone => {
+          const option = document.createElement('option');
+          option.value = phone.phoneNumber;
+          
+          // Format phone number: +84 -> 0
+          let displayPhone = phone.phoneNumber;
+          if (displayPhone.startsWith('+84')) {
+            displayPhone = '0' + displayPhone.substring(3);
+          } else if (displayPhone.startsWith('84') && displayPhone.length >= 10) {
+            displayPhone = '0' + displayPhone.substring(2);
+          }
+          
+          // Only show formatted phone number
+          option.textContent = displayPhone;
+          
+          select.appendChild(option);
+        });
+        
+      } catch (error) {
+        console.error('Lỗi khi load số điện thoại:', error);
+        document.getElementById(selectId).innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+      }
+    }
+    
+    // Show phone info in modal
+    function showPhoneInfoInModal(name, email) {
+      const infoDiv = document.getElementById('phoneInfo');
+      const contentDiv = document.getElementById('phoneInfoContent');
+      
+      contentDiv.innerHTML = `
+        <i class="fas fa-user"></i> Tên: ${name || 'Chưa có'}<br>
+        <i class="fas fa-envelope"></i> Email: ${email || 'Chưa có'}
+      `;
+      infoDiv.style.display = 'block';
+    }
+    
+    function hidePhoneInfoInModal() {
+      document.getElementById('phoneInfo').style.display = 'none';
+    }
+    
+    // Save phone changes
+    function savePhoneChanges() {
+      if (!currentManagedPhoneRoomId) {
+        alert('Không có thông tin phòng để lưu');
+        return;
+      }
+      
+      // Get values from both inputs
+      const currentPhoneInput = document.getElementById('currentPhone').value.trim();
+      const selectedPhone = document.getElementById('newPhone').value.trim();
+      
+      // Prioritize direct input, fallback to dropdown selection
+      let newPhone = '';
+      if (currentPhoneInput) {
+        newPhone = currentPhoneInput;
+      } else if (selectedPhone) {
+        // Format selected phone for display (this should already be formatted)
+        newPhone = selectedPhone;
+        if (newPhone.startsWith('+84')) {
+          newPhone = '0' + newPhone.substring(3);
+        } else if (newPhone.startsWith('84') && newPhone.length >= 10) {
+          newPhone = '0' + newPhone.substring(2);
+        }
+      }
+      
+      // Validate phone number format (basic validation)
+      if (newPhone && !/^[0-9+\-\s()]+$/.test(newPhone)) {
+        alert('Số điện thoại không đúng định dạng!');
+        return;
+      }
+      
+      // Normalize phone for backend storage (0 -> +84) but keep display as is
+      const normalizedPhone = normalizePhoneForStorage(newPhone);
+      
+      // Update the display field to show the proper format (0 prefix)
+      if (newPhone && !newPhone.startsWith('0') && normalizedPhone.startsWith('+84')) {
+        const displayPhone = '0' + normalizedPhone.substring(3);
+        document.getElementById('currentPhone').value = displayPhone;
+      }
+      
+      // Create form to submit
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/update-room-phone';
+      form.style.display = 'none';
+      
+      const roomIdInput = document.createElement('input');
+      roomIdInput.type = 'hidden';
+      roomIdInput.name = 'roomId';
+      roomIdInput.value = currentManagedPhoneRoomId;
+      
+      const phoneInput = document.createElement('input');
+      phoneInput.type = 'hidden';
+      phoneInput.name = 'phoneNumber';
+      phoneInput.value = normalizedPhone;
+      
+      form.appendChild(roomIdInput);
+      form.appendChild(phoneInput);
+      document.body.appendChild(form);
+      form.submit();
+    }
+    
+    // Remove phone from room
+    function removePhoneFromRoom() {
+      if (!currentManagedPhoneRoomId || !currentManagedPhoneNumber) {
+        alert('Không có thông tin phòng hoặc số điện thoại');
+        return;
+      }
+      
+      // Format phone for display
+      let displayPhone = currentManagedPhoneNumber;
+      if (displayPhone.startsWith('+84')) {
+        displayPhone = '0' + displayPhone.substring(3);
+      } else if (displayPhone.startsWith('84') && displayPhone.length >= 10) {
+        displayPhone = '0' + displayPhone.substring(2);
+      }
+      
+      // Show phone info in delete modal
+      document.getElementById('deletePhoneInfo').textContent = `Số điện thoại: ${displayPhone}`;
+      
+      // Show confirmation modal
+      const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeletePhoneModal'));
+      confirmModal.show();
+    }
+    
+    // Execute remove phone after confirmation
+    function executeRemovePhone() {
+      if (!currentManagedPhoneRoomId) {
+        alert('Không có thông tin phòng');
+        return;
+      }
+      
+      // Close confirmation modal
+      const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDeletePhoneModal'));
+      if (confirmModal) {
+        confirmModal.hide();
+      }
+      
+      // Close manage phone modal
+      const manageModal = bootstrap.Modal.getInstance(document.getElementById('managePhoneModal'));
+      if (manageModal) {
+        manageModal.hide();
+      }
+      
+      // Create form to submit
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/remove-phone-from-room';
+      form.style.display = 'none';
+      
+      const roomIdInput = document.createElement('input');
+      roomIdInput.type = 'hidden';
+      roomIdInput.name = 'roomId';
+      roomIdInput.value = currentManagedPhoneRoomId;
+      
+      form.appendChild(roomIdInput);
+      document.body.appendChild(form);
+      form.submit();
+    }
+    

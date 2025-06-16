@@ -1,0 +1,120 @@
+    // ==================== NOTIFICATION FUNCTIONS ====================
+    
+    // Open send notification modal
+    function openSendNotificationModal(roomId, roomNumber, phoneNumber) {
+      try {
+        currentNotificationRoomId = roomId;
+        currentNotificationRoomNumber = roomNumber;
+        currentNotificationPhoneNumber = phoneNumber;
+        
+        // Format phone number for display
+        let displayPhone = phoneNumber;
+        if (displayPhone.startsWith('+84')) {
+          displayPhone = '0' + displayPhone.substring(3);
+        } else if (displayPhone.startsWith('84') && displayPhone.length >= 10) {
+          displayPhone = '0' + displayPhone.substring(2);
+        }
+        
+        // Update modal info
+        document.getElementById('notificationRoomInfo').textContent = `Phòng ${roomNumber} (${displayPhone})`;
+        
+        // Reset form - keep default title
+        document.getElementById('notificationTitle').value = 'Quản lí toà nhà';
+        document.getElementById('notificationMessage').value = '';
+        
+        // Show modal
+        new bootstrap.Modal(document.getElementById('sendNotificationModal')).show();
+        
+      } catch (error) {
+        console.error('Error opening notification modal:', error);
+        alert('Lỗi khi mở modal gửi thông báo: ' + error.message);
+      }
+    }
+    
+    // Send notification
+    async function sendNotification() {
+      try {
+        const title = document.getElementById('notificationTitle').value.trim();
+        const message = document.getElementById('notificationMessage').value.trim();
+        
+        // Validation
+        if (!title) {
+          alert('Vui lòng nhập tiêu đề thông báo');
+          return;
+        }
+        
+        if (!message) {
+          alert('Vui lòng nhập nội dung thông báo');
+          return;
+        }
+        
+        if (message.length > 500) {
+          alert('Nội dung thông báo không được vượt quá 500 ký tự');
+          return;
+        }
+        
+        // Disable button while sending
+        const sendButton = document.querySelector('#sendNotificationModal .btn-primary');
+        const originalText = sendButton.innerHTML;
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+        
+        // Send FCM notification via API
+        console.log('🔔 Sending notification:', {
+          roomId: currentNotificationRoomId,
+          roomNumber: currentNotificationRoomNumber,
+          phoneNumber: currentNotificationPhoneNumber,
+          title,
+          message
+        });
+        
+        // Call FCM API
+        const response = await fetch('/api/send-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            roomId: currentNotificationRoomId,
+            phoneNumber: currentNotificationPhoneNumber,
+            title,
+            message
+          })
+        });
+        
+        // Check for authentication error
+        if (response.status === 401) {
+          alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          window.location.href = '/';
+          return;
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+        
+        // Show success message
+        toastManager.success(`Đã gửi thông báo tới phòng ${currentNotificationRoomNumber}`);
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('sendNotificationModal'));
+        modal.hide();
+        
+        // Reset button
+        sendButton.disabled = false;
+        sendButton.innerHTML = originalText;
+        
+      } catch (error) {
+        console.error('Error sending notification:', error);
+        
+        // Reset button
+        const sendButton = document.querySelector('#sendNotificationModal .btn-primary');
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi thông báo';
+        
+        alert('Lỗi khi gửi thông báo: ' + error.message);
+      }
+    }
+

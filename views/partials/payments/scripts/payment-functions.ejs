@@ -1,0 +1,212 @@
+<script>
+  // Global page data
+  window.pageData = {
+    success: <% if (success) { %><%- JSON.stringify(success) %><% } else { %>null<% } %>,
+    error: <% if (error) { %><%- JSON.stringify(error) %><% } else { %>null<% } %>,
+    currentMonthKey: '<%= currentMonthKey %>'
+  };
+
+  // Initialize page
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeMonthSelector();
+    checkUnpaidPreviousMonths();
+    showPageMessages();
+    setupModalEventHandlers();
+  });
+
+  // Initialize month dropdown
+  function initializeMonthSelector() {
+    const selector = document.getElementById('monthSelector');
+    const currentDate = new Date();
+    
+    for (let i = 0; i < 6; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthDisplay = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      
+      if (monthKey !== '<%= currentMonthKey %>') {
+        const option = document.createElement('option');
+        option.value = monthKey;
+        option.textContent = monthDisplay;
+        selector.appendChild(option);
+      }
+    }
+  }
+
+  // Change month function
+  function changeMonth(monthKey) {
+    window.location.href = `/payments?month=${monthKey}`;
+  }
+
+  // Show page messages
+  function showPageMessages() {
+    if (window.pageData.success) showSuccessToast(window.pageData.success);
+    if (window.pageData.error) showErrorToast(window.pageData.error);
+  }
+
+  // Setup modal event handlers
+  function setupModalEventHandlers() {
+    // Xử lý thanh toán tiền mặt
+    const confirmCashBtn = document.getElementById('confirmCashPayment');
+    if (confirmCashBtn) {
+      confirmCashBtn.addEventListener('click', function() {
+        if (!currentRoomId) return;
+        submitPayment('cash');
+      });
+    }
+    
+    // Xử lý thanh toán chuyển khoản
+    const confirmTransferBtn = document.getElementById('confirmTransferPayment');
+    if (confirmTransferBtn) {
+      confirmTransferBtn.addEventListener('click', function() {
+        if (!currentRoomId) return;
+        submitPayment('transfer');
+      });
+    }
+  }
+
+  // Payment reminder function
+  async function remindPayment(roomId, roomNumber) {
+    // Kiểm tra nếu nút bị disable thì không làm gì
+    if (event.target.disabled) {
+      return;
+    }
+    
+    try {
+      // Disable button while sending
+      const button = event.target;
+      const originalText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+      
+      // Lấy thông tin tháng hiện tại để tạo nội dung thông báo
+      const currentMonthKey = window.pageData.currentMonthKey;
+      const [year, month] = currentMonthKey.split('-');
+      const monthNumber = parseInt(month);
+      
+      // Tạo nội dung thông báo
+      const title = 'Quản lí toà nhà';
+      const message = `Vui lòng thanh toán tiền điện nước tháng ${monthNumber}`;
+      
+      console.log(`📱 Sending payment reminder to room ${roomId}:`, { title, message });
+      
+      // Gửi thông báo FCM
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomId: roomId,
+          phoneNumber: '', // Server sẽ tự lấy từ roomId
+          title: title,
+          message: message
+        })
+      });
+      
+      // Check for authentication error
+      if (response.status === 401) {
+        showErrorToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+        return;
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      // Show success message
+      showSuccessToast(`Đã gửi nhắc nhở thanh toán tới phòng ${roomNumber}`);
+      
+      // Reset button
+      button.disabled = false;
+      button.innerHTML = originalText;
+      
+    } catch (error) {
+      console.error('Error sending payment reminder:', error);
+      
+      // Reset button
+      const button = event.target;
+      button.disabled = false;
+      button.innerHTML = '<i class="fas fa-bell"></i> Nhắc thanh toán';
+      
+      showErrorToast('Lỗi khi gửi nhắc nhở: ' + error.message);
+    }
+  }
+  
+  // Modal variables
+  let currentRoomId = null;
+  let currentRoomAmount = 0;
+  
+  // Show cash payment modal
+  function showCashPaymentModal(roomId, roomNumber, amount) {
+    currentRoomId = roomId;
+    currentRoomAmount = parseInt(amount);
+    
+    // Cập nhật thông tin trong modal
+    document.getElementById('modalRoomNumber').textContent = `Phòng ${roomNumber}`;
+    document.getElementById('modalPaymentAmount').textContent = `${parseInt(amount).toLocaleString('vi-VN')}đ`;
+    
+    // Hiển thị modal
+    const modal = new bootstrap.Modal(document.getElementById('cashPaymentModal'));
+    modal.show();
+  }
+  
+  // Show transfer payment modal
+  function showTransferPaymentModal(roomId, roomNumber, amount) {
+    currentRoomId = roomId;
+    currentRoomAmount = parseInt(amount);
+    
+    // Cập nhật thông tin trong modal
+    document.getElementById('modalTransferRoomNumber').textContent = `Phòng ${roomNumber}`;
+    document.getElementById('modalTransferPaymentAmount').textContent = `${parseInt(amount).toLocaleString('vi-VN')}đ`;
+    
+    // Hiển thị modal
+    const modal = new bootstrap.Modal(document.getElementById('transferPaymentModal'));
+    modal.show();
+  }
+  
+  // Submit payment
+  function submitPayment(method) {
+    console.log(`💰 Submitting payment: Room=${currentRoomId}, Method=${method}, Amount=${currentRoomAmount}`);
+    
+    // Tạo form để submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/mark-payment';
+    form.style.display = 'none';
+    
+    const roomIdInput = document.createElement('input');
+    roomIdInput.type = 'hidden';
+    roomIdInput.name = 'roomId';
+    roomIdInput.value = currentRoomId;
+    
+    const monthInput = document.createElement('input');
+    monthInput.type = 'hidden';
+    monthInput.name = 'month';
+    monthInput.value = window.pageData.currentMonthKey;
+    
+    const methodInput = document.createElement('input');
+    methodInput.type = 'hidden';
+    methodInput.name = 'paymentMethod';
+    methodInput.value = method;
+    
+    const amountInput = document.createElement('input');
+    amountInput.type = 'hidden';
+    amountInput.name = 'amount';
+    amountInput.value = currentRoomAmount;
+    
+    form.appendChild(roomIdInput);
+    form.appendChild(monthInput);
+    form.appendChild(methodInput);
+    form.appendChild(amountInput);
+    document.body.appendChild(form);
+    
+    console.log(`📤 Form data: roomId=${currentRoomId}, month=${window.pageData.currentMonthKey}, paymentMethod=${method}, amount=${currentRoomAmount}`);
+    form.submit();
+  }
+</script> 

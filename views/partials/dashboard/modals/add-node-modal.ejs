@@ -1,0 +1,50 @@
+<!-- Modal Add Node -->
+<div class="modal fade" id="addNodeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addNodeModalTitle"><i class="fas fa-plus-circle"></i> Thêm node mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/add-node" method="POST" id="addNodeForm">
+        <div class="modal-body">
+          <input type="hidden" name="roomId" id="addNodeRoomId">
+          
+          <div class="mb-3" id="roomInfoGroup">
+            <label class="form-label">Phòng</label>
+            <input type="text" class="form-control" id="addNodeRoomInfo" readonly>
+          </div>
+          
+          <div class="mb-3" id="nodeTypeGroup">
+            <label for="nodeType" class="form-label">Loại node</label>
+            <select class="form-select" id="nodeType" name="nodeType" required onchange="toggleCustomInput()">
+              <option value="">Chọn loại node</option>
+              <option value="electricity">🔌 Điện</option>
+              <option value="water">💧 Nước</option>
+              <option value="custom">🔧 Tùy chỉnh</option>
+            </select>
+          </div>
+          
+          <div class="mb-3" id="customNodeTypeGroup" style="display: none;">
+            <label for="customNodeType" class="form-label">Tên loại node tùy chỉnh</label>
+            <input type="text" class="form-control" id="customNodeType" name="customNodeType" placeholder="VD: Khí gas, Nhiệt độ, v.v.">
+          </div>
+          
+          <div class="mb-3">
+            <label for="nodeId" class="form-label">Node ID</label>
+            <input type="text" class="form-control" id="nodeId" name="nodeId" required placeholder="VD: node001, elec_01">
+          </div>
+          
+          <div class="alert alert-info" id="nodeIdAlert">
+            <i class="fas fa-info-circle"></i> 
+            <strong>Lưu ý:</strong> Node ID phải duy nhất trong phòng
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">Thêm node</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

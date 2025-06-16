@@ -1,0 +1,46 @@
+    // ==================== MONTHLY STATISTICS FUNCTIONS ====================
+    
+    // Refresh monthly statistics
+    async function refreshMonthlyStats() {
+      try {
+        const button = document.querySelector('button[onclick="refreshMonthlyStats()"]');
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tải...';
+        }
+        
+        const response = await fetch('/api/monthly-statistics');
+        const stats = await response.json();
+        
+        // Update display
+        document.getElementById('monthlyElectricity').textContent = 
+          stats.electricity ? `${stats.electricity.toFixed(1)} kWh` : '--- kWh';
+        
+        document.getElementById('monthlyWater').textContent = 
+          stats.water ? `${stats.water.toFixed(1)} m³` : '--- m³';
+        
+        // Update current month name in header
+        const monthNames = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+        const currentMonthElement = document.getElementById('currentMonthName');
+        if (currentMonthElement) {
+          currentMonthElement.textContent = monthNames[stats.month - 1];
+        }
+        
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = '<i class="fas fa-sync-alt"></i> Tải lại thống kê';
+        }
+        
+      } catch (error) {
+        console.error('Lỗi khi tải thống kê tháng:', error);
+        
+        const button = document.querySelector('button[onclick="refreshMonthlyStats()"]');
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = '<i class="fas fa-sync-alt"></i> Tải lại thống kê';
+        }
+        
+        alert('Lỗi khi tải thống kê tháng');
+      }
+    }
+    

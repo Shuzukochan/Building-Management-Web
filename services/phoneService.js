@@ -1,0 +1,1 @@
+const formatPhoneNumber = (phone) => { if (phone === null || phone === undefined || phone === "") return ""; if (phone.startsWith("+84")) { return "0" + phone.substring(3); } if (phone.startsWith("84") && phone.length >= 10) { return "0" + phone.substring(2); } return phone; }; module.exports = { formatPhoneNumber };

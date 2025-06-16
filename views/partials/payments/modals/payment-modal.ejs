@@ -1,0 +1,75 @@
+<!-- Cash Payment Modal -->
+<div class="modal fade" id="cashPaymentModal" tabindex="-1" aria-labelledby="cashPaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cashPaymentModalLabel">
+          <i class="fas fa-money-bill-wave text-success"></i>
+          Xác nhận thanh toán tiền mặt
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-3">
+          <div class="room-info-modal">
+            <h4 id="modalRoomNumber" class="mb-2"></h4>
+            <div class="payment-amount-modal">
+              <span class="text-muted">Số tiền:</span>
+              <strong id="modalPaymentAmount" class="text-success fs-5"></strong>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Xác nhận:</strong> Khách hàng đã thanh toán bằng tiền mặt cho tháng này?
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-success" id="confirmCashPayment">
+          <i class="fas fa-check"></i> Xác nhận thanh toán
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Payment Modal -->
+<div class="modal fade" id="transferPaymentModal" tabindex="-1" aria-labelledby="transferPaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="transferPaymentModalLabel">
+          <i class="fas fa-university text-primary"></i>
+          Xác nhận thanh toán chuyển khoản
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-3">
+          <div class="room-info-modal">
+            <h4 id="modalTransferRoomNumber" class="mb-2"></h4>
+            <div class="payment-amount-modal">
+              <span class="text-muted">Số tiền:</span>
+              <strong id="modalTransferPaymentAmount" class="text-primary fs-5"></strong>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Xác nhận:</strong> Khách hàng đã chuyển khoản thanh toán cho tháng này?
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-primary" id="confirmTransferPayment">
+          <i class="fas fa-check"></i> Xác nhận thanh toán
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

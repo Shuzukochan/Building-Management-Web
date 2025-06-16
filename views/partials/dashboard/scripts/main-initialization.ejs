@@ -1,0 +1,259 @@
+    // ==================== MAIN INITIALIZATION ====================
+  
+    // Initialize feedback system when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Initializing feedback system...');
+      
+      // Load initial feedback data
+      setTimeout(() => {
+        initializeFeedbackSystem();
+      }, 1000);
+      
+      // Initialize room management
+      initializeRoomsData();
+      setupEventListeners();
+      
+      // Load phone numbers for assign tenant form
+      loadPhoneNumbers();
+      
+      // Load available rooms
+      loadAvailableRooms();
+      
+      // Auto-load monthly statistics
+      refreshMonthlyStats();
+    });
+    
+    // Cleanup listeners on page unload
+    window.addEventListener('beforeunload', function() {
+      cleanupFeedbackListener();
+    });
+  </script>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Toast Notification System
+    class ToastManager {
+      constructor() {
+        this.container = document.getElementById('toastContainer');
+        this.toastCount = 0;
+      }
+
+      show(message, type, duration) {
+        type = type || 'success';
+        duration = duration || 4000;
+        
+        const toast = this.createToast(message, type, duration);
+        this.container.appendChild(toast);
+
+        setTimeout(function() {
+          toast.classList.add('show');
+        }, 50);
+
+        setTimeout(function() {
+          toast.classList.add('hide');
+          setTimeout(function() {
+            if (toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+          }, 400);
+        }, duration);
+
+        return toast;
+      }
+
+      createToast(message, type, duration) {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-' + type;
+        toast.id = 'toast-' + (++this.toastCount);
+
+        const icons = {
+          success: 'fas fa-check',
+          error: 'fas fa-times',
+          warning: 'fas fa-exclamation-triangle',
+          info: 'fas fa-info'
+        };
+
+        const titles = {
+          success: 'Thành công',
+          error: 'Lỗi',
+          warning: 'Cảnh báo',
+          info: 'Thông tin'
+        };
+
+        toast.innerHTML = 
+          '<div class="toast-header">' +
+            '<div class="toast-title">' +
+              '<div class="toast-icon">' +
+                '<i class="' + icons[type] + '"></i>' +
+              '</div>' +
+              titles[type] +
+            '</div>' +
+            '<button class="toast-close" onclick="this.closest(\'.toast\').classList.add(\'hide\')">' +
+              '<i class="fas fa-times"></i>' +
+            '</button>' +
+          '</div>' +
+          '<div class="toast-message">' + message + '</div>' +
+          '<div class="toast-progress" style="width: 100%; animation: progress-shrink ' + duration + 'ms linear;"></div>';
+
+        return toast;
+      }
+
+      success(message, duration) {
+        return this.show(message, 'success', duration || 4000);
+      }
+
+      error(message, duration) {
+        return this.show(message, 'error', duration || 5000);
+      }
+
+      warning(message, duration) {
+        return this.show(message, 'warning', duration || 4500);
+      }
+
+      info(message, duration) {
+        return this.show(message, 'info', duration || 4000);
+      }
+    }
+
+    // Initialize toast manager
+    var toastManager = new ToastManager();
+
+    // CSS for progress animation
+    var style = document.createElement('style');
+    style.textContent = 
+      '@keyframes progress-shrink {' +
+        'from { width: 100%; }' +
+        'to { width: 0%; }' +
+      '}';
+    document.head.appendChild(style);
+
+    // Check for messages from server on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      var successMessage = document.getElementById('successMessage');
+      var errorMessage = document.getElementById('errorMessage');
+
+      if (successMessage && successMessage.value) {
+        toastManager.success(successMessage.value);
+        // Clean URL after showing toast
+        cleanUrl();
+      }
+
+      if (errorMessage && errorMessage.value) {
+        toastManager.error(errorMessage.value);
+        // Clean URL after showing toast
+        cleanUrl();
+      }
+    });
+
+    // Function to clean URL parameters
+    function cleanUrl() {
+      if (window.history && window.history.replaceState) {
+        // Remove query parameters and go back to clean /dashboard
+        var cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+
+    // Global function để các form có thể gọi
+    window.showToast = function(message, type) {
+      toastManager.show(message, type || 'success');
+    };
+  </script>
+
+  <!-- Handle form submission for add phone to room -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const addPhoneForm = document.querySelector('#addPhoneToRoomModal form');
+      if (addPhoneForm) {
+        addPhoneForm.addEventListener('submit', function(e) {
+          const directInput = document.getElementById('directPhoneInput').value.trim();
+          const selectedPhone = document.getElementById('phoneNumberSelect').value.trim();
+          
+          // Prioritize direct input, fallback to dropdown selection
+          let finalPhone = '';
+          if (directInput) {
+            finalPhone = directInput;
+          } else if (selectedPhone) {
+            // Format selected phone for display first, then we'll normalize it below
+            finalPhone = selectedPhone;
+            if (finalPhone.startsWith('+84')) {
+              finalPhone = '0' + finalPhone.substring(3);
+            } else if (finalPhone.startsWith('84') && finalPhone.length >= 10) {
+              finalPhone = '0' + finalPhone.substring(2);
+            }
+          }
+          
+          if (!finalPhone) {
+            e.preventDefault();
+            alert('Vui lòng nhập hoặc chọn số điện thoại!');
+            return false;
+          }
+          
+          // Validate phone number format (basic validation)
+          if (!/^[0-9+\-\s()]+$/.test(finalPhone)) {
+            e.preventDefault();
+            alert('Số điện thoại không đúng định dạng!');
+            return false;
+          }
+          
+          // Normalize phone for backend storage (0 -> +84) but don't change visible input
+          const normalizedPhone = normalizePhoneForStorage(finalPhone);
+          
+          // Remove any existing hidden phone input
+          const existingHidden = addPhoneForm.querySelector('input[name="phoneNumberSubmit"]');
+          if (existingHidden) {
+            existingHidden.remove();
+          }
+          
+          // Create hidden input for actual submission
+          const hiddenPhoneInput = document.createElement('input');
+          hiddenPhoneInput.type = 'hidden';
+          hiddenPhoneInput.name = 'phoneNumber';
+          hiddenPhoneInput.value = normalizedPhone;
+          addPhoneForm.appendChild(hiddenPhoneInput);
+          
+          // Change the name of the visible input so it won't be submitted
+          const visibleInput = document.getElementById('directPhoneInput');
+          visibleInput.name = 'phoneNumberDisplay';
+        });
+      }
+    });
+  </script>
+
+  <!-- Modal Add Room -->
+  <div class="modal fade" id="addRoomModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-home"></i> Thêm phòng mới</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form action="/add-room" method="POST" id="addRoomForm">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="newRoomNumber" class="form-label">Số phòng</label>
+              <input type="text" class="form-control" id="newRoomNumber" name="roomNumber" required 
+                     placeholder="VD: 101, 205, 301, 999..." maxlength="10">
+              <div class="form-text">Nhập số phòng từ 101-999 (tầng 1-9, mỗi tầng có 99 phòng)</div>
+            </div>
+            
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i>
+              <strong>Lưu ý:</strong> Phòng mới sẽ được tạo với trạng thái trống, chưa có số điện thoại
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-plus"></i> Thêm phòng
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Room Management Functions -->
+  <script>

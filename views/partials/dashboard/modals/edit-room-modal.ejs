@@ -1,0 +1,42 @@
+<!-- Modal Edit Room -->
+<div class="modal fade" id="editRoomModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-edit"></i> Sửa thông tin phòng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/update-room" method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="roomId" id="editRoomId">
+          <div class="mb-3">
+            <label for="editRoomNumber" class="form-label">Số phòng</label>
+            <input type="text" class="form-control" id="editRoomNumber" name="roomNumber" required>
+          </div>
+          <div class="mb-3">
+            <label for="editPhoneNumber" class="form-label">Số điện thoại</label>
+            <input type="tel" class="form-control" id="editPhoneNumber" name="phoneNumber" required>
+          </div>
+          <div class="mb-3">
+            <label for="editFloor" class="form-label">Tầng</label>
+            <select class="form-select" id="editFloor" name="floor">
+              <option value="1">Tầng 1</option>
+              <option value="2">Tầng 2</option>
+              <option value="3">Tầng 3</option>
+              <option value="4">Tầng 4</option>
+              <option value="5">Tầng 5</option>
+              <option value="6">Tầng 6</option>
+              <option value="7">Tầng 7</option>
+              <option value="8">Tầng 8</option>
+              <option value="9">Tầng 9</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

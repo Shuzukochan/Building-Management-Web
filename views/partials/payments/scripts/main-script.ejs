@@ -1,0 +1,156 @@
+<script>
+  // Global variables for page data
+  window.pageData = {
+    success: '<%= typeof success !== "undefined" ? success : "" %>',
+    error: '<%= typeof error !== "undefined" ? error : "" %>'
+  };
+
+  // Initialize payments page
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeMonthSelector();
+    checkUnpaidPreviousMonths();
+    showPageMessages();
+    setupEventHandlers();
+  });
+
+  // Setup event handlers
+  function setupEventHandlers() {
+    // Mark payment button handlers
+    document.querySelectorAll('.mark-payment-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const roomId = this.dataset.roomId;
+        const month = this.dataset.month;
+        const amount = this.dataset.amount;
+        const method = this.dataset.method;
+        
+        openMarkPaymentModal(roomId, month, amount, method);
+      });
+    });
+  }
+
+  // Initialize month selector dropdown
+  function initializeMonthSelector() {
+    const selector = document.getElementById('monthSelector');
+    const currentDate = new Date();
+    
+    // Add 6 recent months to dropdown
+    for (let i = 0; i < 6; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthDisplay = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      
+      // Don't add current month as it's already there
+      if (monthKey !== '<%= currentMonthKey %>') {
+        const option = document.createElement('option');
+        option.value = monthKey;
+        option.textContent = monthDisplay;
+        selector.appendChild(option);
+      }
+    }
+  }
+
+  // Change month function
+  function changeMonth(monthKey) {
+    window.location.href = `/payments?month=${monthKey}`;
+  }
+
+  // Open payment confirmation modal
+  function openMarkPaymentModal(roomId, month, amount, method) {
+    // Set modal content
+    document.getElementById('modalRoomId').textContent = roomId;
+    document.getElementById('modalMonth').textContent = month.replace('-', '/');
+    document.getElementById('modalAmount').textContent = parseInt(amount).toLocaleString('vi-VN') + 'đ';
+    
+    // Set method display
+    const methodDisplay = method === 'cash' ? 
+      '<i class="fas fa-money-bill"></i> Tiền mặt' : 
+      '<i class="fas fa-credit-card"></i> Chuyển khoản';
+    document.getElementById('modalMethod').innerHTML = methodDisplay;
+    
+    // Set hidden form fields
+    document.getElementById('hiddenRoomId').value = roomId;
+    document.getElementById('hiddenMonth').value = month;
+    document.getElementById('hiddenAmount').value = amount;
+    document.getElementById('hiddenPaymentMethod').value = method;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modal.show();
+  }
+
+  // Show page messages
+  function showPageMessages() {
+    if (window.pageData && window.pageData.success) {
+      showSuccessToast(window.pageData.success);
+    }
+    
+    if (window.pageData && window.pageData.error) {
+      showErrorToast(window.pageData.error);
+    }
+  }
+
+  // Check for unpaid previous months
+  function checkUnpaidPreviousMonths() {
+    fetch('/api/unpaid-previous-months')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.unpaidMonths.length > 0) {
+          console.log('🔍 Found unpaid months:', data.unpaidMonths);
+          
+          data.unpaidMonths.forEach((item, index) => {
+            createUnpaidToast(item, index * 500); // Delay each toast 500ms
+          });
+        } else {
+          console.log('✅ No unpaid previous months found');
+        }
+      })
+      .catch(error => {
+        console.error('❌ Error checking unpaid months:', error);
+      });
+  }
+
+  // Create unpaid month warning toast
+  function createUnpaidToast(item, delay) {
+    setTimeout(() => {
+      const container = document.querySelector('.toast-container');
+      if (!container) return;
+      
+      const toastId = `toast-unpaid-${item.monthKey}`;
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-warning';
+      toast.id = toastId;
+      
+      toast.innerHTML = `
+        <div class="toast-header">
+          <div class="toast-title">
+            <div class="toast-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            Cảnh báo thanh toán
+          </div>
+          <button class="toast-close" onclick="hideToast('${toastId}')">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="toast-message">
+          Còn <strong>${item.count} phòng</strong> tháng <strong>${item.month}</strong> chưa thanh toán!
+          <div style="margin-top: 8px;">
+            <button class="btn btn-warning btn-sm" onclick="changeMonth('${item.monthKey}')" style="font-size: 0.75em; padding: 4px 8px;">
+              <i class="fas fa-eye"></i> Xem ngay
+            </button>
+          </div>
+        </div>
+        <div class="toast-progress" style="width: 100%;"></div>
+      `;
+      
+      container.appendChild(toast);
+      
+      // Trigger animation
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 100);
+      
+      // No auto-hide for unpaid warnings (user needs to manually close)
+    }, delay);
+  }
+</script> 

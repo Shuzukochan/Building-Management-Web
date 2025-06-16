@@ -1,0 +1,86 @@
+    // ==================== FIREBASE FUNCTIONS ====================
+    
+    // Initialize Firebase
+    async function initializeFirebase() {
+      try {
+        console.log('🔴 Initializing Firebase...');
+        
+        // Check if Firebase SDK is loaded
+        if (typeof firebase === 'undefined') {
+          console.error('❌ Firebase SDK not loaded');
+          return false;
+        }
+        
+        // Avoid double initialization
+        if (database && feedbackRef) {
+          console.log('✅ Firebase already initialized');
+          return true;
+        }
+        
+        // Get Firebase config from server
+        const response = await fetch('/api/firebase-config');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const firebaseConfig = await response.json();
+        console.log('📡 Firebase config received:', firebaseConfig);
+        
+        // Initialize Firebase app if not already done
+        let app;
+        if (!firebase.apps.length) {
+          app = firebase.initializeApp(firebaseConfig);
+        } else {
+          app = firebase.app(); // use existing app
+        }
+        
+        database = firebase.database(app);
+        feedbackRef = database.ref('service_feedbacks');
+        
+        // Sign in anonymously for database access
+        try {
+          await firebase.auth().signInAnonymously();
+          console.log('🔐 Signed in anonymously for database access');
+        } catch (authError) {
+          console.warn('⚠️ Anonymous auth failed, continuing without auth:', authError);
+        }
+        
+        console.log('✅ Firebase initialized successfully');
+        return true;
+        
+      } catch (error) {
+        console.error('❌ Firebase initialization failed:', error);
+        return false;
+      }
+    }
+    
+    // Parse Firebase timestamp format YYYY-MM-DD_HH-MM-SS (with underscore)
+    function parseFeedbackTimestamp(timestampKey) {
+      try {
+        if (timestampKey && typeof timestampKey === 'string') {
+          // Handle both formats: YYYY-MM-DD_HH-MM-SS and YYYY-MM-DD-HH-MM-SS
+          const normalizedTimestamp = timestampKey.replace('_', '-');
+          
+          if (normalizedTimestamp.includes('-') && normalizedTimestamp.length >= 19) {
+            const parts = normalizedTimestamp.split('-');
+            if (parts.length >= 6) {
+              const year = parseInt(parts[0]);
+              const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+              const day = parseInt(parts[2]);
+              const hour = parseInt(parts[3]);
+              const minute = parseInt(parts[4]);
+              const second = parseInt(parts[5]);
+              
+              return new Date(year, month, day, hour, minute, second);
+            }
+          }
+        }
+        
+        // Fallback to Date parsing
+        return new Date(timestampKey);
+      } catch (error) {
+        console.error('Parse timestamp error:', error);
+        return new Date();
+      }
+    }
+    

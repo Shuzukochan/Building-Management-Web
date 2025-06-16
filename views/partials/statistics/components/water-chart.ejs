@@ -1,0 +1,48 @@
+<!-- Water Chart -->
+<div class="chart-card">
+  <div class="chart-header">
+    <div class="chart-title">
+      <h5>
+        <i class="fas fa-tint" style="color: #06b6d4;"></i>
+        Biểu đồ tiêu thụ nước
+      </h5>
+    </div>
+    <div class="chart-controls">
+      <form class="chart-form" action="/statistic" method="GET" id="waterForm">
+        <!-- Hidden fields to preserve other parameters -->
+        <input type="hidden" name="roomId" value="<%= selectedRoom || '' %>">
+        <input type="hidden" name="fromElectric" value="<%= fromElectric || '' %>">
+        <input type="hidden" name="toElectric" value="<%= toElectric || '' %>">
+        <input type="hidden" name="viewTypeElectric" value="<%= viewTypeElectric || 'day' %>">
+        
+        <div class="view-type-selector">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="viewTypeWater" value="day" id="waterDay" <%= (viewTypeWater || 'day') === 'day' ? 'checked' : '' %> onchange="handleWaterViewChange()">
+            <label class="form-check-label" for="waterDay">Ngày</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="viewTypeWater" value="month" id="waterMonth" <%= viewTypeWater === 'month' ? 'checked' : '' %> onchange="handleWaterViewChange()">
+            <label class="form-check-label" for="waterMonth">Tháng</label>
+          </div>
+        </div>
+        
+        <div class="date-range-selector">
+          <% if ((viewTypeWater || 'day') === 'day') { %>
+            <div id="waterDateRangePicker" class="antd-range-picker"></div>
+            <input type="hidden" name="fromWater" id="fromWaterDateHidden" value="<%= fromWater || '' %>">
+            <input type="hidden" name="toWater" id="toWaterDateHidden" value="<%= toWater || '' %>">
+          <% } else { %>
+            <div id="waterRangePicker" class="antd-range-picker"></div>
+            <input type="hidden" name="fromMonthWater" id="fromWaterHidden" value="<%= fromYearWater && fromMonthWater ? fromYearWater + '-' + String(fromMonthWater).padStart(2, '0') : '' %>">
+            <input type="hidden" name="toMonthWater" id="toWaterHidden" value="<%= toYearWater && toMonthWater ? toYearWater + '-' + String(toMonthWater).padStart(2, '0') : '' %>">
+          <% } %>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="chart-body">
+    <div class="chart-container">
+      <canvas id="waterChart" class="chart-canvas"></canvas>
+    </div>
+  </div>
+</div> 

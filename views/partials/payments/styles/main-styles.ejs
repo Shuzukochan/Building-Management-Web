@@ -1,0 +1,90 @@
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    overflow-x: hidden;
+  }
+  
+  .main-content {
+    margin-left: 220px;
+    padding: 15px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+  
+  .page-header {
+    background: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 12px;
+  }
+  
+  .page-header h1 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 20px;
+  }
+  
+  .month-selector {
+    min-width: 160px;
+  }
+  
+  .month-selector .form-select {
+    font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+  }
+  
+  .month-selector .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+  
+  .page-header .subtitle {
+    color: #6b7280;
+    font-size: 14px;
+    margin-top: 5px;
+  }
+  
+  /* Main content layout for viewport fit */
+  .content-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 30px);
+    gap: 12px;
+  }
+  
+  .content-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 15px;
+  }
+
+  /* Alert Styles */
+  .alert {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  
+  .alert-success {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    border-left: 4px solid #10b981;
+  }
+  
+  .alert-danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+  }
+</style> 

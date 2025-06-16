@@ -1,0 +1,141 @@
+    // ==================== BROADCAST NOTIFICATION FUNCTIONS ====================
+    
+    // Open broadcast notification modal
+    function openBroadcastNotificationModal() {
+      try {
+        // Reset form with default values
+        document.getElementById('broadcastTarget').value = 'all_residents';
+        document.getElementById('broadcastTitle').value = 'Quản lí toà nhà';
+        document.getElementById('broadcastMessage').value = '';
+        
+        // Update info display
+        updateBroadcastInfo();
+        
+        // Show modal
+        new bootstrap.Modal(document.getElementById('broadcastNotificationModal')).show();
+        
+      } catch (error) {
+        console.error('Error opening broadcast notification modal:', error);
+        alert('Lỗi khi mở modal gửi thông báo: ' + error.message);
+      }
+    }
+    
+    // Update broadcast target info
+    function updateBroadcastInfo() {
+      const target = document.getElementById('broadcastTarget').value;
+      const infoElement = document.getElementById('broadcastTargetInfo');
+      
+      const targetNames = {
+        'all_residents': 'Toàn toà nhà',
+        'floor_1': 'Tầng 1',
+        'floor_2': 'Tầng 2', 
+        'floor_3': 'Tầng 3',
+        'floor_4': 'Tầng 4',
+        'floor_5': 'Tầng 5',
+        'floor_6': 'Tầng 6',
+        'floor_7': 'Tầng 7',
+        'floor_8': 'Tầng 8',
+        'floor_9': 'Tầng 9'
+      };
+      
+      infoElement.textContent = targetNames[target] || target;
+    }
+    
+    // Send broadcast notification
+    async function sendBroadcastNotification() {
+      try {
+        const target = document.getElementById('broadcastTarget').value;
+        const title = document.getElementById('broadcastTitle').value.trim();
+        const message = document.getElementById('broadcastMessage').value.trim();
+        
+        // Validation
+        if (!title) {
+          alert('Vui lòng nhập tiêu đề thông báo');
+          return;
+        }
+        
+        if (!message) {
+          alert('Vui lòng nhập nội dung thông báo');
+          return;
+        }
+        
+        if (message.length > 500) {
+          alert('Nội dung thông báo không được vượt quá 500 ký tự');
+          return;
+        }
+        
+        // Disable button while sending
+        const sendButton = document.querySelector('#broadcastNotificationModal .btn-primary');
+        const originalText = sendButton.innerHTML;
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+        
+        // Send FCM topic notification via API
+        console.log('📢 Sending broadcast notification:', {
+          topic: target,
+          title,
+          message
+        });
+        
+        // Call FCM Topic API
+        const response = await fetch('/api/send-topic-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            topic: target,
+            title,
+            message
+          })
+        });
+        
+        // Check for authentication error
+        if (response.status === 401) {
+          alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          window.location.href = '/';
+          return;
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+        
+        // Show success message
+        const targetNames = {
+          'all_residents': 'toàn toà nhà',
+          'floor_1': 'tầng 1',
+          'floor_2': 'tầng 2', 
+          'floor_3': 'tầng 3',
+          'floor_4': 'tầng 4',
+          'floor_5': 'tầng 5',
+          'floor_6': 'tầng 6',
+          'floor_7': 'tầng 7',
+          'floor_8': 'tầng 8',
+          'floor_9': 'tầng 9'
+        };
+        
+        toastManager.success(`Đã gửi thông báo tới ${targetNames[target] || target}`);
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('broadcastNotificationModal'));
+        modal.hide();
+        
+        // Reset button
+        sendButton.disabled = false;
+        sendButton.innerHTML = originalText;
+        
+      } catch (error) {
+        console.error('Error sending broadcast notification:', error);
+        
+        // Reset button
+        const sendButton = document.querySelector('#broadcastNotificationModal .btn-primary');
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi thông báo';
+        
+        alert('Lỗi khi gửi thông báo: ' + error.message);
+      }
+    }
+

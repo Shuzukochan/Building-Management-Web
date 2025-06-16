@@ -1,0 +1,191 @@
+<script>
+  // Handler functions cho radio button changes
+  window.handleElectricViewChange = function() {
+    console.log('⚡ Electric view change triggered');
+    
+    setTimeout(() => {
+      const selectedValue = document.querySelector('input[name="viewTypeElectric"]:checked').value;
+      console.log('⚡ Electric view changed to:', selectedValue);
+      
+      if (selectedValue === 'month') {
+        const last9Months = getLast9Months();
+        const fromInput = document.getElementById('fromElectricHidden');
+        const toInput = document.getElementById('toElectricHidden');
+        
+        if (fromInput && toInput) {
+          fromInput.value = last9Months[0].monthYear;
+          toInput.value = last9Months[last9Months.length - 1].monthYear;
+          
+          setTimeout(() => {
+            if (pickerRoots.electricRange) {
+              pickerRoots.electricRange.unmount();
+            }
+            pickerRoots.electricRange = createMonthRangePicker('electricRangePicker', 'fromElectricHidden', 'toElectricHidden', () => {
+              setTimeout(() => document.getElementById('electricForm').submit(), 100);
+            });
+          }, 50);
+        }
+      } else {
+        setTimeout(() => {
+          if (pickerRoots.electricDateRange) {
+            pickerRoots.electricDateRange.unmount();
+          }
+          pickerRoots.electricDateRange = createDateRangePicker('electricDateRangePicker', 'fromElectricDateHidden', 'toElectricDateHidden', () => {
+            setTimeout(() => document.getElementById('electricForm').submit(), 100);
+          });
+        }, 50);
+      }
+      
+      setTimeout(() => {
+        document.getElementById('electricForm').submit();
+      }, 200);
+    }, 100);
+  };
+  
+  window.handleWaterViewChange = function() {
+    console.log('💧 Water view change triggered');
+    
+    setTimeout(() => {
+      const selectedValue = document.querySelector('input[name="viewTypeWater"]:checked').value;
+      console.log('💧 Water view changed to:', selectedValue);
+      
+      if (selectedValue === 'month') {
+        const last9Months = getLast9Months();
+        const fromInput = document.getElementById('fromWaterHidden');
+        const toInput = document.getElementById('toWaterHidden');
+        
+        if (fromInput && toInput) {
+          fromInput.value = last9Months[0].monthYear;
+          toInput.value = last9Months[last9Months.length - 1].monthYear;
+          
+          setTimeout(() => {
+            if (pickerRoots.waterRange) {
+              pickerRoots.waterRange.unmount();
+            }
+            pickerRoots.waterRange = createMonthRangePicker('waterRangePicker', 'fromWaterHidden', 'toWaterHidden', () => {
+              setTimeout(() => document.getElementById('waterForm').submit(), 100);
+            });
+          }, 50);
+        }
+      } else {
+        setTimeout(() => {
+          if (pickerRoots.waterDateRange) {
+            pickerRoots.waterDateRange.unmount();
+          }
+          pickerRoots.waterDateRange = createDateRangePicker('waterDateRangePicker', 'fromWaterDateHidden', 'toWaterDateHidden', () => {
+            setTimeout(() => document.getElementById('waterForm').submit(), 100);
+          });
+        }, 50);
+      }
+      
+      setTimeout(() => {
+        document.getElementById('waterForm').submit();
+      }, 200);
+    }, 100);
+  };
+
+  // Function to create Ant Design date range picker
+  function createDateRangePicker(containerId, fromHiddenId, toHiddenId, onChange) {
+    const container = document.getElementById(containerId);
+    const fromHidden = document.getElementById(fromHiddenId);
+    const toHidden = document.getElementById(toHiddenId);
+    
+    if (!container || !fromHidden || !toHidden) {
+      console.log(`❌ Container ${containerId} or hidden inputs not found`);
+      return;
+    }
+    
+    const root = createRoot(container);
+    
+    let initialValue = null;
+    if (fromHidden.value && toHidden.value) {
+      try {
+        initialValue = [
+          dayjs(fromHidden.value, 'YYYY-MM-DD'),
+          dayjs(toHidden.value, 'YYYY-MM-DD')
+        ];
+      } catch (e) {
+        console.log(`⚠️ Invalid date format in ${containerId}`);
+      }
+    }
+    
+    const rangePicker = h(ConfigProvider, {
+      locale: vietnameseLocale
+    }, h(RangePicker, {
+      placeholder: ['Từ ngày', 'Đến ngày'],
+      format: 'DD/MM/YYYY',
+      value: initialValue,
+      onChange: (dates, dateStrings) => {
+        if (dates && dates.length === 2) {
+          fromHidden.value = dates[0].format('YYYY-MM-DD');
+          toHidden.value = dates[1].format('YYYY-MM-DD');
+        } else {
+          fromHidden.value = '';
+          toHidden.value = '';
+        }
+        if (onChange) {
+          onChange(dates, dateStrings);
+        }
+      },
+      style: { width: '100%', height: '36px' }
+    }));
+    
+    root.render(rangePicker);
+    console.log(`✅ Created date range picker for ${containerId}`);
+    
+    return root;
+  }
+
+  // Function to create Ant Design month range picker
+  function createMonthRangePicker(containerId, fromHiddenId, toHiddenId, onChange) {
+    const container = document.getElementById(containerId);
+    const fromHidden = document.getElementById(fromHiddenId);
+    const toHidden = document.getElementById(toHiddenId);
+    
+    if (!container || !fromHidden || !toHidden) {
+      console.log(`❌ Container ${containerId} or hidden inputs not found`);
+      return;
+    }
+    
+    const root = createRoot(container);
+    
+    let initialValue = null;
+    if (fromHidden.value && toHidden.value) {
+      try {
+        initialValue = [
+          dayjs(fromHidden.value, 'YYYY-MM'),
+          dayjs(toHidden.value, 'YYYY-MM')
+        ];
+      } catch (e) {
+        console.log(`⚠️ Invalid month format in ${containerId}`);
+      }
+    }
+    
+    const monthRangePicker = h(ConfigProvider, {
+      locale: vietnameseLocale
+    }, h(RangePicker, {
+      picker: 'month',
+      placeholder: ['Từ tháng', 'Đến tháng'],
+      format: 'MM/YYYY',
+      value: initialValue,
+      onChange: (dates, dateStrings) => {
+        if (dates && dates.length === 2) {
+          fromHidden.value = dates[0].format('YYYY-MM');
+          toHidden.value = dates[1].format('YYYY-MM');
+        } else {
+          fromHidden.value = '';
+          toHidden.value = '';
+        }
+        if (onChange) {
+          onChange(dates, dateStrings);
+        }
+      },
+      style: { width: '100%', height: '36px' }
+    }));
+    
+    root.render(monthRangePicker);
+    console.log(`✅ Created month range picker for ${containerId}`);
+    
+    return root;
+  }
+</script> 
