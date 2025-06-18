@@ -1,0 +1,45 @@
+<!-- Modal Add Tenant -->
+<div class="modal fade" id="addTenantModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-plus"></i> Thêm người thuê mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="/add-tenant" method="POST">
+        <div class="modal-body">
+          <input type="hidden" id="tenantRoomId" name="roomId">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            Phòng <span id="tenantRoomNumber" class="fw-bold"></span> - Thêm thông tin người thuê
+          </div>
+          
+          <div class="mb-3">
+            <label for="tenantName" class="form-label">
+              <i class="fas fa-user"></i> Tên người thuê <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="tenantName" name="tenantName" 
+                   placeholder="Nhập họ tên người thuê" required>
+          </div>
+          
+          <div class="mb-3">
+            <label for="newPhoneNumber" class="form-label">
+              <i class="fas fa-phone"></i> Số điện thoại <span class="text-danger">*</span>
+            </label>
+            <input type="tel" class="form-control" id="newPhoneNumber" name="phoneNumber" 
+                   placeholder="Nhập số điện thoại" required>
+            <div class="form-text">Người đầu tiên sẽ là người đại diện chính</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> Hủy
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Thêm người thuê
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

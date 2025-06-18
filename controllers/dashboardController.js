@@ -19,7 +19,14 @@ const getDashboard = async (req, res) => {
           phoneNumber: formatPhoneNumber(roomInfo.phone || ""),
           floor: parseInt(floor),
           status: (roomInfo.phone && roomInfo.phone.trim()) ? "occupied" : "vacant",
-          nodes: {}
+          nodes: {},
+          // New multi-tenant info (simplified)
+          tenants: roomInfo.tenants || [],
+          tenantCount: roomInfo.tenants ? roomInfo.tenants.length : 0,
+          representativeTenant: roomInfo.tenants && roomInfo.tenants.length > 0 ? roomInfo.tenants[0] : null,
+          // Backward compatibility
+          tenant: roomInfo.tenant || null,
+          tenantName: roomInfo.tenant ? roomInfo.tenant.name : (roomInfo.tenants && roomInfo.tenants.length > 0 ? roomInfo.tenants[0].name : null)
         };
 
         // Xử lý nodes với cấu trúc mới - history ở room level

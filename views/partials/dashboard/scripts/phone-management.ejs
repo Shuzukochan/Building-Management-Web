@@ -1,52 +1,573 @@
-    // ==================== PHONE MANAGEMENT FUNCTIONS ====================
+    // ==================== TENANT MANAGEMENT FUNCTIONS ====================
     
-    // Open Add Phone Modal
-    function openAddPhoneModal(roomId, roomNumber) {
-      document.getElementById('addPhoneRoomId').value = roomId;
+    // Open Add Tenant Modal (for empty rooms)
+    function openAddTenantModal(roomId, roomNumber) {
+      // Set room info in hidden field and display
+      document.getElementById('tenantRoomId').value = roomId;
+      document.getElementById('tenantRoomNumber').textContent = roomNumber;
       
-      // Clear inputs
-      document.getElementById('directPhoneInput').value = '';
-      document.getElementById('phoneNumberSelect').value = '';
+      // Clear all inputs
+      document.getElementById('tenantName').value = '';
+      document.getElementById('newPhoneNumber').value = '';
       
-      // Update modal title
-      document.getElementById('addPhoneToRoomModalTitle').innerHTML = `<i class="fas fa-phone"></i> Thêm số điện thoại cho phòng ${roomNumber}`;
+      // Show modal
+      new bootstrap.Modal(document.getElementById('addTenantModal')).show();
+    }
+    
+    // Open Manage Tenants Modal (for occupied rooms)
+    function openManageTenantsModal(roomId, roomNumber) {
+      // Set room info
+      document.getElementById('manageTenantsRoomId').value = roomId;
+      document.getElementById('manageTenantsModalTitle').innerHTML = 
+        `<i class="fas fa-users"></i> Quản lý người thuê - Phòng ${roomNumber}`;
       
-      // Load available phone numbers for dropdown
-      loadAvailablePhoneNumbers('phoneNumberSelect');
+      // Hide add form if visible
+      hideAddTenantForm();
       
-      // Add event listener for dropdown selection to copy to direct input
-      setTimeout(() => {
-        const phoneSelect = document.getElementById('phoneNumberSelect');
-        const directInput = document.getElementById('directPhoneInput');
+      // Load current tenants
+      loadTenantsList(roomId);
+      
+      // Show modal
+      new bootstrap.Modal(document.getElementById('manageTenantsModal')).show();
+    }
+    
+    // Load tenants list
+    async function loadTenantsList(roomId) {
+      try {
+        const container = document.getElementById('tenantsListContainer');
+        container.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
         
-        // Remove existing listeners to prevent duplicates
-        phoneSelect.removeEventListener('change', handlePhoneSelectChange);
-        phoneSelect.addEventListener('change', handlePhoneSelectChange);
+        const response = await fetch(`/api/room/${roomId}/tenants`);
+        const data = await response.json();
         
-        function handlePhoneSelectChange() {
-          const selectedPhone = this.value;
-          
-          if (selectedPhone) {
-            // Format and copy selected phone to direct input - ensure display format (0 prefix)
-            let formattedPhone = selectedPhone;
-            if (formattedPhone.startsWith('+84')) {
-              formattedPhone = '0' + formattedPhone.substring(3);
-            } else if (formattedPhone.startsWith('84') && formattedPhone.length >= 10) {
-              formattedPhone = '0' + formattedPhone.substring(2);
-            }
-            // Ensure it starts with 0 for display
-            if (!formattedPhone.startsWith('0') && formattedPhone.length >= 9) {
-              // If somehow it doesn't start with 0, add it
-              if (formattedPhone.match(/^[1-9]/)) {
-                formattedPhone = '0' + formattedPhone;
-              }
-            }
-            directInput.value = formattedPhone;
-          }
+        if (!data.success) {
+          throw new Error(data.message || 'Lỗi khi tải danh sách');
         }
-      }, 500);
+        
+        const tenants = data.tenants || [];
+        
+        if (tenants.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-muted py-3">
+              <i class="fas fa-user-slash"></i><br>
+              Chưa có người thuê nào
+            </div>`;
+          return;
+        }
+        
+        let html = '';
+        tenants.forEach((tenant, index) => {
+          html += `
+            <div class="tenant-item mb-2 p-3 border rounded" data-tenant-index="${index}">
+              <div class="d-flex justify-content-between align-items-start">
+                <div class="tenant-info-detail">
+                  <div class="tenant-name-primary">
+                    <strong>${tenant.name}</strong>
+                    ${index === 0 ? '<span class="badge bg-primary ms-2">Đại diện</span>' : ''}
+                  </div>
+                  <div class="tenant-contact">
+                    <i class="fas fa-phone text-muted"></i> ${formatPhoneDisplay(tenant.phone)}
+                  </div>
+                </div>
+                <div class="tenant-actions">
+                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="editTenant('${index}')">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteTenant('${index}')">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>`;
+        });
+        
+        container.innerHTML = html;
+        
+      } catch (error) {
+        console.error('Error loading tenants:', error);
+        document.getElementById('tenantsListContainer').innerHTML = 
+          `<div class="text-center text-danger py-3"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
+      }
+    }
+    
+    // Show add tenant form
+    function showAddTenantForm() {
+      document.getElementById('addTenantFormSection').style.display = 'block';
+      // Clear form
+      document.getElementById('addTenantForm').reset();
+    }
+    
+    // Hide add tenant form
+    function hideAddTenantForm() {
+      document.getElementById('addTenantFormSection').style.display = 'none';
+      document.getElementById('addTenantForm').reset();
+    }
+
+    // Add tenant form submit handler
+    document.addEventListener('DOMContentLoaded', function() {
+      const addTenantForm = document.getElementById('addTenantForm');
+      if (addTenantForm) {
+        addTenantForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          const roomId = document.getElementById('manageTenantsRoomId').value;
+          const tenantName = document.getElementById('newTenantName').value.trim();
+          const tenantPhone = document.getElementById('newTenantPhone').value.trim();
+          
+          // Validation
+          if (!tenantName || !tenantPhone) {
+            alert('Vui lòng nhập đầy đủ thông tin!');
+            return;
+          }
+          
+          // Basic phone validation
+          if (!/^[0-9+\-\s()]+$/.test(tenantPhone)) {
+            alert('Số điện thoại không đúng định dạng!');
+            return;
+          }
+          
+          try {
+            // Normalize phone number for storage
+            const normalizedPhone = normalizePhoneForStorage(tenantPhone);
+            
+            // Submit to server using new API endpoint
+            const response = await fetch(`/api/room/${roomId}/add-tenant`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                tenantName: tenantName,
+                phoneNumber: normalizedPhone
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              // Hide the add form
+              hideAddTenantForm();
+              
+              // Reload the tenants list to show the new tenant
+              await loadTenantsList(roomId);
+              
+              // Show success message
+              showSuccessToast(result.message || 'Thêm người thuê thành công');
+              
+              // Refresh the specific room row in the main table
+              await refreshRoomRow(roomId);
+            } else {
+              throw new Error(result.message || 'Lỗi khi thêm người thuê');
+            }
+            
+          } catch (error) {
+            console.error('Error adding tenant:', error);
+            showErrorToast('Lỗi khi thêm người thuê: ' + error.message);
+          }
+        });
+      }
+    });
+    
+    // Edit tenant function
+    function editTenant(tenantIndex) {
+      const roomId = document.getElementById('manageTenantsRoomId').value;
       
-      new bootstrap.Modal(document.getElementById('addPhoneToRoomModal')).show();
+      // Get current tenants list from the displayed data
+      const tenantItems = document.querySelectorAll('.tenant-item');
+      if (tenantIndex >= tenantItems.length) {
+        showErrorToast('Không tìm thấy thông tin người thuê');
+        return;
+      }
+      
+      const tenantItem = tenantItems[tenantIndex];
+      const tenantName = tenantItem.querySelector('.tenant-name-primary strong').textContent;
+      const tenantPhoneElement = tenantItem.querySelector('.tenant-contact');
+      const tenantPhone = tenantPhoneElement.textContent.replace(/📞|/g, '').trim();
+      
+      // Show edit form
+      showEditTenantForm(roomId, tenantIndex, tenantName, tenantPhone);
+    }
+
+    // Delete tenant function
+    function deleteTenant(tenantIndex) {
+      const roomId = document.getElementById('manageTenantsRoomId').value;
+      
+      // Get current tenants list from the displayed data
+      const tenantItems = document.querySelectorAll('.tenant-item');
+      if (tenantIndex >= tenantItems.length) {
+        showErrorToast('Không tìm thấy thông tin người thuê');
+        return;
+      }
+      
+      const tenantItem = tenantItems[tenantIndex];
+      const tenantName = tenantItem.querySelector('.tenant-name-primary strong').textContent;
+      const tenantPhone = tenantItem.querySelector('.tenant-contact').textContent.replace(/📞|/g, '').trim();
+      const isRepresentative = tenantIndex === 0;
+      
+      // Store data for deletion execution
+      window.pendingDeleteTenant = {
+        roomId: roomId,
+        tenantIndex: tenantIndex,
+        tenantName: tenantName
+      };
+      
+      // Setup modal content
+      document.getElementById('deleteTenantInfo').textContent = `Tên: ${tenantName} | SĐT: ${tenantPhone}`;
+      
+      if (isRepresentative) {
+        document.getElementById('deleteTenantQuestion').textContent = 'Bạn có chắc chắn muốn xóa người đại diện này?';
+        document.getElementById('deleteTenantWarning').style.display = 'block';
+        document.getElementById('deleteTenantWarningText').textContent = 'Sau khi xóa, người thuê tiếp theo sẽ trở thành đại diện mới.';
+      } else {
+        document.getElementById('deleteTenantQuestion').textContent = 'Bạn có chắc chắn muốn xóa người thuê này?';
+        document.getElementById('deleteTenantWarning').style.display = 'none';
+      }
+      
+      // Show confirmation modal
+      const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeleteTenantModal'));
+      confirmModal.show();
+    }
+
+    // Execute delete tenant (called from modal) - Global function
+    window.executeDeleteTenant = function() {
+      if (!window.pendingDeleteTenant) {
+        showErrorToast('Không có thông tin người thuê để xóa');
+        return;
+      }
+      
+      const { roomId, tenantIndex } = window.pendingDeleteTenant;
+      
+      // Close modal
+      const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteTenantModal'));
+      if (confirmModal) {
+        confirmModal.hide();
+      }
+      
+      // Execute deletion
+      deleteTenantFromRoom(roomId, tenantIndex);
+      
+      // Clear pending data
+      window.pendingDeleteTenant = null;
+    };
+
+    // Show edit tenant form
+    function showEditTenantForm(roomId, tenantIndex, currentName, currentPhone) {
+      // Hide add form if showing
+      hideAddTenantForm();
+      
+      // Create edit form HTML
+      const editFormHtml = `
+        <hr>
+        <h6><i class="fas fa-edit"></i> Chỉnh sửa người thuê</h6>
+        <form id="editTenantForm">
+          <input type="hidden" id="editTenantIndex" value="${tenantIndex}">
+          <div class="row">
+            <div class="col-md-6">
+              <label for="editTenantName" class="form-label">
+                <i class="fas fa-user"></i> Họ tên <span class="text-danger">*</span>
+              </label>
+              <input type="text" class="form-control" id="editTenantName" value="${currentName}" required>
+            </div>
+            <div class="col-md-6">
+              <label for="editTenantPhone" class="form-label">
+                <i class="fas fa-phone"></i> Số điện thoại <span class="text-danger">*</span>
+              </label>
+              <input type="tel" class="form-control" id="editTenantPhone" value="${currentPhone}" required>
+            </div>
+          </div>
+          <div class="form-text text-muted mt-2">
+            ${tenantIndex === 0 ? 'Đây là người đại diện chính của phòng.' : 'Chỉnh sửa thông tin người thuê.'}
+          </div>
+          <div class="mt-3">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="hideEditTenantForm()">
+              <i class="fas fa-times"></i> Hủy
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fas fa-save"></i> Cập nhật
+            </button>
+          </div>
+        </form>
+      `;
+      
+      // Show edit form
+      const container = document.getElementById('tenantsListContainer');
+      const editSection = document.getElementById('editTenantFormSection') || document.createElement('div');
+      editSection.id = 'editTenantFormSection';
+      editSection.innerHTML = editFormHtml;
+      
+      if (!document.getElementById('editTenantFormSection')) {
+        container.parentNode.appendChild(editSection);
+      }
+      
+      editSection.style.display = 'block';
+      
+      // Add form submit handler
+      document.getElementById('editTenantForm').addEventListener('submit', handleEditTenantSubmit);
+    }
+
+    // Hide edit tenant form
+    function hideEditTenantForm() {
+      const editSection = document.getElementById('editTenantFormSection');
+      if (editSection) {
+        editSection.style.display = 'none';
+      }
+    }
+
+    // Handle edit tenant form submit
+    async function handleEditTenantSubmit(e) {
+      e.preventDefault();
+      
+      const roomId = document.getElementById('manageTenantsRoomId').value;
+      const tenantIndex = parseInt(document.getElementById('editTenantIndex').value);
+      const tenantName = document.getElementById('editTenantName').value.trim();
+      const tenantPhone = document.getElementById('editTenantPhone').value.trim();
+      
+      // Validation
+      if (!tenantName || !tenantPhone) {
+        showErrorToast('Vui lòng nhập đầy đủ thông tin!');
+        return;
+      }
+      
+      // Basic phone validation
+      if (!/^[0-9+\-\s()]+$/.test(tenantPhone)) {
+        showErrorToast('Số điện thoại không đúng định dạng!');
+        return;
+      }
+      
+      try {
+        // Normalize phone number for storage
+        const normalizedPhone = normalizePhoneForStorage(tenantPhone);
+        
+        // Submit to server
+        const response = await fetch(`/api/room/${roomId}/edit-tenant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tenantIndex: tenantIndex,
+            tenantName: tenantName,
+            phoneNumber: normalizedPhone
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Hide the edit form
+          hideEditTenantForm();
+          
+          // Reload the tenants list
+          await loadTenantsList(roomId);
+          
+          // Show success message
+          showSuccessToast(result.message || 'Cập nhật thông tin người thuê thành công');
+          
+          // Refresh the specific room row in the main table
+          await refreshRoomRow(roomId);
+        } else {
+          throw new Error(result.message || 'Lỗi khi cập nhật thông tin người thuê');
+        }
+        
+      } catch (error) {
+        console.error('Error editing tenant:', error);
+        showErrorToast('Lỗi khi cập nhật thông tin: ' + error.message);
+      }
+    }
+
+    // Delete tenant from room
+    async function deleteTenantFromRoom(roomId, tenantIndex) {
+      try {
+        const response = await fetch(`/api/room/${roomId}/delete-tenant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tenantIndex: tenantIndex
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Reload the tenants list
+          await loadTenantsList(roomId);
+          
+          // Show success message
+          showSuccessToast(result.message || 'Xóa người thuê thành công');
+          
+          // Refresh the specific room row in the main table
+          await refreshRoomRow(roomId);
+        } else {
+          throw new Error(result.message || 'Lỗi khi xóa người thuê');
+        }
+        
+      } catch (error) {
+        console.error('Error deleting tenant:', error);
+        showErrorToast('Lỗi khi xóa người thuê: ' + error.message);
+      }
+    }
+
+    // Refresh specific room row in main table
+    async function refreshRoomRow(roomId) {
+      try {
+        // Get updated room data from server
+        const response = await fetch(`/api/room/${roomId}/data`);
+        const result = await response.json();
+        
+        if (!result.success) {
+          console.error('Failed to fetch room data:', result.message);
+          return;
+        }
+        
+        const room = result.room;
+        
+        // Find the row in the table
+        const row = document.querySelector(`tr[data-room-id="${roomId}"]`);
+        
+        if (!row) {
+          console.error('Could not find room row to update for roomId:', roomId);
+          return;
+        }
+        
+        // Update representative column
+        const repColumn = row.querySelector('.representative-info');
+        if (repColumn) {
+          updateRepresentativeColumn(repColumn, room);
+        }
+        
+        // Update member count column
+        const memberColumn = row.querySelector('.member-count');
+        if (memberColumn) {
+          updateMemberCountColumn(memberColumn, room);
+        }
+        
+        // Update status column if needed
+        const statusColumn = row.querySelector('td:nth-child(4)');
+        if (statusColumn) {
+          updateStatusColumn(statusColumn, room);
+        }
+        
+      } catch (error) {
+        console.error('Error refreshing room row:', error);
+      }
+    }
+    
+    // Update representative column content
+    function updateRepresentativeColumn(column, room) {
+      const hasPhone = room.phoneNumber && room.phoneNumber.trim() !== '';
+      
+      if (hasPhone) {
+        column.innerHTML = `
+          <button type="button" 
+                  class="representative-button occupied"
+                  onclick="openManageTenantsModal('${room.id}', '${room.roomNumber}')"
+                  title="Quản lý danh sách người thuê">
+            <div class="rep-info-inline">
+              <div class="rep-name-inline">
+                <i class="fas fa-user"></i>
+                <span>${room.tenantName || 'Người đại diện'}</span>
+              </div>
+              <div class="rep-phone-inline">
+                <i class="fas fa-phone"></i>
+                <span>${room.phoneNumber}</span>
+              </div>
+            </div>
+          </button>
+        `;
+      } else {
+        column.innerHTML = `
+          <button type="button" 
+                  class="representative-button vacant" 
+                  onclick="openAddTenantModal('${room.id}', '${room.roomNumber}')"
+                  title="Thêm người thuê">
+            <div class="empty-room">
+              <i class="fas fa-user-plus"></i>
+              <span>Thêm người thuê</span>
+            </div>
+          </button>
+        `;
+      }
+    }
+    
+    // Update member count column
+    function updateMemberCountColumn(column, room) {
+      const tenantCount = room.tenantCount || 0;
+      
+      if (tenantCount > 0) {
+        column.className = 'member-count occupied';
+        column.innerHTML = `<i class="fas fa-users"></i> ${tenantCount}`;
+      } else {
+        column.className = 'member-count vacant';
+        column.innerHTML = `<i class="fas fa-minus"></i> 0`;
+      }
+    }
+    
+    // Update status column content
+    function updateStatusColumn(column, room) {
+      const hasPhone = room.phoneNumber && room.phoneNumber.trim() !== '';
+      const currentStatus = room.status || 'vacant';
+      
+      let statusHtml = '';
+      
+      if (hasPhone) {
+        // Room has phone = occupied, can only switch to maintenance
+        if (currentStatus === 'maintenance') {
+          statusHtml = `
+            <form action="/update-room-status" method="POST" class="d-inline">
+              <input type="hidden" name="roomId" value="${room.id}">
+              <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+                <option value="occupied">Đã thuê</option>
+                <option value="maintenance" selected>Bảo trì</option>
+              </select>
+            </form>
+          `;
+        } else {
+          statusHtml = `
+            <form action="/update-room-status" method="POST" class="d-inline">
+              <input type="hidden" name="roomId" value="${room.id}">
+              <select name="status" class="form-select form-select-sm status-badge status-occupied" onchange="this.form.submit()">
+                <option value="occupied" selected>Đã thuê</option>
+                <option value="maintenance">Bảo trì</option>
+              </select>
+            </form>
+          `;
+        }
+      } else {
+        // Room has no phone = vacant, can only switch to maintenance
+        if (currentStatus === 'maintenance') {
+          statusHtml = `
+            <form action="/update-room-status" method="POST" class="d-inline">
+              <input type="hidden" name="roomId" value="${room.id}">
+              <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+                <option value="vacant">Trống</option>
+                <option value="maintenance" selected>Bảo trì</option>
+              </select>
+            </form>
+          `;
+        } else {
+          statusHtml = `
+            <form action="/update-room-status" method="POST" class="d-inline">
+              <input type="hidden" name="roomId" value="${room.id}">
+              <select name="status" class="form-select form-select-sm status-badge status-vacant" onchange="this.form.submit()">
+                <option value="vacant" selected>Trống</option>
+                <option value="maintenance">Bảo trì</option>
+              </select>
+            </form>
+          `;
+        }
+      }
+      
+      column.innerHTML = statusHtml;
+    }
+
+    // Format phone for display
+    function formatPhoneDisplay(phone) {
+      if (phone.startsWith('+84')) {
+        return '0' + phone.substring(3);
+      }
+      return phone;
     }
     
     // Open Manage Phone Modal

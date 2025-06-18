@@ -651,65 +651,169 @@
       }
     }
     
-    /* Simple Phone Button Design - Similar to Nodes */
-    .phone-button-container {
+    /* Representative Info Design */
+    .representative-info {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       padding: 1px;
     }
     
-    .phone-button {
+    .representative-button {
       background: #f9fafb;
       border: 1px solid #d1d5db;
       color: #6b7280;
-      padding: 6px 8px;
+      padding: 12px 14px;
       border-radius: 6px;
-      font-size: 0.8em;
+      font-size: 0.95em;
       cursor: pointer;
       transition: all 0.2s;
       text-decoration: none;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 150px;
       text-align: center;
       font-family: inherit;
       font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      min-height: 55px;
     }
     
-    .phone-button.has-phone {
+    .representative-button.occupied {
       background: #f0f9ff;
       border: 1px solid #10b981;
       color: #047857;
-      font-family: monospace;
-      letter-spacing: 0.5px;
     }
     
-    .phone-button.no-phone {
+    .representative-button.vacant {
       border: 1px dashed #9ca3af;
       color: #6b7280;
+      align-items: center;
+      text-align: center;
+      justify-content: center;
+      flex-direction: column;
     }
     
-    .phone-button:hover {
+    .rep-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.9em;
+      margin-bottom: 2px;
+    }
+    
+    .rep-phone {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8em;
+      color: #059669;
+      font-family: monospace;
+    }
+    
+    /* Single line layout for representative info */
+    .rep-info-inline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      font-size: 1em;
+      width: 100%;
+    }
+    
+    .rep-name-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #047857;
+      font-size: 1em;
+    }
+    
+    .rep-phone-inline {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #059669;
+      font-family: monospace;
+      font-size: 0.95em;
+    }
+    
+    .empty-room {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: #6b7280;
+      font-size: 1em;
+    }
+    
+    .representative-button:hover {
       transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     
-    .phone-button.has-phone:hover {
+    .representative-button.occupied:hover {
       background: #ecfdf5;
       border-color: #059669;
       color: #065f46;
     }
     
-    .phone-button.no-phone:hover {
+    .representative-button.vacant:hover {
       background: #f3f4f6;
       border-color: #6b7280;
       color: #374151;
     }
+    
+    /* Member Count Styles */
+    .member-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+    
+    .member-count.occupied {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    
+    .member-count.vacant {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    
+    /* Tenant Management Modal Styles */
+    .tenant-item {
+      background: #f9fafb;
+      transition: all 0.2s;
+    }
+    
+    .tenant-item:hover {
+      background: #f3f4f6;
+      border-color: #d1d5db !important;
+    }
+    
+    .tenant-name-primary {
+      font-size: 1.1em;
+      margin-bottom: 5px;
+    }
+    
+    .tenant-contact {
+      font-size: 0.9em;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+    
+    .tenant-actions .btn {
+      padding: 4px 8px;
+      font-size: 0.8em;
+    }
+    
+
     
     .status-badge {
       padding: 4px 10px;
@@ -948,10 +1052,28 @@
         gap: 1px;
       }
       
-      .phone-button {
-        font-size: 0.75em;
-        padding: 4px 6px;
-        max-width: 120px;
+      .representative-button {
+        font-size: 0.9em;
+        padding: 10px 12px;
+        min-height: 50px;
+      }
+      
+      .rep-info-inline {
+        gap: 12px;
+        font-size: 0.95em;
+      }
+      
+      .rep-name-inline {
+        font-size: 0.95em;
+      }
+      
+      .rep-phone-inline {
+        font-size: 0.9em;
+      }
+      
+      .member-count {
+        font-size: 0.7em;
+        padding: 3px 6px;
       }
     }
     
@@ -1018,10 +1140,29 @@
         gap: 1px;
       }
       
-      .phone-button {
-        font-size: 0.7em;
-        padding: 3px 4px;
-        max-width: 100px;
+      .representative-button {
+        font-size: 0.85em;
+        padding: 8px 10px;
+        min-height: 45px;
+      }
+      
+      .rep-info-inline {
+        gap: 10px;
+        font-size: 0.9em;
+        flex-wrap: wrap;
+      }
+      
+      .rep-name-inline {
+        font-size: 0.9em;
+      }
+      
+      .rep-phone-inline {
+        font-size: 0.85em;
+      }
+      
+      .member-count {
+        font-size: 0.65em;
+        padding: 2px 5px;
       }
       
       .room-number {

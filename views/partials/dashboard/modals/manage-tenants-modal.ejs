@@ -1,0 +1,71 @@
+<!-- Modal Manage Tenants -->
+<div class="modal fade" id="manageTenantsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="manageTenantsModalTitle">
+          <i class="fas fa-users"></i> Quản lý người thuê
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="manageTenantsRoomId">
+        
+        <!-- Current Tenants List -->
+        <div class="tenants-list-section">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6><i class="fas fa-list"></i> Danh sách người thuê</h6>
+            <button type="button" class="btn btn-primary btn-sm" onclick="showAddTenantForm()">
+              <i class="fas fa-user-plus"></i> Thêm người thuê
+            </button>
+          </div>
+          
+          <div id="tenantsListContainer">
+            <!-- Tenants will be loaded here -->
+            <div class="text-center text-muted py-3">
+              <i class="fas fa-spinner fa-spin"></i> Đang tải...
+            </div>
+          </div>
+        </div>
+
+        <!-- Add New Tenant Form (Hidden by default) -->
+        <div id="addTenantFormSection" style="display: none;">
+          <hr>
+          <h6><i class="fas fa-user-plus"></i> Thêm người thuê mới</h6>
+          <form id="addTenantForm">
+            <div class="row">
+              <div class="col-md-6">
+                <label for="newTenantName" class="form-label">
+                  <i class="fas fa-user"></i> Họ tên <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control" id="newTenantName" required>
+              </div>
+              <div class="col-md-6">
+                <label for="newTenantPhone" class="form-label">
+                  <i class="fas fa-phone"></i> Số điện thoại <span class="text-danger">*</span>
+                </label>
+                <input type="tel" class="form-control" id="newTenantPhone" required>
+              </div>
+            </div>
+                         <div class="form-text text-muted mt-2">
+               Người thuê mới sẽ được thêm vào danh sách. Người đầu tiên luôn là đại diện chính.
+             </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="hideAddTenantForm()">
+                <i class="fas fa-times"></i> Hủy
+              </button>
+              <button type="submit" class="btn btn-success btn-sm">
+                <i class="fas fa-save"></i> Lưu người thuê
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

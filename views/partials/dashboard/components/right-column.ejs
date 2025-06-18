@@ -6,7 +6,7 @@
             <div class="search-filters">
               <div class="filter-group">
                 <div class="search-input">
-                  <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Tìm theo số phòng hoặc SĐT...">
+                  <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Tìm theo số phòng hoặc tên người đại diện...">
                 </div>
                 <div class="filter-select">
                   <select class="form-select form-select-sm" id="statusFilter">
@@ -50,17 +50,19 @@
           <table class="table table-hover table-sm">
             <thead class="thead-border">
               <tr>
-                    <th width="10%">Phòng</th>
-                    <th width="25%">Số điện thoại</th>
+                    <th width="8%">Phòng</th>
+                    <th width="30%">Người đại diện</th>
+                    <th width="8%">Thành viên</th>
                     <th width="12%">Trạng thái</th>
-                    <th width="45%">Quản lý Nodes</th>
-                    <th width="8%">Hành động</th>
+                    <th width="32%">Quản lý Nodes</th>
+                    <th width="10%">Hành động</th>
               </tr>
             </thead>
                 <tbody id="roomsTableBody">
               <% if (rooms && rooms.length > 0) { %>
                 <% rooms.forEach((room, index) => { %>
                       <tr class="room-row" 
+                          data-room-id="<%= room.id %>"
                           data-room-number="<%= room.roomNumber %>"
                           data-phone="<%= room.phoneNumber %>"
                           data-status="<%= room.status %>"
@@ -71,25 +73,49 @@
                     </td>
                     
                     <td>
-                      <div class="phone-button-container">
+                      <div class="representative-info">
                         <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
                           <button type="button" 
-                                  class="phone-button has-phone manage-phone-btn"
-                                  data-room-id="<%= room.id %>" 
-                                  data-room-number="<%= room.roomNumber %>" 
-                                  data-phone="<%= room.phoneNumber %>"
-                                  title="Quản lý số điện thoại">
-                            <%= room.phoneNumber %>
+                                  class="representative-button occupied"
+                                  onclick="openManageTenantsModal('<%= room.id %>', '<%= room.roomNumber %>')"
+                                  title="Quản lý danh sách người thuê">
+                            <div class="rep-info-inline">
+                              <div class="rep-name-inline">
+                                <i class="fas fa-user"></i>
+                                <span><%= room.tenantName || 'Người đại diện' %></span>
+                              </div>
+                              <div class="rep-phone-inline">
+                                <i class="fas fa-phone"></i>
+                                <span><%= room.phoneNumber %></span>
+                              </div>
+                            </div>
                           </button>
                         <% } else { %>
                           <button type="button" 
-                                  class="phone-button no-phone" 
-                                  onclick="openAddPhoneModal('<%= room.id %>', '<%= room.roomNumber %>')"
-                                  title="Thêm số điện thoại">
-                            + Thêm số điện thoại
+                                  class="representative-button vacant" 
+                                  onclick="openAddTenantModal('<%= room.id %>', '<%= room.roomNumber %>')"
+                                  title="Thêm người thuê">
+                            <div class="empty-room">
+                              <i class="fas fa-user-plus"></i>
+                              <span>Thêm người thuê</span>
+                            </div>
                           </button>
                         <% } %>
                       </div>
+                    </td>
+                    
+                    <td class="text-center">
+                      <% if (room.tenantCount && room.tenantCount > 0) { %>
+                        <span class="member-count occupied">
+                          <i class="fas fa-users"></i>
+                          <%= room.tenantCount %>
+                        </span>
+                      <% } else { %>
+                        <span class="member-count vacant">
+                          <i class="fas fa-minus"></i>
+                          0
+                        </span>
+                      <% } %>
                     </td>
                     
                     <td>

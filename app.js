@@ -287,6 +287,372 @@ app.post('/remove-phone-from-room', requireAuth, async (req, res) => {
   }
 });
 
+// Add tenant to room (NEW)
+app.post('/add-tenant', requireAuth, async (req, res) => {
+  try {
+    const { roomId, tenantName, phoneNumber } = req.body;
+
+    if (!roomId || !tenantName || !phoneNumber) {
+      return res.redirect('/dashboard?error=Vui lòng nhập đầy đủ thông tin người thuê');
+    }
+
+    // Validate input
+    const trimmedName = tenantName.trim();
+    let trimmedPhone = phoneNumber.trim();
+
+    if (!trimmedName || !trimmedPhone) {
+      return res.redirect('/dashboard?error=Tên và số điện thoại không được để trống');
+    }
+
+    // Normalize phone number: convert 0 prefix to +84 for storage
+    if (trimmedPhone.startsWith('0') && trimmedPhone.length >= 10) {
+      trimmedPhone = '+84' + trimmedPhone.substring(1);
+    }
+
+    // Check room exists and is vacant
+    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    if (!roomSnapshot.exists()) {
+      return res.redirect('/dashboard?error=Phòng không tồn tại');
+    }
+
+    const currentRoom = roomSnapshot.val();
+    if (currentRoom.phone && currentRoom.phone.trim()) {
+      return res.redirect('/dashboard?error=Phòng đã có người thuê');
+    }
+
+    // Check phone is not already assigned to another room
+    const roomsSnapshot = await db.ref('rooms').once('value');
+    const allRooms = roomsSnapshot.val() || {};
+    
+    const phoneAlreadyAssigned = Object.entries(allRooms).some(([id, room]) => 
+      id !== roomId && room.phone && room.phone.trim() === trimmedPhone
+    );
+    
+    if (phoneAlreadyAssigned) {
+      return res.redirect('/dashboard?error=Số điện thoại đã được sử dụng cho phòng khác');
+    }
+
+    // Create tenant data structure (simplified)
+    const tenantData = {
+      name: trimmedName,
+      phone: trimmedPhone
+    };
+
+    // Determine new status
+    let newStatus = currentRoom.status === 'maintenance' ? 'maintenance' : 'occupied';
+
+    // Check if room already has tenants array, if not create it
+    const currentTenants = currentRoom.tenants || [];
+    const updatedTenants = [...currentTenants, tenantData];
+
+    // Update room with tenant info
+    await db.ref(`rooms/${roomId}`).update({
+      phone: trimmedPhone,  // Keep for backward compatibility (representative phone)
+      tenants: updatedTenants,  // New multi-tenant structure
+      status: newStatus
+    });
+
+    res.redirect('/dashboard?success=Thêm người thuê thành công');
+  } catch (error) {
+    console.error('Lỗi khi thêm người thuê:', error);
+    res.redirect('/dashboard?error=Lỗi khi thêm người thuê: ' + error.message);
+  }
+});
+
+// Add tenant to room (API)
+app.post('/api/room/:roomId/add-tenant', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { tenantName, phoneNumber } = req.body;
+
+    if (!roomId || !tenantName || !phoneNumber) {
+      return res.json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin người thuê' });
+    }
+
+    // Validate input
+    const trimmedName = tenantName.trim();
+    let trimmedPhone = phoneNumber.trim();
+
+    if (!trimmedName || !trimmedPhone) {
+      return res.json({ success: false, message: 'Tên và số điện thoại không được để trống' });
+    }
+
+    // Normalize phone number: convert 0 prefix to +84 for storage
+    if (trimmedPhone.startsWith('0') && trimmedPhone.length >= 10) {
+      trimmedPhone = '+84' + trimmedPhone.substring(1);
+    }
+
+    // Check room exists
+    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    if (!roomSnapshot.exists()) {
+      return res.json({ success: false, message: 'Phòng không tồn tại' });
+    }
+
+    const currentRoom = roomSnapshot.val();
+    
+    // Check if this phone is already in use by any tenant in any room
+    const roomsSnapshot = await db.ref('rooms').once('value');
+    const allRooms = roomsSnapshot.val() || {};
+    
+    const phoneAlreadyAssigned = Object.entries(allRooms).some(([id, room]) => {
+      if (room.tenants && Array.isArray(room.tenants)) {
+        return room.tenants.some(tenant => tenant.phone === trimmedPhone);
+      }
+      // Also check old phone field for backward compatibility
+      return room.phone && room.phone.trim() === trimmedPhone;
+    });
+    
+    if (phoneAlreadyAssigned) {
+      return res.json({ success: false, message: 'Số điện thoại đã được sử dụng cho phòng khác' });
+    }
+
+    // Create tenant data structure
+    const tenantData = {
+      name: trimmedName,
+      phone: trimmedPhone
+    };
+
+    // Get current tenants array
+    const currentTenants = currentRoom.tenants || [];
+    const updatedTenants = [...currentTenants, tenantData];
+
+    // Update room data
+    const updateData = {
+      tenants: updatedTenants,
+      status: 'occupied'
+    };
+
+    // If this is the first tenant, also update the phone field for backward compatibility
+    if (currentTenants.length === 0) {
+      updateData.phone = trimmedPhone;
+    }
+
+    // Update room with new tenant
+    await db.ref(`rooms/${roomId}`).update(updateData);
+
+    res.json({ 
+      success: true, 
+      message: 'Thêm người thuê thành công',
+      tenant: tenantData,
+      totalTenants: updatedTenants.length
+    });
+  } catch (error) {
+    console.error('Lỗi khi thêm người thuê:', error);
+    res.json({ success: false, message: 'Lỗi khi thêm người thuê: ' + error.message });
+  }
+});
+
+// Edit tenant in room (API)
+app.post('/api/room/:roomId/edit-tenant', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { tenantIndex, tenantName, phoneNumber } = req.body;
+
+    if (!roomId || tenantIndex === undefined || !tenantName || !phoneNumber) {
+      return res.json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin' });
+    }
+
+    // Validate input
+    const trimmedName = tenantName.trim();
+    let trimmedPhone = phoneNumber.trim();
+    const index = parseInt(tenantIndex);
+
+    if (!trimmedName || !trimmedPhone || index < 0) {
+      return res.json({ success: false, message: 'Thông tin không hợp lệ' });
+    }
+
+    // Normalize phone number
+    if (trimmedPhone.startsWith('0') && trimmedPhone.length >= 10) {
+      trimmedPhone = '+84' + trimmedPhone.substring(1);
+    }
+
+    // Check room exists
+    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    if (!roomSnapshot.exists()) {
+      return res.json({ success: false, message: 'Phòng không tồn tại' });
+    }
+
+    const currentRoom = roomSnapshot.val();
+    const currentTenants = currentRoom.tenants || [];
+
+    if (index >= currentTenants.length) {
+      return res.json({ success: false, message: 'Không tìm thấy người thuê' });
+    }
+
+    // Check if phone is already used by another tenant (excluding current tenant)
+    const roomsSnapshot = await db.ref('rooms').once('value');
+    const allRooms = roomsSnapshot.val() || {};
+    
+    const phoneAlreadyAssigned = Object.entries(allRooms).some(([id, room]) => {
+      if (room.tenants && Array.isArray(room.tenants)) {
+        return room.tenants.some((tenant, idx) => {
+          // Skip current tenant being edited
+          if (id === roomId && idx === index) return false;
+          return tenant.phone === trimmedPhone;
+        });
+      }
+      // Also check old phone field, but skip if it's the current room's representative being edited
+      if (id === roomId && index === 0) return false;
+      return room.phone && room.phone.trim() === trimmedPhone;
+    });
+    
+    if (phoneAlreadyAssigned) {
+      return res.json({ success: false, message: 'Số điện thoại đã được sử dụng bởi người thuê khác' });
+    }
+
+    // Update tenant data
+    const updatedTenants = [...currentTenants];
+    updatedTenants[index] = {
+      name: trimmedName,
+      phone: trimmedPhone
+    };
+
+    // Update room data
+    const updateData = {
+      tenants: updatedTenants
+    };
+
+    // If editing the representative (index 0), also update the phone field
+    if (index === 0) {
+      updateData.phone = trimmedPhone;
+    }
+
+    await db.ref(`rooms/${roomId}`).update(updateData);
+
+    res.json({ 
+      success: true, 
+      message: 'Cập nhật thông tin người thuê thành công',
+      updatedTenant: updatedTenants[index]
+    });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật người thuê:', error);
+    res.json({ success: false, message: 'Lỗi khi cập nhật người thuê: ' + error.message });
+  }
+});
+
+// Delete tenant from room (API)
+app.post('/api/room/:roomId/delete-tenant', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { tenantIndex } = req.body;
+
+    if (!roomId || tenantIndex === undefined) {
+      return res.json({ success: false, message: 'Thiếu thông tin cần thiết' });
+    }
+
+    const index = parseInt(tenantIndex);
+    if (index < 0) {
+      return res.json({ success: false, message: 'Chỉ số người thuê không hợp lệ' });
+    }
+
+    // Check room exists
+    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    if (!roomSnapshot.exists()) {
+      return res.json({ success: false, message: 'Phòng không tồn tại' });
+    }
+
+    const currentRoom = roomSnapshot.val();
+    const currentTenants = currentRoom.tenants || [];
+
+    if (index >= currentTenants.length) {
+      return res.json({ success: false, message: 'Không tìm thấy người thuê' });
+    }
+
+    // Remove tenant from array
+    const updatedTenants = currentTenants.filter((_, i) => i !== index);
+
+    // Update room data
+    const updateData = {
+      tenants: updatedTenants
+    };
+
+    // Update room status and representative phone
+    if (updatedTenants.length === 0) {
+      // No tenants left - mark as vacant
+      updateData.status = 'vacant';
+      updateData.phone = '';
+    } else {
+      // Update representative phone (first tenant becomes representative)
+      updateData.phone = updatedTenants[0].phone;
+      updateData.status = 'occupied';
+    }
+
+    await db.ref(`rooms/${roomId}`).update(updateData);
+
+    const deletedTenantName = currentTenants[index].name;
+    const message = updatedTenants.length === 0 
+      ? `Đã xóa người thuê "${deletedTenantName}". Phòng hiện đang trống.`
+      : `Đã xóa người thuê "${deletedTenantName}". ${index === 0 ? `"${updatedTenants[0].name}" hiện là đại diện mới.` : ''}`;
+
+    res.json({ 
+      success: true, 
+      message: message,
+      remainingTenants: updatedTenants.length
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa người thuê:', error);
+    res.json({ success: false, message: 'Lỗi khi xóa người thuê: ' + error.message });
+  }
+});
+
+// Get room data for frontend updates (API)
+app.get('/api/room/:roomId/data', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    
+    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    if (!roomSnapshot.exists()) {
+      return res.json({ success: false, message: 'Phòng không tồn tại' });
+    }
+    
+    const roomData = roomSnapshot.val();
+    const tenants = roomData.tenants || [];
+    
+    // Format room data similar to dashboard controller
+    const room = {
+      id: roomId,
+      roomNumber: roomData.roomNumber || roomId,
+      phoneNumber: formatPhoneNumber(roomData.phone || ''),
+      tenantName: tenants.length > 0 ? tenants[0].name : '',
+      tenantCount: tenants.length,
+      status: roomData.status || 'vacant',
+      floor: roomData.floor || 1
+    };
+    
+    res.json({ 
+      success: true, 
+      room: room
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu phòng:', error);
+    res.json({ success: false, message: 'Lỗi khi lấy dữ liệu phòng' });
+  }
+});
+
+// Get tenants list for a room (API)
+app.get('/api/room/:roomId/tenants', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    
+    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    if (!roomSnapshot.exists()) {
+      return res.json({ success: false, message: 'Phòng không tồn tại' });
+    }
+    
+    const roomData = roomSnapshot.val();
+    const tenants = roomData.tenants || [];
+    
+    res.json({ 
+      success: true, 
+      tenants: tenants,
+      count: tenants.length
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách người thuê:', error);
+    res.json({ success: false, message: 'Lỗi khi lấy danh sách người thuê' });
+  }
+});
+
 // Helper function to calculate monthly usage by type
 function calculateMonthlyUsageByType(historyData, month, year, roomId, dataType) {
   try {
