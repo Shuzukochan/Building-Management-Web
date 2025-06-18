@@ -91,9 +91,3 @@ node app.js
 - **Firebase Integration**: Realtime database + FCM
 - **Authentication**: Session-based auth
 
-## 📝 Lưu ý
-
-- File gốc được lưu trong `backup/` để tham khảo
-- Dashboard được tách từ 6000 lines thành các component nhỏ
-- Sử dụng EJS templating engine
-- Bootstrap 5 cho UI framework 
