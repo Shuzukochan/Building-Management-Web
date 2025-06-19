@@ -69,6 +69,11 @@ app.get("/dashboard", requireAuth, getDashboard);
 app.get("/statistic", requireAuth, getStatistic);
 app.get("/payments", requireAuth, getPayments);
 
+// Public routes (no authentication required)
+app.get("/privacy", (req, res) => {
+  res.render("privacy");
+});
+
 // Payment API routes
 app.post("/api/create-test-payment", requireAuth, createTestPayment);
 app.get("/api/unpaid-previous-months", requireAuth, getUnpaidPreviousMonths);
