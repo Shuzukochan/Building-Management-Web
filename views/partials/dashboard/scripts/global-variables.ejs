@@ -64,30 +64,11 @@
         history.replaceState(null, null, window.location.pathname);
       });
       
-      loadPhoneNumbers();
-      loadAvailableRooms();
-      initializeRoomsData();
-      setupEventListeners();
+      // Functions will be called from main-initialization.ejs to avoid duplicates
       
-      // Auto-load monthly statistics immediately
-      refreshMonthlyStats();
+      // Monthly statistics are now handled by real-time updater
       
-      // Auto-load feedback list immediately
-      initializeFeedbackSystem();
-      
-      // Debug Firebase after 5 seconds
-      setTimeout(() => {
-        console.log('🔍 Firebase Debug Check:');
-        console.log('- Firebase available:', typeof firebase !== 'undefined');
-        console.log('- Database ref:', feedbackRef);
-        console.log('- Listener active:', feedbackListener !== null);
-        console.log('- Firebase apps:', firebase.apps.length);
-        
-        if (typeof window.testFirebaseRealtime === 'function') {
-          console.log('🧪 Running Firebase test...');
-          window.testFirebaseRealtime();
-        }
-      }, 5000);
+      // Firebase debug functions available globally for manual testing
       
       // Cleanup listeners when page is unloaded
       window.addEventListener('beforeunload', function() {
@@ -100,11 +81,15 @@
         if (target) {
           e.preventDefault();
           
+                  // Extract node info from button
+          
           const roomId = target.dataset.roomId;
           const roomNumber = target.dataset.roomNumber;
           const nodeId = target.dataset.nodeId;
           const nodeType = target.dataset.nodeType;
           const customName = target.dataset.customName || '';
+          
+          // Extracted custom name from button
           
           if (roomId && roomNumber && nodeId && nodeType) {
             openManageNodeModal(roomId, roomNumber, nodeId, nodeType, customName);
@@ -170,12 +155,8 @@
         console.error('Bootstrap is not defined');
         return;
       }
-      console.log('✅ Bootstrap loaded:', bootstrap);
-      
       try {
-        console.log('🧪 Testing openManageNodeModal...');
         openManageNodeModal('test_room', '101', 'test_node', 'electricity', '');
-        console.log('✅ openManageNodeModal completed');
       } catch (error) {
         console.error('❌ Error in openManageNodeModal:', error);
         alert('Lỗi: ' + error.message);
@@ -186,15 +167,13 @@
     window.testFirebaseRealtime = function() {
       console.log('🔥 Testing Firebase Realtime...');
       console.log('Firebase available:', typeof firebase !== 'undefined');
-      console.log('Database ref:', feedbackRef);
-      console.log('Listener active:', feedbackListener !== null);
+      // Firebase status check
       
       if (feedbackRef) {
-        console.log('📡 Testing direct Firebase read...');
         feedbackRef.once('value').then(snapshot => {
-          console.log('✅ Firebase read successful:', snapshot.val());
+          console.log('Firebase test successful:', snapshot.val());
         }).catch(error => {
-          console.error('❌ Firebase read failed:', error);
+          console.error('Firebase test failed:', error);
         });
       }
     };
@@ -231,7 +210,7 @@
 
     // Debug function để test button điện
     window.testElectricityButton = function() {
-      console.log('🔍 Testing electricity buttons...');
+      // Test electricity buttons
       
       const electricButtons = document.querySelectorAll('.quick-action-btn.electricity.has-node');
       console.log('Found electricity buttons:', electricButtons.length);
@@ -582,10 +561,12 @@
     // Load phone numbers from API (chỉ số chưa có phòng)
     async function loadPhoneNumbers() {
       try {
+        const select = document.getElementById('phoneNumber');
+        if (!select) return; // Skip if element doesn't exist
+        
         const response = await fetch('/api/phone-numbers');
         const phoneNumbers = await response.json();
         
-        const select = document.getElementById('phoneNumber');
         select.innerHTML = '<option value="">Chọn số điện thoại</option>';
         
         // Chỉ hiển thị số điện thoại chưa có phòng
@@ -618,13 +599,18 @@
         
       } catch (error) {
         console.error('Lỗi khi load số điện thoại:', error);
-        document.getElementById('phoneNumber').innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+        const select = document.getElementById('phoneNumber');
+        if (select) {
+          select.innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+        }
       }
     }
 
     // Show tenant information
     function showTenantInfo(name, email) {
       const infoDiv = document.getElementById('tenantInfo');
+      if (!infoDiv) return;
+      
       infoDiv.innerHTML = `
         <strong><i class="fas fa-user"></i> Thông tin khách thuê:</strong><br>
         <i class="fas fa-user-tag"></i> Tên: ${name || 'Chưa có'}<br>
@@ -634,7 +620,10 @@
     }
 
     function hideTenantInfo() {
-      document.getElementById('tenantInfo').style.display = 'none';
+      const infoDiv = document.getElementById('tenantInfo');
+      if (infoDiv) {
+        infoDiv.style.display = 'none';
+      }
     }
 
     // Edit room function
@@ -699,10 +688,12 @@
     // Load available rooms (vacant only)
     async function loadAvailableRooms() {
       try {
+        const select = document.getElementById('availableRoom');
+        if (!select) return; // Skip if element doesn't exist
+        
         const response = await fetch('/api/available-rooms');
         const availableRooms = await response.json();
         
-        const select = document.getElementById('availableRoom');
         select.innerHTML = '<option value="">Chọn phòng trống</option>';
         
         if (availableRooms.length === 0) {
@@ -739,7 +730,10 @@
         
       } catch (error) {
         console.error('Lỗi khi load phòng trống:', error);
-        document.getElementById('availableRoom').innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+        const select = document.getElementById('availableRoom');
+        if (select) {
+          select.innerHTML = '<option value="">Lỗi khi tải dữ liệu</option>';
+        }
       }
     }
 
@@ -952,7 +946,7 @@
         dashboardGrid.style.overflow = 'hidden';
       }
       
-      console.log('✅ Fixed viewport overflow');
+      
     }
 
     // Global fix for all modals - add event listeners when DOM is ready
@@ -976,7 +970,7 @@
           modalElement.addEventListener('hidden.bs.modal', function () {
             fixViewportOverflow();
           });
-          console.log(`✅ Added overflow fix listener to ${modalId}`);
+  
         }
       });
     });
@@ -984,6 +978,10 @@
     // Open Manage Node Modal
     function openManageNodeModal(roomId, roomNumber, nodeId, nodeType, customName = '') {
       try {
+        console.log('🔧 Opening manage node modal with params:', {
+          roomId, roomNumber, nodeId, nodeType, customName
+        });
+        
         // Kiểm tra modal tồn tại
         const modal = document.getElementById('manageNodeModal');
         if (!modal) {
@@ -1043,9 +1041,18 @@
         const customNameSection = document.getElementById('manageCustomNameSection');
         const editCustomNameInput = document.getElementById('editCustomName');
         
+        console.log('🏷️ Setting up custom name section:', {
+          nodeType,
+          customName,
+          sectionExists: !!customNameSection,
+          inputExists: !!editCustomNameInput
+        });
+        
         if (nodeType === 'custom' && customNameSection && editCustomNameInput) {
           customNameSection.style.display = 'block';
           editCustomNameInput.value = customName || '';
+          editCustomNameInput.defaultValue = customName || '';
+          console.log('✅ Custom name populated:', editCustomNameInput.value);
         } else if (customNameSection) {
           customNameSection.style.display = 'none';
         }
@@ -1303,19 +1310,14 @@
         return;
       }
       
-      // Check if anything changed
-      const nodeIdChanged = newNodeId !== originalNodeId;
-      const customNameChanged = (currentManagedNodeType === 'custom') && (newCustomName !== (editCustomNameInput.defaultValue || ''));
-      
-      if (!nodeIdChanged && !customNameChanged) {
-        // Nothing changed, just close modal
-        const modal = document.getElementById('manageNodeModal');
-        const modalInstance = bootstrap.Modal.getInstance(modal);
-        if (modalInstance) {
-          modalInstance.hide();
-        }
-        return;
-      }
+      // Always allow save - let backend handle validation and changes
+      console.log('🔄 Saving node changes:', {
+        roomId: currentManagedRoomId,
+        oldNodeId: originalNodeId,
+        newNodeId: newNodeId,
+        customName: newCustomName,
+        nodeType: currentManagedNodeType
+      });
       
       // Show loading state
       const saveButton = document.querySelector('button[onclick="saveNodeChanges()"]');
@@ -1345,7 +1347,8 @@
       newNodeIdInput.name = 'newNodeId';
       newNodeIdInput.value = newNodeId;
       
-      if (currentManagedNodeType === 'custom' && customNameChanged) {
+      // Always send customName if it exists
+      if (currentManagedNodeType === 'custom') {
         const customNameInput = document.createElement('input');
         customNameInput.type = 'hidden';
         customNameInput.name = 'customName';

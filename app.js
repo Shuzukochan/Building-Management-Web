@@ -68,6 +68,9 @@ app.use("/api", roomRoutes);  // Room API routes
 app.get("/dashboard", requireAuth, getDashboard);
 app.get("/statistic", requireAuth, getStatistic);
 app.get("/payments", requireAuth, getPayments);
+app.get("/about", requireAuth, (req, res) => {
+  res.render("about", { currentPage: 'about' });
+});
 
 // Public routes (no authentication required)
 app.get("/privacy", (req, res) => {
@@ -126,6 +129,22 @@ app.post('/add-room', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Lỗi khi thêm phòng:', error);
     res.redirect('/dashboard?error=Lỗi khi thêm phòng: ' + error.message);
+  }
+});
+
+// Update room status
+app.post('/update-room-status', requireAuth, async (req, res) => {
+  try {
+    const { roomId, status } = req.body;
+
+    await db.ref(`rooms/${roomId}`).update({
+      status: status
+    });
+
+    res.redirect('/dashboard?success=Cập nhật trạng thái thành công');
+  } catch (error) {
+    console.error('Lỗi khi cập nhật trạng thái:', error);
+    res.redirect('/dashboard?error=Lỗi khi cập nhật trạng thái: ' + error.message);
   }
 });
 
@@ -666,39 +685,82 @@ function calculateMonthlyUsageByType(historyData, month, year, roomId, dataType)
     
     console.log(`📅 Calculating ${dataType} usage for room ${roomId} for ${monthStr}/${yearStr}`);
     
-    // Get all dates in current month
-    const monthDates = [];
-    const daysInMonth = new Date(year, month, 0).getDate();
+    // Calculate previous month
+    let prevMonth = month - 1;
+    let prevYear = year;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear = year - 1;
+    }
+    const prevMonthStr = prevMonth.toString().padStart(2, '0');
+    const prevYearStr = prevYear.toString();
     
-    for (let day = 1; day <= daysInMonth; day++) {
+    // Find latest date (highest date) in current month
+    let currentMonthLatestValue = null;
+    let currentMonthLatestDate = null;
+    const daysInCurrentMonth = new Date(year, month, 0).getDate();
+    
+    for (let day = daysInCurrentMonth; day >= 1; day--) {
       const dayStr = day.toString().padStart(2, '0');
       const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
       if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
-        monthDates.push({
-          date: dateStr,
-          value: historyData[dateStr][dataType] || 0
-        });
+        currentMonthLatestValue = historyData[dateStr][dataType] || 0;
+        currentMonthLatestDate = dateStr;
+        break; // Found the latest date with data
       }
     }
     
-    console.log(`📊 Found ${monthDates.length} days of ${dataType} data for room ${roomId}`);
-    
-    if (monthDates.length < 2) {
-      console.log(`⚠️ Not enough ${dataType} data for room ${roomId} (need at least 2 days)`);
+    if (currentMonthLatestValue === null) {
+      console.log(`⚠️ No ${dataType} data for room ${roomId} in current month`);
       return 0;
     }
     
-    // Sort by date
-    monthDates.sort((a, b) => a.date.localeCompare(b.date));
+    console.log(`📊 Current month latest: ${currentMonthLatestValue} on ${currentMonthLatestDate}`);
     
-    // Get first and last readings of the month
-    const firstValue = monthDates[0].value;
-    const lastValue = monthDates[monthDates.length - 1].value;
+    // Find latest date (highest date) in previous month
+    let prevMonthLatestValue = null;
+    let prevMonthLatestDate = null;
+    const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
     
-    console.log(`🔍 Room ${roomId} ${dataType}: ${firstValue} -> ${lastValue} (${monthDates[0].date} to ${monthDates[monthDates.length - 1].date})`);
+    for (let day = daysInPrevMonth; day >= 1; day--) {
+      const dayStr = day.toString().padStart(2, '0');
+      const dateStr = `${prevYearStr}-${prevMonthStr}-${dayStr}`;
+      if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+        prevMonthLatestValue = historyData[dateStr][dataType] || 0;
+        prevMonthLatestDate = dateStr;
+        break; // Found the latest date with data
+      }
+    }
     
-    // Calculate usage (ensure non-negative)
-    const usage = Math.max(0, lastValue - firstValue);
+    let usage = 0;
+    
+    if (prevMonthLatestValue !== null) {
+      // Case 1: Have previous month data - use latest current month - latest previous month
+      usage = Math.max(0, currentMonthLatestValue - prevMonthLatestValue);
+      console.log(`🔍 Room ${roomId} ${dataType}: ${currentMonthLatestValue} (${currentMonthLatestDate}) - ${prevMonthLatestValue} (${prevMonthLatestDate}) = ${usage}`);
+    } else {
+      // Case 2: No previous month data - use latest current month - earliest current month
+      let currentMonthEarliestValue = null;
+      let currentMonthEarliestDate = null;
+      
+      for (let day = 1; day <= daysInCurrentMonth; day++) {
+        const dayStr = day.toString().padStart(2, '0');
+        const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+        if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+          currentMonthEarliestValue = historyData[dateStr][dataType] || 0;
+          currentMonthEarliestDate = dateStr;
+          break; // Found the earliest date with data
+        }
+      }
+      
+      if (currentMonthEarliestValue !== null) {
+        usage = Math.max(0, currentMonthLatestValue - currentMonthEarliestValue);
+        console.log(`🔍 Room ${roomId} ${dataType}: ${currentMonthLatestValue} (${currentMonthLatestDate}) - ${currentMonthEarliestValue} (${currentMonthEarliestDate}) = ${usage} (fallback to current month earliest)`);
+      } else {
+        console.log(`⚠️ No valid data for ${dataType} in room ${roomId}`);
+        return 0;
+      }
+    }
     
     console.log(`📈 Room ${roomId} ${dataType} monthly usage: ${usage}`);
     

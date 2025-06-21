@@ -1,4 +1,8 @@
 <script>
+  // Global flag to prevent infinite loop
+  window.statisticsInitialized = false;
+  window.preventAutoSubmit = false;
+  
   // Initialize everything when DOM is loaded
   document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Statistics page initializing...');
@@ -14,11 +18,15 @@
       const electricViewType = '<%= viewTypeElectric || "day" %>';
       if (electricViewType === 'day') {
         pickerRoots.electricDateRange = createDateRangePicker('electricDateRangePicker', 'fromElectricDateHidden', 'toElectricDateHidden', () => {
-          setTimeout(() => document.getElementById('electricForm').submit(), 100);
+          if (!window.preventAutoSubmit) {
+            setTimeout(() => document.getElementById('electricForm').submit(), 100);
+          }
         });
       } else {
         pickerRoots.electricRange = createMonthRangePicker('electricRangePicker', 'fromElectricHidden', 'toElectricHidden', () => {
-          setTimeout(() => document.getElementById('electricForm').submit(), 100);
+          if (!window.preventAutoSubmit) {
+            setTimeout(() => document.getElementById('electricForm').submit(), 100);
+          }
         });
       }
       
@@ -26,15 +34,19 @@
       const waterViewType = '<%= viewTypeWater || "day" %>';
       if (waterViewType === 'day') {
         pickerRoots.waterDateRange = createDateRangePicker('waterDateRangePicker', 'fromWaterDateHidden', 'toWaterDateHidden', () => {
-          setTimeout(() => document.getElementById('waterForm').submit(), 100);
+          if (!window.preventAutoSubmit) {
+            setTimeout(() => document.getElementById('waterForm').submit(), 100);
+          }
         });
       } else {
         pickerRoots.waterRange = createMonthRangePicker('waterRangePicker', 'fromWaterHidden', 'toWaterHidden', () => {
-          setTimeout(() => document.getElementById('waterForm').submit(), 100);
+          if (!window.preventAutoSubmit) {
+            setTimeout(() => document.getElementById('waterForm').submit(), 100);
+          }
         });
       }
       
-      console.log('✅ Date pickers initialized');
+      
     }, 500);
     
     // Create charts
@@ -42,7 +54,7 @@
       createCharts();
     }, 800);
     
-    console.log('✅ Statistics page initialized');
+    
   });
 
   // Function to set default date ranges
@@ -123,16 +135,62 @@
     const needsWaterReload = currentWaterViewType === 'month' && 
       (!window.location.search.includes('fromMonthWater') || !window.location.search.includes('toMonthWater'));
     
-    if (needsElectricReload) {
-      console.log('🔄 Auto-submitting electric form with default 9-month range');
-      setTimeout(() => {
-        document.getElementById('electricForm').submit();
-      }, 1000);
-    } else if (needsWaterReload) {
-      console.log('🔄 Auto-submitting water form with default 9-month range');
-      setTimeout(() => {
-        document.getElementById('waterForm').submit();
-      }, 1000);
+    // Check if both are already in month mode to detect potential loop
+    const bothInMonthMode = currentElectricViewType === 'month' && currentWaterViewType === 'month';
+    const hasAllMonthParams = window.location.search.includes('fromMonthElectric') && 
+                             window.location.search.includes('toMonthElectric') &&
+                             window.location.search.includes('fromMonthWater') && 
+                             window.location.search.includes('toMonthWater');
+    
+    console.log('🔍 Loop detection:', { 
+      bothInMonthMode, 
+      hasAllMonthParams, 
+      needsElectricReload, 
+      needsWaterReload,
+      currentUrl: window.location.search 
+    });
+    
+    // CRITICAL: If both are in month mode and have all params, set prevent flag
+    if (bothInMonthMode && hasAllMonthParams) {
+      window.preventAutoSubmit = true;
+      console.log('🛑 Preventing auto-submit to avoid loop (both charts in month mode with params)');
     }
+    
+    // Only proceed with auto-submit if not prevented
+    if (!window.preventAutoSubmit) {
+      // Fix: Chỉ submit khi cần thiết và tránh loop
+      // Nếu cả hai đều cần reload, chỉ submit một form duy nhất với cả hai parameters
+      if (needsElectricReload && needsWaterReload) {
+        console.log('🔄 Both charts need reload - submitting combined form to avoid loop');
+        // Tạo URL với cả hai parameters để tránh loop
+        const url = new URL(window.location.href);
+        url.searchParams.set('viewTypeElectric', 'month');
+        url.searchParams.set('viewTypeWater', 'month');
+        
+        // Set default month ranges for both
+        const last9Months = getLast9Months();
+        url.searchParams.set('fromMonthElectric', last9Months[0].monthYear);
+        url.searchParams.set('toMonthElectric', last9Months[last9Months.length - 1].monthYear);
+        url.searchParams.set('fromMonthWater', last9Months[0].monthYear);
+        url.searchParams.set('toMonthWater', last9Months[last9Months.length - 1].monthYear);
+        
+        setTimeout(() => {
+          window.location.href = url.toString();
+        }, 1000);
+      } else if (needsElectricReload) {
+        console.log('🔄 Auto-submitting electric form with default 9-month range');
+        setTimeout(() => {
+          document.getElementById('electricForm').submit();
+        }, 1000);
+      } else if (needsWaterReload) {
+        console.log('🔄 Auto-submitting water form with default 9-month range');
+        setTimeout(() => {
+          document.getElementById('waterForm').submit();
+        }, 1000);
+      }
+    }
+    
+    // Set initialization flag
+    window.statisticsInitialized = true;
   }
 </script> 

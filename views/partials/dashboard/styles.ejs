@@ -654,8 +654,11 @@
     /* Representative Info Design */
     .representative-info {
       display: flex;
-      justify-content: flex-start;
+      justify-content: center;
+      align-items: center;
       padding: 1px;
+      max-width: 220px;
+      margin: 0 auto; /* Căn giữa container trong parent cell */
     }
     
     .representative-button {
@@ -693,25 +696,54 @@
       flex-direction: column;
     }
     
+    .representative-button.maintenance {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      cursor: not-allowed;
+      opacity: 0.8;
+      align-items: center;
+      text-align: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    
+    .representative-button.maintenance:disabled {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+    }
+    
+    /* Column layout for representative info */
+    .rep-info-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 1em;
+      width: 100%;
+    }
+    
     .rep-name {
       display: flex;
       align-items: center;
       gap: 6px;
       font-weight: 600;
-      font-size: 0.9em;
-      margin-bottom: 2px;
+      color: #047857;
+      font-size: 0.9em; /* Slightly smaller for compact width */
     }
     
     .rep-phone {
       display: flex;
       align-items: center;
       gap: 4px;
-      font-size: 0.8em;
       color: #059669;
       font-family: monospace;
+      font-size: 0.9em; /* Same size as name */
     }
     
-    /* Single line layout for representative info */
+    /* Keep old inline layout for backward compatibility */
     .rep-info-inline {
       display: flex;
       align-items: center;
@@ -745,6 +777,15 @@
       gap: 8px;
       font-weight: 500;
       color: #6b7280;
+      font-size: 1em;
+    }
+    
+    .maintenance-room {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: #991b1b;
       font-size: 1em;
     }
     
@@ -823,6 +864,26 @@
       text-transform: uppercase;
       border: none;
       text-align: center;
+      min-height: 28px;
+      background-position: calc(100% - 8px) center !important;
+      background-repeat: no-repeat !important;
+      padding-right: 24px !important;
+      padding-left: 12px !important;
+      text-align-last: center !important;
+    }
+    
+    .status-badge:focus {
+      outline: none !important;
+      border: 1px solid rgba(59, 130, 246, 0.5) !important;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+    }
+    
+    .status-badge option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      text-align: left;
     }
     
     .status-occupied {
@@ -1636,28 +1697,35 @@
     /* Nodes Quick Actions */
     .nodes-quick-actions {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 3px;
       align-items: center;
-      justify-content: center;
     }
     
     .quick-action-btn {
       background: #f9fafb;
       border: 1px dashed #d1d5db;
       color: #6b7280;
-      padding: 3px 6px;
+      padding: 6px 12px;
       border-radius: 12px;
-      font-size: 0.7em;
+      font-size: 0.75em;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
       text-decoration: none;
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 2px;
+      justify-content: center;
+      gap: 4px;
       white-space: nowrap;
-      min-width: 0;
-      flex-shrink: 1;
+      min-height: 32px;
+      width: 162px;
+      position: relative;
+    }
+    
+    /* Button có node - justify left */
+    .quick-action-btn.has-node {
+      justify-content: flex-start;
     }
     
     .quick-action-btn:hover {
@@ -1744,6 +1812,27 @@
       transform: translateY(-1px);
       cursor: pointer;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    
+    /* Node button inline info */
+    .node-battery-inline {
+      position: absolute;
+      right: 12px;
+      width: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+    
+    .node-battery-inline i {
+      font-size: 1em;
+      position: absolute;
+      right: 26px;
+      width: 16px;
+      text-align: center;
     }
     
     /* Prevent hash scroll behavior */
@@ -2013,7 +2102,7 @@
 
     /* YouTube Live Chat Style */
     .feedback-list-container {
-      max-height: 320px;
+      max-height: 400px; /* Increased to show all 8 items */
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -2043,7 +2132,7 @@
       padding: 8px 8px;
       margin-bottom: 0px;
       transition: background-color 0.1s ease;
-      animation: slideInChat 0.2s ease-out;
+      /* animation: slideInChat 0.2s ease-out; */ /* Removed default animation */
       line-height: 1.65;
     }
 
@@ -2249,9 +2338,19 @@
 
 
 
-    /* New feedback item animation */
+    /* New feedback item animation - ONLY for new items */
     .feedback-item {
+      /* No animation by default */
+    }
+    
+    /* Animation only for dynamically added items */
+    .feedback-item.new-item {
       animation: fadeInSlideUp 0.5s ease-out;
+    }
+    
+    /* Smooth transitions for interactive elements */
+    .feedback-item:hover {
+      transition: background-color 0.1s ease;
     }
 
     @keyframes fadeInSlideUp {

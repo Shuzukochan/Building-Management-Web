@@ -3,7 +3,6 @@
     // Initialize Firebase
     async function initializeFirebase() {
       try {
-        console.log('🔴 Initializing Firebase...');
         
         // Check if Firebase SDK is loaded
         if (typeof firebase === 'undefined') {
@@ -13,7 +12,7 @@
         
         // Avoid double initialization
         if (database && feedbackRef) {
-          console.log('✅ Firebase already initialized');
+    
           return true;
         }
         
@@ -24,7 +23,6 @@
         }
         
         const firebaseConfig = await response.json();
-        console.log('📡 Firebase config received:', firebaseConfig);
         
         // Initialize Firebase app if not already done
         let app;
@@ -37,15 +35,9 @@
         database = firebase.database(app);
         feedbackRef = database.ref('service_feedbacks');
         
-        // Sign in anonymously for database access
-        try {
-          await firebase.auth().signInAnonymously();
-          console.log('🔐 Signed in anonymously for database access');
-        } catch (authError) {
-          console.warn('⚠️ Anonymous auth failed, continuing without auth:', authError);
-        }
+        // Firebase Database access (no auth required for this project)
         
-        console.log('✅ Firebase initialized successfully');
+
         return true;
         
       } catch (error) {

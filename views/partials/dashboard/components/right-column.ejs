@@ -50,11 +50,11 @@
           <table class="table table-hover table-sm">
             <thead class="thead-border">
               <tr>
-                    <th width="8%">Phòng</th>
-                    <th width="30%">Người đại diện</th>
-                    <th width="8%">Thành viên</th>
+                    <th width="12%">Phòng</th>
+                    <th width="28%">Người đại diện</th>
+                    <th width="15%">Thành viên</th>
                     <th width="12%">Trạng thái</th>
-                    <th width="32%">Quản lý Nodes</th>
+                    <th width="30%">Quản lý Nodes</th>
                     <th width="10%">Hành động</th>
               </tr>
             </thead>
@@ -72,34 +72,47 @@
                       <div class="floor-info">Tầng <%= room.floor %></div>
                     </td>
                     
-                    <td>
+                    <td class="text-center">
                       <div class="representative-info">
                         <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
                           <button type="button" 
                                   class="representative-button occupied"
                                   onclick="openManageTenantsModal('<%= room.id %>', '<%= room.roomNumber %>')"
                                   title="Quản lý danh sách người thuê">
-                            <div class="rep-info-inline">
-                              <div class="rep-name-inline">
+                            <div class="rep-info-column">
+                              <div class="rep-name">
                                 <i class="fas fa-user"></i>
                                 <span><%= room.tenantName || 'Người đại diện' %></span>
                               </div>
-                              <div class="rep-phone-inline">
+                              <div class="rep-phone">
                                 <i class="fas fa-phone"></i>
                                 <span><%= room.phoneNumber %></span>
                               </div>
                             </div>
                           </button>
                         <% } else { %>
-                          <button type="button" 
-                                  class="representative-button vacant" 
-                                  onclick="openAddTenantModal('<%= room.id %>', '<%= room.roomNumber %>')"
-                                  title="Thêm người thuê">
-                            <div class="empty-room">
-                              <i class="fas fa-user-plus"></i>
-                              <span>Thêm người thuê</span>
-                            </div>
-                          </button>
+                          <!-- Kiểm tra nếu phòng đang bảo trì và chưa có người thuê -->
+                          <% if (room.status === 'maintenance') { %>
+                            <button type="button" 
+                                    class="representative-button maintenance" 
+                                    disabled
+                                    title="Phòng đang bảo trì">
+                              <div class="maintenance-room">
+                                <i class="fas fa-tools"></i>
+                                <span>Đang bảo trì</span>
+                              </div>
+                            </button>
+                          <% } else { %>
+                            <button type="button" 
+                                    class="representative-button vacant" 
+                                    onclick="openAddTenantModal('<%= room.id %>', '<%= room.roomNumber %>')"
+                                    title="Thêm người thuê">
+                              <div class="empty-room">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Thêm người thuê</span>
+                              </div>
+                            </button>
+                          <% } %>
                         <% } %>
                       </div>
                     </td>
@@ -109,11 +122,6 @@
                         <span class="member-count occupied">
                           <i class="fas fa-users"></i>
                           <%= room.tenantCount %>
-                        </span>
-                      <% } else { %>
-                        <span class="member-count vacant">
-                          <i class="fas fa-minus"></i>
-                          0
                         </span>
                       <% } %>
                     </td>
@@ -184,14 +192,29 @@
                             
                             <!-- Button điện -->
                             <% if (hasElectricity) { %>
+                              <% 
+                                // Lấy thông tin pin và số điện của node điện
+                                let electricityBatt = null;
+                                let electricityValue = null;
+                                if (room.nodes && room.nodes[electricityNodeId] && room.nodes[electricityNodeId].lastData) {
+                                  electricityBatt = room.nodes[electricityNodeId].lastData.batt;
+                                  electricityValue = room.nodes[electricityNodeId].lastData.electric;
+                                }
+                              %>
                               <button type="button"
                                  class="quick-action-btn electricity has-node manage-node-btn" 
                                  data-room-id="<%= room.id %>" 
                                  data-room-number="<%= room.roomNumber %>" 
                                  data-node-id="<%= electricityNodeId %>" 
                                  data-node-type="electricity"
-                                 title="Quản lý node điện: <%= electricityNodeId %>">
-                                <i class="fas fa-check"></i> Điện
+                                 title="Quản lý node điện: <%= electricityNodeId %><%= electricityBatt !== null ? ' - Pin: ' + electricityBatt + '%' : '' %><%= electricityValue !== null ? ' - Điện: ' + electricityValue + ' kWh' : '' %>">
+                                <i class="fas fa-check"></i> Điện<% if (electricityValue !== null) { %>: <%= electricityValue %> kWh<% } %>
+                                <% if (electricityBatt !== null) { %>
+                                  <span class="node-battery-inline">
+                                    <i class="fas fa-battery-<%= electricityBatt > 75 ? 'full' : electricityBatt > 50 ? 'three-quarters' : electricityBatt > 25 ? 'half' : 'quarter' %>"></i>
+                                    <%= electricityBatt %>%
+                                  </span>
+                                <% } %>
                               </button>
                           <% } else { %>
                                 <button type="button" class="quick-action-btn electricity" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'electricity')" title="Thêm node điện">
@@ -201,14 +224,29 @@
                               
                             <!-- Button nước -->
                             <% if (hasWater) { %>
+                              <% 
+                                // Lấy thông tin pin và số nước của node nước
+                                let waterBatt = null;
+                                let waterValue = null;
+                                if (room.nodes && room.nodes[waterNodeId] && room.nodes[waterNodeId].lastData) {
+                                  waterBatt = room.nodes[waterNodeId].lastData.batt;
+                                  waterValue = room.nodes[waterNodeId].lastData.water;
+                                }
+                              %>
                               <button type="button"
                                  class="quick-action-btn water has-node manage-node-btn" 
                                  data-room-id="<%= room.id %>" 
                                  data-room-number="<%= room.roomNumber %>" 
                                  data-node-id="<%= waterNodeId %>" 
                                  data-node-type="water"
-                                 title="Quản lý node nước: <%= waterNodeId %>">
-                                <i class="fas fa-check"></i> Nước
+                                 title="Quản lý node nước: <%= waterNodeId %><%= waterBatt !== null ? ' - Pin: ' + waterBatt + '%' : '' %><%= waterValue !== null ? ' - Nước: ' + waterValue + ' m³' : '' %>">
+                                <i class="fas fa-check"></i> Nước<% if (waterValue !== null) { %>: <%= waterValue %> m³<% } %>
+                                <% if (waterBatt !== null) { %>
+                                  <span class="node-battery-inline">
+                                    <i class="fas fa-battery-<%= waterBatt > 75 ? 'full' : waterBatt > 50 ? 'three-quarters' : waterBatt > 25 ? 'half' : 'quarter' %>"></i>
+                                    <%= waterBatt %>%
+                                  </span>
+                                <% } %>
                               </button>
                             <% } else { %>
                               <button type="button" class="quick-action-btn water" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'water')" title="Thêm node nước">
@@ -220,15 +258,30 @@
                             <% if (room.nodes && Object.keys(room.nodes).length > 0) { %>
                               <% Object.values(room.nodes).forEach(node => { %>
                                 <% if (node.type === 'custom') { %>
+                                  <% 
+                                    // Lấy thông tin pin và giá trị của custom node
+                                    let customBatt = null;
+                                    let customValue = null;
+                                    if (node.lastData) {
+                                      customBatt = node.lastData.batt;
+                                      customValue = node.lastData.value;
+                                    }
+                                  %>
                                   <button type="button"
                                      class="quick-action-btn custom has-node manage-node-btn" 
                                      data-room-id="<%= room.id %>" 
                                      data-room-number="<%= room.roomNumber %>" 
                                      data-node-id="<%= node.id %>" 
                                      data-node-type="custom"
-                                     data-custom-name="<%= node.customName %>"
-                                     title="Quản lý node: <%= node.nodeId %>">
-                                    <i class="fas fa-check"></i> <%= node.customName || 'Custom' %>
+                                     data-custom-name="<%= node.name && node.name !== node.id ? node.name : '' %>"
+                                     title="Quản lý node: <%= node.id %><%= customBatt !== null ? ' - Pin: ' + customBatt + '%' : '' %><%= customValue !== null ? ' - Giá trị: ' + customValue : '' %>">
+                                    <i class="fas fa-check"></i> <%= node.name || node.id %><% if (customValue !== null) { %>: <%= customValue %><% } %>
+                                    <% if (customBatt !== null) { %>
+                                      <span class="node-battery-inline">
+                                        <i class="fas fa-battery-<%= customBatt > 75 ? 'full' : customBatt > 50 ? 'three-quarters' : customBatt > 25 ? 'half' : 'quarter' %>"></i>
+                                        <%= customBatt %>%
+                                      </span>
+                                    <% } %>
                                   </button>
                                 <% } %>
                               <% }) %>

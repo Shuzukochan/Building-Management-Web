@@ -1,0 +1,257 @@
+// ==================== REALTIME FEEDBACK UPDATE ====================
+
+// Realtime feedback updater
+class RealtimeFeedbackUpdater {
+  constructor() {
+    this.feedbackRef = null;
+    this.feedbackListener = null;
+    this.isInitialized = false;
+    this.firstLoad = true;
+  }
+
+  async initialize() {
+    if (this.isInitialized) return;
+    
+    try {
+      // Setup Firebase realtime immediately
+      const firebaseReady = await initializeFirebase();
+      if (firebaseReady && feedbackRef) {
+        this.feedbackRef = feedbackRef;
+        this.setupRealtimeListener();
+        this.isInitialized = true;
+      } else {
+        // Quick retry if Firebase not ready
+        setTimeout(async () => {
+          const firebaseReady = await initializeFirebase();
+          if (firebaseReady && feedbackRef) {
+            this.feedbackRef = feedbackRef;
+            this.setupRealtimeListener();
+            this.isInitialized = true;
+          } else {
+            console.error('❌ Failed to initialize feedback realtime after retry');
+          }
+        }, 200);
+      }
+    } catch (error) {
+      console.error('❌ Error initializing feedback realtime:', error);
+    }
+  }
+
+  setupRealtimeListener() {
+    if (!this.feedbackRef) {
+      console.error('❌ Firebase feedbackRef not available');
+      return;
+    }
+    
+    try {
+      // Listen for data changes
+      this.feedbackListener = this.feedbackRef.on('value', (snapshot) => {
+        const feedbackData = snapshot.val() || {};
+        
+        // Always process - let displayFeedbacks handle the first load logic
+        
+        // Convert to array and sort
+        const feedbacks = [];
+        
+        Object.entries(feedbackData).forEach(([timestampKey, feedback]) => {
+          feedbacks.push({
+            id: timestampKey,
+            timestamp: timestampKey,
+            phone: feedback.phone || null,
+            roomNumber: feedback.roomNumber || null,
+            content: feedback.feedback || feedback.content || '',
+            isAnonymous: !feedback.phone || feedback.phone === 'anonymous',
+            createdAt: parseFeedbackTimestamp(timestampKey)
+          });
+        });
+        
+        // Sort by timestamp (newest first - for display order)
+        feedbacks.sort((a, b) => b.createdAt - a.createdAt);
+        
+        // Limit to last 20 feedbacks
+        const limitedFeedbacks = feedbacks.slice(0, 20);
+        
+        // Update UI
+        this.displayFeedbacks(limitedFeedbacks);
+      }, (error) => {
+        console.error('❌ Realtime listener error:', error);
+      });
+      
+    } catch (error) {
+      console.error('❌ Error setting up realtime listener:', error);
+    }
+  }
+
+  // Display feedbacks in real-time
+  displayFeedbacks(feedbacks) {
+    const feedbackList = document.getElementById('feedbackList');
+    if (!feedbackList) return;
+    
+    // Check if we already have static HTML content (no .new-item class)
+    const existingItems = feedbackList.querySelectorAll('.feedback-item');
+    const hasStaticHTML = existingItems.length > 0 && !feedbackList.querySelector('.feedback-item.new-item');
+    
+    // Only skip the very first load to avoid animation on static HTML
+    if (this.firstLoad && hasStaticHTML) {
+      this.firstLoad = false;
+      return;
+    }
+    
+    // Mark that we've passed the first load
+    this.firstLoad = false;
+    
+    if (feedbacks.length === 0) {
+      feedbackList.innerHTML = `
+        <div class="feedback-empty" style="color: #6b7280; text-align: center; padding: 40px 20px;">
+          <i class="fas fa-comments" style="font-size: 2em; margin-bottom: 12px; display: block; color: #d1d5db;"></i>
+          <div style="font-size: 1.1em; margin-bottom: 8px; color: #374151;">Chưa có góp ý nào</div>
+          <small style="color: #9ca3af;">Góp ý sẽ hiển thị ở đây theo thời gian thực</small>
+        </div>
+      `;
+      return;
+    }
+    
+    // Sort feedbacks để đảm bảo mới nhất ở trên cùng
+    const sortedFeedbacks = [...feedbacks].sort((a, b) => {
+      const dateA = a.createdAt || parseFeedbackTimestamp(a.timestamp);
+      const dateB = b.createdAt || parseFeedbackTimestamp(b.timestamp);
+      return dateB - dateA; // Newest first
+    });
+    
+    // Generate YouTube Live Chat style feedback items HTML
+    let feedbackHTML = '';
+    sortedFeedbacks.forEach((feedback, index) => {
+      const isAnonymous = feedback.isAnonymous || !feedback.phone || feedback.phone === 'anonymous';
+      const roomDisplay = isAnonymous ? 'Ẩn danh' : `Phòng ${feedback.roomNumber}`;
+      const avatarClass = isAnonymous ? 'anonymous' : 'named';
+      const usernameClass = isAnonymous ? 'anonymous' : 'named';
+      
+      // Create avatar icon (room icon or anonymous icon)  
+      const avatarIcon = isAnonymous ? '<i class="fas fa-user-secret"></i>' : '<i class="fas fa-door-open"></i>';
+      
+      // Use timestamp as ID if id is not available
+      const feedbackId = feedback.id || feedback.timestamp || 'unknown';
+      
+      // Get both relative and absolute time
+      const relativeTime = this.getRelativeTime(feedback.timestamp);
+      const absoluteTime = this.formatFeedbackTime(feedback.timestamp);
+      
+      feedbackHTML += `
+        <div class="feedback-item new-item" data-id="${feedbackId}">
+          <div class="feedback-avatar ${avatarClass}">
+            ${avatarIcon}
+          </div>
+          <div class="feedback-content-wrapper">
+            <div class="feedback-message-content">
+              <span class="feedback-username ${usernameClass}">${roomDisplay}:</span>
+              <span class="feedback-message">${this.escapeHtml(feedback.content)}</span>
+            </div>
+            <span class="feedback-time" title="${absoluteTime}">${relativeTime}</span>
+          </div>
+        </div>
+      `;
+    });
+    
+    // Clear old content and add new content
+    feedbackList.innerHTML = feedbackHTML;
+    
+    // Force scroll to top để hiển thị feedback mới nhất
+    feedbackList.scrollTop = 0;
+  }
+
+  // Get relative time (2 phút trước, 1 giờ trước, etc.)
+  getRelativeTime(timestamp) {
+    try {
+      const now = new Date();
+      const past = parseFeedbackTimestamp(timestamp);
+      const diffMs = now - past;
+      
+      if (diffMs < 0) return "vừa xong"; // Future timestamp
+      
+      const diffSeconds = Math.floor(diffMs / 1000);
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffWeeks = Math.floor(diffDays / 7);
+      const diffMonths = Math.floor(diffDays / 30);
+      
+      if (diffSeconds < 60) return "vừa xong";
+      if (diffMinutes < 60) return `${diffMinutes} phút trước`;
+      if (diffHours < 24) return `${diffHours} giờ trước`;
+      if (diffDays < 7) return `${diffDays} ngày trước`;
+      if (diffWeeks < 4) return `${diffWeeks} tuần trước`;
+      return `${diffMonths} tháng trước`;
+      
+    } catch (error) {
+      return "không xác định";
+    }
+  }
+
+  // Format feedback timestamp for display
+  formatFeedbackTime(timestamp) {
+    try {
+      // Handle Firebase format: YYYY-MM-DD_HH-MM-SS (underscore between date and time)
+      if (timestamp && typeof timestamp === 'string') {
+        // Replace underscore with hyphen to make consistent: YYYY-MM-DD-HH-MM-SS
+        const normalizedTimestamp = timestamp.replace('_', '-');
+        
+        if (normalizedTimestamp.includes('-') && normalizedTimestamp.length >= 19) {
+          const parts = normalizedTimestamp.split('-');
+          if (parts.length >= 6) {
+            const year = parts[0].substring(2); // Lấy 2 chữ số cuối của năm
+            const month = parts[1];
+            const day = parts[2];
+            const hour = parts[3];
+            const minute = parts[4];
+            
+            return `vào lúc ${hour}:${minute} ngày ${day}/${month}/${year}`;
+          }
+        }
+      }
+      
+      // Fallback to date parsing
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear().toString().substring(2);
+        const hour = date.getHours().toString().padStart(2, '0');
+        const minute = date.getMinutes().toString().padStart(2, '0');
+        
+        return `vào lúc ${hour}:${minute} ngày ${day}/${month}/${year}`;
+      }
+      
+      // Last fallback
+      return timestamp;
+    } catch (error) {
+      return timestamp;
+    }
+  }
+
+  // Escape HTML to prevent XSS
+  escapeHtml(unsafe) {
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  cleanup() {
+    if (this.feedbackRef && this.feedbackListener) {
+      this.feedbackRef.off('value', this.feedbackListener);
+      this.feedbackListener = null;
+    }
+    this.isInitialized = false;
+  }
+}
+
+// Global instance
+window.realtimeFeedbackUpdater = new RealtimeFeedbackUpdater();
+
+// Initialize realtime feedback when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize immediately
+  window.realtimeFeedbackUpdater.initialize();
+});

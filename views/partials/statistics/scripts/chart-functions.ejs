@@ -12,6 +12,19 @@
     console.log('💧 Water chart data:', { labels: waterLabels, data: waterData });
     console.log('⚡ Electric chart data:', { labels: electricLabels, data: electricData });
     
+    // Calculate max values with 10% padding
+    const maxWaterValue = Math.max(...waterData, 0);
+    const maxElectricValue = Math.max(...electricData, 0);
+    const waterMaxWithPadding = maxWaterValue > 0 ? maxWaterValue * 1.1 : 10; // Add 10% or default to 10
+    const electricMaxWithPadding = maxElectricValue > 0 ? maxElectricValue * 1.1 : 10; // Add 10% or default to 10
+    
+    console.log('📊 Chart max values:', { 
+      waterMax: maxWaterValue, 
+      waterMaxWithPadding: waterMaxWithPadding.toFixed(1),
+      electricMax: maxElectricValue, 
+      electricMaxWithPadding: electricMaxWithPadding.toFixed(1)
+    });
+    
     // Get canvas contexts
     const ctxWater = document.getElementById('waterChart').getContext('2d');
     const ctxElectric = document.getElementById('electricChart').getContext('2d');
@@ -94,6 +107,7 @@
         scales: {
           y: {
             beginAtZero: true,
+            max: waterMaxWithPadding, // Set max value with 10% padding
             grid: {
               color: 'rgba(0, 0, 0, 0.1)',
               lineWidth: 1
@@ -217,6 +231,7 @@
         scales: {
           y: {
             beginAtZero: true,
+            max: electricMaxWithPadding, // Set max value with 10% padding
             grid: {
               color: 'rgba(0, 0, 0, 0.1)',
               lineWidth: 1
@@ -262,7 +277,7 @@
       }
     });
     
-    console.log('✅ Charts created successfully');
+    
     
     // Force chart resize after creation
     setTimeout(() => {

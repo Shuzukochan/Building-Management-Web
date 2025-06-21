@@ -6,41 +6,80 @@ function calculateMonthlyUsageByType(historyData, month, year, roomId, dataType)
     
     console.log(`📅 Calculating ${dataType} usage for room ${roomId} for ${monthStr}/${yearStr}`);
     
-    // Get all dates in current month
-    const monthDates = [];
+    // Get latest date of current month (search backward from end of month)
     const daysInMonth = new Date(year, month, 0).getDate();
+    let currentMonthLatestValue = null;
+    let currentMonthLatestDate = null;
     
-    for (let day = 1; day <= daysInMonth; day++) {
+    for (let day = daysInMonth; day >= 1; day--) {
       const dayStr = day.toString().padStart(2, "0");
       const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
       if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
-        monthDates.push({
-          date: dateStr,
-          value: historyData[dateStr][dataType] || 0
-        });
+        currentMonthLatestValue = historyData[dateStr][dataType] || 0;
+        currentMonthLatestDate = dateStr;
+        break;
       }
     }
     
-    console.log(`📊 Found ${monthDates.length} days of ${dataType} data for room ${roomId}`);
-    
-    if (monthDates.length < 2) {
-      console.log(`⚠️ Not enough ${dataType} data for room ${roomId} (need at least 2 days)`);
+    if (currentMonthLatestValue === null) {
+      console.log(`⚠️ No ${dataType} data found for room ${roomId} in ${monthStr}/${yearStr}`);
       return 0;
     }
     
-    // Sort by date
-    monthDates.sort((a, b) => a.date.localeCompare(b.date));
+    console.log(`📊 Latest ${dataType} reading in ${monthStr}/${yearStr}: ${currentMonthLatestValue} on ${currentMonthLatestDate}`);
     
-    // Get first and last readings of the month
-    const firstValue = monthDates[0].value;
-    const lastValue = monthDates[monthDates.length - 1].value;
+    // Get latest date of previous month (search backward from end of previous month)
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevMonthStr = prevMonth.toString().padStart(2, "0");
+    const prevYearStr = prevYear.toString();
     
-    console.log(`🔍 Room ${roomId} ${dataType}: ${firstValue} -> ${lastValue} (${monthDates[0].date} to ${monthDates[monthDates.length - 1].date})`);
+    const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+    let prevMonthLatestValue = null;
+    let prevMonthLatestDate = null;
     
-    // Calculate usage (ensure non-negative)
-    const usage = Math.max(0, lastValue - firstValue);
+    for (let day = daysInPrevMonth; day >= 1; day--) {
+      const dayStr = day.toString().padStart(2, "0");
+      const dateStr = `${prevYearStr}-${prevMonthStr}-${dayStr}`;
+      if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+        prevMonthLatestValue = historyData[dateStr][dataType] || 0;
+        prevMonthLatestDate = dateStr;
+        break;
+      }
+    }
     
-    console.log(`✅ Room ${roomId} ${dataType} usage: ${usage}`);
+    let usage = 0;
+    
+    if (prevMonthLatestValue !== null) {
+      // Case 1: Has previous month data - calculate difference
+      usage = Math.max(0, currentMonthLatestValue - prevMonthLatestValue);
+      console.log(`🔍 Room ${roomId} ${dataType}: ${prevMonthLatestValue} (${prevMonthLatestDate}) -> ${currentMonthLatestValue} (${currentMonthLatestDate})`);
+      console.log(`✅ Room ${roomId} ${dataType} usage: ${usage} (current - previous month)`);
+    } else {
+      // Case 2: No previous month data - calculate from earliest date in current month
+      let currentMonthEarliestValue = null;
+      let currentMonthEarliestDate = null;
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayStr = day.toString().padStart(2, "0");
+        const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+        if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+          currentMonthEarliestValue = historyData[dateStr][dataType] || 0;
+          currentMonthEarliestDate = dateStr;
+          break;
+        }
+      }
+      
+      if (currentMonthEarliestValue !== null && currentMonthEarliestDate !== currentMonthLatestDate) {
+        usage = Math.max(0, currentMonthLatestValue - currentMonthEarliestValue);
+        console.log(`🔍 Room ${roomId} ${dataType}: ${currentMonthEarliestValue} (${currentMonthEarliestDate}) -> ${currentMonthLatestValue} (${currentMonthLatestDate})`);
+        console.log(`✅ Room ${roomId} ${dataType} usage: ${usage} (latest - earliest in current month)`);
+      } else {
+        console.log(`⚠️ Not enough ${dataType} data for room ${roomId} in ${monthStr}/${yearStr}`);
+        usage = 0;
+      }
+    }
+    
     return usage;
     
   } catch (error) {

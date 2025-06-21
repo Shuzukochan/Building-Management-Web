@@ -11,6 +11,9 @@
         <input type="hidden" name="fromWater" value="<%= fromWater || '' %>">
         <input type="hidden" name="toWater" value="<%= toWater || '' %>">
         <input type="hidden" name="viewTypeWater" value="<%= viewTypeWater || 'day' %>">
+        <!-- Add missing month parameters for water -->
+        <input type="hidden" name="fromMonthWater" value="<%= fromYearWater && fromMonthWater ? fromYearWater + '-' + String(fromMonthWater).padStart(2, '0') : '' %>">
+        <input type="hidden" name="toMonthWater" value="<%= toYearWater && toMonthWater ? toYearWater + '-' + String(toMonthWater).padStart(2, '0') : '' %>">
         
         <div class="view-type-selector">
           <div class="form-check">

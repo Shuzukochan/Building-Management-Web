@@ -73,6 +73,12 @@
   window.handleElectricViewChange = function() {
     console.log('⚡ Electric view change triggered');
     
+    // Reset prevent flag when user actively changes view type
+    if (window.preventAutoSubmit) {
+      console.log('🔄 Resetting preventAutoSubmit flag due to user action');
+      window.preventAutoSubmit = false;
+    }
+    
     setTimeout(() => {
       const selectedValue = document.querySelector('input[name="viewTypeElectric"]:checked').value;
       console.log('⚡ Electric view changed to:', selectedValue);
@@ -96,13 +102,20 @@
               pickerRoots.electricRange.unmount();
             }
             pickerRoots.electricRange = createMonthRangePicker('electricRangePicker', 'fromElectricHidden', 'toElectricHidden', () => {
-              setTimeout(() => document.getElementById('electricForm').submit(), 100);
+              if (!window.preventAutoSubmit) {
+                setTimeout(() => document.getElementById('electricForm').submit(), 100);
+              }
             });
             
-            // Submit form with month parameters after picker is ready
-            setTimeout(() => {
-              document.getElementById('electricForm').submit();
-            }, 150);
+            // Check global prevent flag to avoid loop
+            if (!window.preventAutoSubmit) {
+              // Submit form with month parameters after picker is ready
+              setTimeout(() => {
+                document.getElementById('electricForm').submit();
+              }, 150);
+            } else {
+              console.log('⚡ Skipping auto-submit to avoid loop (preventAutoSubmit flag is set)');
+            }
           }, 50);
         }
       } else {
@@ -125,13 +138,20 @@
             pickerRoots.electricDateRange.unmount();
           }
           pickerRoots.electricDateRange = createDateRangePicker('electricDateRangePicker', 'fromElectricDateHidden', 'toElectricDateHidden', () => {
-            setTimeout(() => document.getElementById('electricForm').submit(), 100);
+            if (!window.preventAutoSubmit) {
+              setTimeout(() => document.getElementById('electricForm').submit(), 100);
+            }
           });
           
-          // Submit form with date parameters after picker is ready
-          setTimeout(() => {
-            document.getElementById('electricForm').submit();
-          }, 150);
+            // Check global prevent flag to avoid loop
+            if (!window.preventAutoSubmit) {
+              // Submit form with date parameters after picker is ready
+              setTimeout(() => {
+                document.getElementById('electricForm').submit();
+              }, 150);
+            } else {
+              console.log('⚡ Skipping auto-submit to avoid loop (preventAutoSubmit flag is set)');
+            }
         }, 50);
       }
     }, 100);
@@ -139,6 +159,12 @@
   
   window.handleWaterViewChange = function() {
     console.log('💧 Water view change triggered');
+    
+    // Reset prevent flag when user actively changes view type
+    if (window.preventAutoSubmit) {
+      console.log('🔄 Resetting preventAutoSubmit flag due to user action');
+      window.preventAutoSubmit = false;
+    }
     
     setTimeout(() => {
       const selectedValue = document.querySelector('input[name="viewTypeWater"]:checked').value;
@@ -163,13 +189,20 @@
               pickerRoots.waterRange.unmount();
             }
             pickerRoots.waterRange = createMonthRangePicker('waterRangePicker', 'fromWaterHidden', 'toWaterHidden', () => {
-              setTimeout(() => document.getElementById('waterForm').submit(), 100);
+              if (!window.preventAutoSubmit) {
+                setTimeout(() => document.getElementById('waterForm').submit(), 100);
+              }
             });
             
-            // Submit form with month parameters after picker is ready
-            setTimeout(() => {
-              document.getElementById('waterForm').submit();
-            }, 150);
+            // Check global prevent flag to avoid loop
+            if (!window.preventAutoSubmit) {
+              // Submit form with month parameters after picker is ready
+              setTimeout(() => {
+                document.getElementById('waterForm').submit();
+              }, 150);
+            } else {
+              console.log('💧 Skipping auto-submit to avoid loop (preventAutoSubmit flag is set)');
+            }
           }, 50);
         }
       } else {
@@ -192,13 +225,20 @@
             pickerRoots.waterDateRange.unmount();
           }
           pickerRoots.waterDateRange = createDateRangePicker('waterDateRangePicker', 'fromWaterDateHidden', 'toWaterDateHidden', () => {
-            setTimeout(() => document.getElementById('waterForm').submit(), 100);
+            if (!window.preventAutoSubmit) {
+              setTimeout(() => document.getElementById('waterForm').submit(), 100);
+            }
           });
           
-          // Submit form with date parameters after picker is ready
-          setTimeout(() => {
-            document.getElementById('waterForm').submit();
-          }, 150);
+            // Check global prevent flag to avoid loop
+            if (!window.preventAutoSubmit) {
+              // Submit form with date parameters after picker is ready
+              setTimeout(() => {
+                document.getElementById('waterForm').submit();
+              }, 150);
+            } else {
+              console.log('💧 Skipping auto-submit to avoid loop (preventAutoSubmit flag is set)');
+            }
         }, 50);
       }
     }, 100);

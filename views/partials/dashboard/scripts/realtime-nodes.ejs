@@ -1,0 +1,210 @@
+// ==================== REALTIME NODES UPDATE ====================
+
+// Realtime node data updater
+class RealtimeNodesUpdater {
+  constructor() {
+    this.nodesRef = null;
+    this.roomsRef = null;
+    this.listeners = new Map();
+    this.isInitialized = false;
+  }
+
+  async initialize() {
+    if (this.isInitialized) return;
+    
+    try {
+      // Wait for Firebase to be ready
+      const firebaseReady = await initializeFirebase();
+      if (!firebaseReady || !database) {
+        // Quick retry if Firebase not ready
+        setTimeout(() => this.initialize(), 200);
+        return false;
+      }
+
+      this.roomsRef = database.ref('rooms');
+      this.isInitialized = true;
+      
+      // Start listening for all room nodes
+      this.startRealtimeNodeUpdates();
+      
+      return true;
+    } catch (error) {
+      console.error('Error initializing realtime nodes:', error);
+      // Retry once after 500ms if failed
+      setTimeout(() => this.initialize(), 500);
+      return false;
+    }
+  }
+
+  startRealtimeNodeUpdates() {
+    if (!this.roomsRef) return;
+
+    // Listen to rooms data changes
+    this.roomsRef.on('value', (snapshot) => {
+      const roomsData = snapshot.val() || {};
+      
+      // Update each room's node data
+      Object.entries(roomsData).forEach(([roomId, roomData]) => {
+        if (roomData.nodes) {
+          this.updateRoomNodeButtons(roomId, roomData.nodes);
+        }
+      });
+    });
+  }
+
+  updateRoomNodeButtons(roomId, nodesData) {
+    // Find the table row for this room
+    const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+    if (!roomRow) return;
+
+    // Update electricity button
+    Object.entries(nodesData).forEach(([nodeId, nodeData]) => {
+      if (nodeData.type === 'electricity') {
+        this.updateElectricityButton(roomRow, nodeId, nodeData);
+      } else if (nodeData.type === 'water') {
+        this.updateWaterButton(roomRow, nodeId, nodeData);
+      } else if (nodeData.type === 'custom') {
+        this.updateCustomButton(roomRow, nodeId, nodeData);
+      }
+    });
+  }
+
+  updateElectricityButton(roomRow, nodeId, nodeData) {
+    const electricButton = roomRow.querySelector('.quick-action-btn.electricity.has-node');
+    if (!electricButton) return;
+
+    const lastData = nodeData.lastData || {};
+    const electricValue = lastData.electric;
+    const battLevel = lastData.batt;
+
+    // Update button text and data
+    let buttonText = '<i class="fas fa-check"></i> Điện';
+    if (electricValue !== null && electricValue !== undefined) {
+      buttonText += `: ${electricValue} kWh`;
+    }
+
+    // Update battery display
+    let batteryHtml = '';
+    if (battLevel !== null && battLevel !== undefined) {
+      const battIcon = this.getBatteryIcon(battLevel);
+      batteryHtml = `
+        <span class="node-battery-inline">
+          <i class="fas fa-battery-${battIcon}"></i>
+          ${battLevel}%
+        </span>
+      `;
+    }
+
+    electricButton.innerHTML = buttonText + batteryHtml;
+
+    // Update tooltip
+    let tooltip = `Quản lý node điện: ${nodeId}`;
+    if (battLevel !== null) tooltip += ` - Pin: ${battLevel}%`;
+    if (electricValue !== null) tooltip += ` - Điện: ${electricValue} kWh`;
+    electricButton.title = tooltip;
+  }
+
+  updateWaterButton(roomRow, nodeId, nodeData) {
+    const waterButton = roomRow.querySelector('.quick-action-btn.water.has-node');
+    if (!waterButton) return;
+
+    const lastData = nodeData.lastData || {};
+    const waterValue = lastData.water;
+    const battLevel = lastData.batt;
+
+    // Update button text and data
+    let buttonText = '<i class="fas fa-check"></i> Nước';
+    if (waterValue !== null && waterValue !== undefined) {
+      buttonText += `: ${waterValue} m³`;
+    }
+
+    // Update battery display
+    let batteryHtml = '';
+    if (battLevel !== null && battLevel !== undefined) {
+      const battIcon = this.getBatteryIcon(battLevel);
+      batteryHtml = `
+        <span class="node-battery-inline">
+          <i class="fas fa-battery-${battIcon}"></i>
+          ${battLevel}%
+        </span>
+      `;
+    }
+
+    waterButton.innerHTML = buttonText + batteryHtml;
+
+    // Update tooltip
+    let tooltip = `Quản lý node nước: ${nodeId}`;
+    if (battLevel !== null) tooltip += ` - Pin: ${battLevel}%`;
+    if (waterValue !== null) tooltip += ` - Nước: ${waterValue} m³`;
+    waterButton.title = tooltip;
+  }
+
+  updateCustomButton(roomRow, nodeId, nodeData) {
+    const customButton = roomRow.querySelector(`.quick-action-btn.custom.has-node[data-node-id="${nodeId}"]`);
+    if (!customButton) return;
+
+    const lastData = nodeData.lastData || {};
+    const customValue = lastData.value;
+    const battLevel = lastData.batt;
+    const nodeName = nodeData.name || nodeId;
+
+    // Update button text and data
+    let buttonText = `<i class="fas fa-check"></i> ${nodeName}`;
+    if (customValue !== null && customValue !== undefined) {
+      buttonText += `: ${customValue}`;
+    }
+
+    // Update battery display
+    let batteryHtml = '';
+    if (battLevel !== null && battLevel !== undefined) {
+      const battIcon = this.getBatteryIcon(battLevel);
+      batteryHtml = `
+        <span class="node-battery-inline">
+          <i class="fas fa-battery-${battIcon}"></i>
+          ${battLevel}%
+        </span>
+      `;
+    }
+
+    customButton.innerHTML = buttonText + batteryHtml;
+
+    // Update tooltip
+    let tooltip = `Quản lý node: ${nodeId}`;
+    if (battLevel !== null) tooltip += ` - Pin: ${battLevel}%`;
+    if (customValue !== null) tooltip += ` - Giá trị: ${customValue}`;
+    customButton.title = tooltip;
+  }
+
+  getBatteryIcon(battLevel) {
+    if (battLevel > 75) return 'full';
+    if (battLevel > 50) return 'three-quarters';
+    if (battLevel > 25) return 'half';
+    return 'quarter';
+  }
+
+
+
+  cleanup() {
+    if (this.roomsRef) {
+      this.roomsRef.off();
+    }
+    this.listeners.clear();
+    this.isInitialized = false;
+  }
+}
+
+// Global instance
+window.realtimeNodesUpdater = new RealtimeNodesUpdater();
+
+// Initialize realtime nodes when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize immediately - Firebase should be ready by now
+  window.realtimeNodesUpdater.initialize();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+  if (window.realtimeNodesUpdater) {
+    window.realtimeNodesUpdater.cleanup();
+  }
+}); 

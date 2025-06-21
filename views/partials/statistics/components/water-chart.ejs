@@ -14,6 +14,9 @@
         <input type="hidden" name="fromElectric" value="<%= fromElectric || '' %>">
         <input type="hidden" name="toElectric" value="<%= toElectric || '' %>">
         <input type="hidden" name="viewTypeElectric" value="<%= viewTypeElectric || 'day' %>">
+        <!-- Add missing month parameters for electric -->
+        <input type="hidden" name="fromMonthElectric" value="<%= fromYearElectric && fromMonthElectric ? fromYearElectric + '-' + String(fromMonthElectric).padStart(2, '0') : '' %>">
+        <input type="hidden" name="toMonthElectric" value="<%= toYearElectric && toMonthElectric ? toYearElectric + '-' + String(toMonthElectric).padStart(2, '0') : '' %>">
         
         <div class="view-type-selector">
           <div class="form-check">

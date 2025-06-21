@@ -1,0 +1,169 @@
+// ==================== REALTIME STATISTICS UPDATE ====================
+
+// Realtime monthly statistics updater
+class RealtimeStatisticsUpdater {
+  constructor() {
+    this.roomsRef = null;
+    this.isInitialized = false;
+  }
+
+  async initialize() {
+    if (this.isInitialized) return;
+    
+    try {
+      // Wait for Firebase to be ready
+      const firebaseReady = await initializeFirebase();
+      if (!firebaseReady || !database) {
+        // Quick retry if Firebase not ready
+        setTimeout(() => this.initialize(), 200);
+        return false;
+      }
+
+      this.roomsRef = database.ref('rooms');
+      this.isInitialized = true;
+      
+      // Start listening for monthly statistics updates
+      this.startRealtimeStatisticsUpdates();
+      
+      return true;
+    } catch (error) {
+      console.error('Error initializing realtime statistics:', error);
+      // Retry once after 500ms if failed
+      setTimeout(() => this.initialize(), 500);
+      return false;
+    }
+  }
+
+  startRealtimeStatisticsUpdates() {
+    if (!this.roomsRef) return;
+
+    // Listen to rooms data changes for monthly statistics
+    this.roomsRef.on('value', (snapshot) => {
+      const roomsData = snapshot.val() || {};
+      
+      // Update monthly statistics in real-time
+      this.updateMonthlyStatistics(roomsData);
+    });
+  }
+
+  // Calculate and update monthly statistics in real-time
+  updateMonthlyStatistics(roomsData) {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+
+    let totalElectricUsage = 0;
+    let totalWaterUsage = 0;
+
+    // Calculate monthly usage for all rooms using the same logic as server
+    Object.entries(roomsData).forEach(([roomId, roomData]) => {
+      if (roomData.history) {
+        const electricUsage = this.calculateMonthlyUsageByType(roomData.history, currentMonth, currentYear, 'electric');
+        const waterUsage = this.calculateMonthlyUsageByType(roomData.history, currentMonth, currentYear, 'water');
+        
+        totalElectricUsage += electricUsage;
+        totalWaterUsage += waterUsage;
+      }
+    });
+
+    // Update the display
+    const electricElement = document.getElementById('monthlyElectricity');
+    const waterElement = document.getElementById('monthlyWater');
+    
+    if (electricElement) {
+      electricElement.textContent = `${totalElectricUsage.toFixed(1)} kWh`;
+    }
+    
+    if (waterElement) {
+      waterElement.textContent = `${totalWaterUsage.toFixed(1)} m³`;
+    }
+  }
+
+  // Calculate monthly usage for a specific room and data type (same logic as server)
+  calculateMonthlyUsageByType(historyData, month, year, dataType) {
+    try {
+      const monthStr = month.toString().padStart(2, "0");
+      const yearStr = year.toString();
+      
+      // Get latest date of current month (search backward from end of month)
+      const daysInMonth = new Date(year, month, 0).getDate();
+      let currentMonthLatestValue = null;
+      
+      for (let day = daysInMonth; day >= 1; day--) {
+        const dayStr = day.toString().padStart(2, "0");
+        const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+        if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+          currentMonthLatestValue = historyData[dateStr][dataType] || 0;
+          break;
+        }
+      }
+      
+      if (currentMonthLatestValue === null) {
+        return 0;
+      }
+      
+      // Get latest date of previous month (search backward from end of previous month)
+      const prevMonth = month === 1 ? 12 : month - 1;
+      const prevYear = month === 1 ? year - 1 : year;
+      const prevMonthStr = prevMonth.toString().padStart(2, "0");
+      const prevYearStr = prevYear.toString();
+      
+      const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+      let prevMonthLatestValue = null;
+      
+      for (let day = daysInPrevMonth; day >= 1; day--) {
+        const dayStr = day.toString().padStart(2, "0");
+        const dateStr = `${prevYearStr}-${prevMonthStr}-${dayStr}`;
+        if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+          prevMonthLatestValue = historyData[dateStr][dataType] || 0;
+          break;
+        }
+      }
+      
+      let usage = 0;
+      
+      if (prevMonthLatestValue !== null) {
+        // Case 1: Has previous month data - calculate difference
+        usage = Math.max(0, currentMonthLatestValue - prevMonthLatestValue);
+      } else {
+        // Case 2: No previous month data - calculate from earliest date in current month
+        let currentMonthEarliestValue = null;
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dayStr = day.toString().padStart(2, "0");
+          const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
+          if (historyData[dateStr] && historyData[dateStr][dataType] !== undefined) {
+            currentMonthEarliestValue = historyData[dateStr][dataType] || 0;
+            break;
+          }
+        }
+        
+        if (currentMonthEarliestValue !== null) {
+          usage = Math.max(0, currentMonthLatestValue - currentMonthEarliestValue);
+        }
+      }
+      
+      return usage;
+      
+    } catch (error) {
+      console.error(`Error calculating ${dataType} usage:`, error);
+      return 0;
+    }
+  }
+
+  cleanup() {
+    if (this.roomsRef) {
+      this.roomsRef.off();
+    }
+    this.isInitialized = false;
+  }
+}
+
+// Global instance
+window.realtimeStatisticsUpdater = new RealtimeStatisticsUpdater();
+
+// Initialize realtime statistics when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize immediately
+  window.realtimeStatisticsUpdater.initialize();
+}); 

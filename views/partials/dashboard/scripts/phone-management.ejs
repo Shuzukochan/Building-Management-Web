@@ -464,12 +464,12 @@
                   class="representative-button occupied"
                   onclick="openManageTenantsModal('${room.id}', '${room.roomNumber}')"
                   title="Quản lý danh sách người thuê">
-            <div class="rep-info-inline">
-              <div class="rep-name-inline">
+            <div class="rep-info-column">
+              <div class="rep-name">
                 <i class="fas fa-user"></i>
                 <span>${room.tenantName || 'Người đại diện'}</span>
               </div>
-              <div class="rep-phone-inline">
+              <div class="rep-phone">
                 <i class="fas fa-phone"></i>
                 <span>${room.phoneNumber}</span>
               </div>
@@ -499,8 +499,8 @@
         column.className = 'member-count occupied';
         column.innerHTML = `<i class="fas fa-users"></i> ${tenantCount}`;
       } else {
-        column.className = 'member-count vacant';
-        column.innerHTML = `<i class="fas fa-minus"></i> 0`;
+        column.className = '';
+        column.innerHTML = '';
       }
     }
     

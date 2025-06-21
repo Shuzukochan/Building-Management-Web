@@ -2,12 +2,22 @@
   
     // Initialize feedback system when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 Initializing feedback system...');
+      // Inject preloaded feedback data from server
+      <% if (typeof feedbacks !== 'undefined' && feedbacks.length > 0) { %>
+        window.preloadedFeedbacks = <%- JSON.stringify(feedbacks) %>;
+      <% } else { %>
+        window.preloadedFeedbacks = [];
+      <% } %>
       
-      // Load initial feedback data
-      setTimeout(() => {
-        initializeFeedbackSystem();
-      }, 1000);
+      // Inject preloaded monthly statistics from server
+      <% if (typeof monthlyStats !== 'undefined') { %>
+        window.preloadedMonthlyStats = <%- JSON.stringify(monthlyStats) %>;
+      <% } else { %>
+        window.preloadedMonthlyStats = null;
+      <% } %>
+      
+      // Initialize feedback system
+      initializeFeedbackSystem();
       
       // Initialize room management
       initializeRoomsData();
@@ -19,14 +29,11 @@
       // Load available rooms
       loadAvailableRooms();
       
-      // Auto-load monthly statistics
-      refreshMonthlyStats();
+      // Monthly statistics are now handled by real-time updater
     });
     
     // Cleanup listeners on page unload
-    window.addEventListener('beforeunload', function() {
-      cleanupFeedbackListener();
-    });
+    window.addEventListener('beforeunload', cleanupFeedbackListener);
   </script>
 
   <!-- Toast logic has been moved to shared components -->

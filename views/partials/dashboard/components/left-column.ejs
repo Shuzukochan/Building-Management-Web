@@ -26,7 +26,7 @@
         <!-- Cho thuê phòng Form -->
         <div class="add-room-card">
           <div class="card-header">
-            <h5 id="monthlyStatsHeader"><i class="fas fa-chart-line"></i> Thống kê tổng sử dụng tháng<span id="currentMonthName">...</span></h5>
+            <h5 id="monthlyStatsHeader"><i class="fas fa-chart-line"></i> Thống kê tổng sử dụng tháng <span id="currentMonthName"><%= monthlyStats.month %></span></h5>
           </div>
           <div class="card-body">
             <div class="monthly-stats">
@@ -35,7 +35,9 @@
                   <i class="fas fa-bolt"></i>
                 </div>
                 <div class="stat-content">
-                  <div class="stat-value" id="monthlyElectricity">--- kWh</div>
+                  <div class="stat-value" id="monthlyElectricity">
+                    <%= monthlyStats.electricity ? monthlyStats.electricity.toFixed(1) + ' kWh' : '0.0 kWh' %>
+                  </div>
                   <div class="stat-label">Điện tiêu thụ</div>
                 </div>
               </div>
@@ -44,7 +46,9 @@
                   <i class="fas fa-tint"></i>
                 </div>
                 <div class="stat-content">
-                  <div class="stat-value" id="monthlyWater">--- m³</div>
+                  <div class="stat-value" id="monthlyWater">
+                    <%= monthlyStats.water ? monthlyStats.water.toFixed(1) + ' m³' : '0.0 m³' %>
+                  </div>
                   <div class="stat-label">Nước tiêu thụ</div>
                 </div>
               </div>
@@ -60,11 +64,65 @@
           <div class="card-body">
             <div class="feedback-list-container">
               <div id="feedbackList" class="feedback-items">
-                <!-- Feedback items will be loaded here -->
-                <div class="text-center text-muted py-3">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <div>Đang tải góp ý...</div>
-                </div>
+                <% if (feedbacks && feedbacks.length > 0) { %>
+                  <% feedbacks.forEach(function(feedback) { 
+                    const isAnonymous = !feedback.phone || feedback.phone === 'anonymous';
+                    const roomDisplay = isAnonymous ? 'Ẩn danh' : 'Phòng ' + feedback.roomNumber;
+                    const avatarIcon = isAnonymous ? 'fas fa-user-secret' : 'fas fa-door-open';
+                    const avatarClass = isAnonymous ? 'anonymous' : 'named';
+                    const usernameClass = isAnonymous ? 'anonymous' : 'named';
+                    
+                    // Calculate relative time with debug
+                    const now = new Date();
+                    let feedbackTime;
+                    let relativeTime = "vừa xong";
+                    
+                    try {
+                      // Parse timestamp format: 2025-06-18_20-59-30
+                      const timestampStr = feedback.timestamp;
+                      const parts = timestampStr.split('_');
+                      if (parts.length === 2) {
+                        const datePart = parts[0]; // 2025-06-18
+                        const timePart = parts[1].replace(/-/g, ':'); // 20:59:30
+                        feedbackTime = new Date(datePart + ' ' + timePart);
+                      } else {
+                        feedbackTime = new Date(timestampStr.replace('_', ' ').replace(/-/g, '/'));
+                      }
+                      
+                      const diffMs = now - feedbackTime;
+                      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                      
+                      if (diffMinutes >= 1 && diffMinutes < 60) relativeTime = diffMinutes + " phút trước";
+                      else if (diffHours >= 1 && diffHours < 24) relativeTime = diffHours + " giờ trước";
+                      else if (diffDays >= 1) relativeTime = diffDays + " ngày trước";
+                      
+                      // Debug info removed
+                    } catch (e) {
+                      relativeTime = "lỗi thời gian";
+                    }
+                  %>
+                    <div class="feedback-item" data-id="<%= feedback.id || feedback.timestamp %>">
+                      <div class="feedback-avatar <%= avatarClass %>">
+                        <i class="<%= avatarIcon %>"></i>
+                      </div>
+                      <div class="feedback-content-wrapper">
+                        <div class="feedback-message-content">
+                          <span class="feedback-username <%= usernameClass %>"><%= roomDisplay %>:</span>
+                          <span class="feedback-message"><%- feedback.content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") %></span>
+                        </div>
+                        <span class="feedback-time" title="<%= feedback.timestamp %>"><%= relativeTime %></span>
+                      </div>
+                    </div>
+                  <% }); %>
+                <% } else { %>
+                  <div class="feedback-empty" style="color: #6b7280; text-align: center; padding: 40px 20px;">
+                    <i class="fas fa-comments" style="font-size: 2em; margin-bottom: 12px; display: block; color: #d1d5db;"></i>
+                    <div style="font-size: 1.1em; margin-bottom: 8px; color: #374151;">Chưa có góp ý nào</div>
+                    <small style="color: #9ca3af;">Góp ý sẽ hiển thị ở đây theo thời gian thực</small>
+                  </div>
+                <% } %>
               </div>
             </div>
           </div>

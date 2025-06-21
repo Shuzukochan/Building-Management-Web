@@ -97,9 +97,9 @@ const deleteNode = async (req, res) => {
 // Update node
 const updateNode = async (req, res) => {
   try {
-    const { roomId, nodeId, nodeType, customNodeType } = req.body;
+    const { roomId, oldNodeId, newNodeId, customName } = req.body;
 
-    if (!roomId || !nodeId || !nodeType) {
+    if (!roomId || !oldNodeId || !newNodeId) {
       return res.redirect("/dashboard?error=Thiếu thông tin cần thiết");
     }
 
@@ -109,30 +109,57 @@ const updateNode = async (req, res) => {
       return res.redirect("/dashboard?error=Phòng không tồn tại");
     }
 
-    // Kiểm tra node tồn tại
-    const nodeSnapshot = await db.ref(`rooms/${roomId}/nodes/${nodeId}`).once("value");
-    if (!nodeSnapshot.exists()) {
+    // Kiểm tra node cũ tồn tại
+    const oldNodeSnapshot = await db.ref(`rooms/${roomId}/nodes/${oldNodeId}`).once("value");
+    if (!oldNodeSnapshot.exists()) {
       return res.redirect("/dashboard?error=Node không tồn tại");
     }
 
-    // Xử lý node type
-    let finalNodeType = nodeType;
-    let customName = null;
-    
-    if (nodeType === "custom") {
-      if (!customNodeType || !customNodeType.trim()) {
-        return res.redirect("/dashboard?error=Vui lòng nhập tên loại node tùy chỉnh");
+    // Nếu node ID thay đổi, kiểm tra node ID mới chưa tồn tại
+    if (oldNodeId !== newNodeId) {
+      const newNodeSnapshot = await db.ref(`rooms/${roomId}/nodes/${newNodeId}`).once("value");
+      if (newNodeSnapshot.exists()) {
+        return res.redirect("/dashboard?error=Node ID mới đã tồn tại");
       }
-      customName = customNodeType.trim();
     }
 
-    // Cập nhật node data
-    const updateData = {
-      type: finalNodeType,
-      customName: customName
-    };
+    // Lấy dữ liệu node cũ
+    const oldNodeData = oldNodeSnapshot.val();
 
-    await db.ref(`rooms/${roomId}/nodes/${nodeId}`).update(updateData);
+    // Nếu node ID thay đổi, cần move node
+    if (oldNodeId !== newNodeId) {
+      // Tạo node mới với dữ liệu cũ
+      const updatedNodeData = { ...oldNodeData };
+      
+      // Cập nhật custom name nếu có
+      if (customName !== undefined) {
+        updatedNodeData.customName = customName || null;
+      }
+
+      // Tạo node mới
+      await db.ref(`rooms/${roomId}/nodes/${newNodeId}`).set(updatedNodeData);
+
+      // Move history nếu có
+      const historySnapshot = await db.ref(`rooms/${roomId}/history/${oldNodeId}`).once("value");
+      if (historySnapshot.exists()) {
+        await db.ref(`rooms/${roomId}/history/${newNodeId}`).set(historySnapshot.val());
+        await db.ref(`rooms/${roomId}/history/${oldNodeId}`).remove();
+      }
+
+      // Xóa node cũ
+      await db.ref(`rooms/${roomId}/nodes/${oldNodeId}`).remove();
+    } else {
+      // Chỉ cập nhật custom name
+      const updateData = {};
+      if (customName !== undefined) {
+        updateData.customName = customName || null;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await db.ref(`rooms/${roomId}/nodes/${oldNodeId}`).update(updateData);
+      }
+    }
+
     res.redirect("/dashboard?success=Cập nhật node thành công");
   } catch (error) {
     console.error("Lỗi khi cập nhật node:", error);
