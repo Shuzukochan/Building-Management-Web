@@ -7,6 +7,8 @@ class RealtimeFeedbackUpdater {
     this.feedbackListener = null;
     this.isInitialized = false;
     this.firstLoad = true;
+    this.timeUpdateInterval = null;
+    this.currentFeedbacks = [];
   }
 
   async initialize() {
@@ -18,6 +20,7 @@ class RealtimeFeedbackUpdater {
       if (firebaseReady && feedbackRef) {
         this.feedbackRef = feedbackRef;
         this.setupRealtimeListener();
+        this.startTimeUpdateInterval();
         this.isInitialized = true;
       } else {
         // Quick retry if Firebase not ready
@@ -26,6 +29,7 @@ class RealtimeFeedbackUpdater {
           if (firebaseReady && feedbackRef) {
             this.feedbackRef = feedbackRef;
             this.setupRealtimeListener();
+            this.startTimeUpdateInterval();
             this.isInitialized = true;
           } else {
             console.error('❌ Failed to initialize feedback realtime after retry');
@@ -70,6 +74,9 @@ class RealtimeFeedbackUpdater {
         
         // Limit to last 20 feedbacks
         const limitedFeedbacks = feedbacks.slice(0, 20);
+        
+        // Store current feedbacks for time updates
+        this.currentFeedbacks = limitedFeedbacks;
         
         // Update UI
         this.displayFeedbacks(limitedFeedbacks);
@@ -238,12 +245,55 @@ class RealtimeFeedbackUpdater {
       .replace(/'/g, "&#039;");
   }
 
+  // Start interval to update relative timestamps
+  startTimeUpdateInterval() {
+    // Clear any existing interval
+    if (this.timeUpdateInterval) {
+      clearInterval(this.timeUpdateInterval);
+    }
+    
+    // Update timestamps every 30 seconds
+    this.timeUpdateInterval = setInterval(() => {
+      this.updateTimestampsOnly();
+    }, 30000);
+  }
+
+  // Update only the timestamps without regenerating the entire list
+  updateTimestampsOnly() {
+    const feedbackList = document.getElementById('feedbackList');
+    if (!feedbackList || this.currentFeedbacks.length === 0) return;
+    
+    // Update each feedback item's timestamp
+    this.currentFeedbacks.forEach((feedback) => {
+      const feedbackId = feedback.id || feedback.timestamp || 'unknown';
+      const feedbackElement = feedbackList.querySelector(`[data-id="${feedbackId}"]`);
+      
+      if (feedbackElement) {
+        const timeElement = feedbackElement.querySelector('.feedback-time');
+        if (timeElement) {
+          const relativeTime = this.getRelativeTime(feedback.timestamp);
+          const absoluteTime = this.formatFeedbackTime(feedback.timestamp);
+          
+          timeElement.textContent = relativeTime;
+          timeElement.title = absoluteTime;
+        }
+      }
+    });
+  }
+
   cleanup() {
     if (this.feedbackRef && this.feedbackListener) {
       this.feedbackRef.off('value', this.feedbackListener);
       this.feedbackListener = null;
     }
+    
+    if (this.timeUpdateInterval) {
+      clearInterval(this.timeUpdateInterval);
+      this.timeUpdateInterval = null;
+    }
+    
     this.isInitialized = false;
+    this.currentFeedbacks = [];
   }
 }
 
@@ -337,5 +387,10 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Then initialize realtime updates
   window.realtimeFeedbackUpdater.initialize();
+  
+  // Also start timer for static timestamps (for cases where realtime is not active)
+  setInterval(() => {
+    updateStaticFeedbackTimestamps();
+  }, 30000);
 });
  
