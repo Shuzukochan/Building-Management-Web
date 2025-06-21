@@ -46,7 +46,7 @@
       }
     }
     
-    // Parse Firebase timestamp format YYYY-MM-DD_HH-MM-SS (with underscore)
+    // Parse Firebase timestamp format YYYY-MM-DD_HH-MM-SS (with timezone consistency)
     function parseFeedbackTimestamp(timestampKey) {
       try {
         if (timestampKey && typeof timestampKey === 'string') {
@@ -61,9 +61,10 @@
               const day = parseInt(parts[2]);
               const hour = parseInt(parts[3]);
               const minute = parseInt(parts[4]);
-              const second = parseInt(parts[5]);
+              const second = parseInt(parts[5]) || 0;
               
-              return new Date(year, month, day, hour, minute, second);
+              // Use UTC to ensure consistency between local and server
+              return new Date(Date.UTC(year, month, day, hour, minute, second));
             }
           }
         }

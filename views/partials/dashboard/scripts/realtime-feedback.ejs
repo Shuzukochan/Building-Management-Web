@@ -118,53 +118,99 @@ class RealtimeFeedbackUpdater {
       return dateB - dateA; // Newest first
     });
     
-    // Generate YouTube Live Chat style feedback items HTML
-    let feedbackHTML = '';
-    sortedFeedbacks.forEach((feedback, index) => {
-      const isAnonymous = feedback.isAnonymous || !feedback.phone || feedback.phone === 'anonymous';
-      const roomDisplay = isAnonymous ? 'Ẩn danh' : `Phòng ${feedback.roomNumber}`;
-      const avatarClass = isAnonymous ? 'anonymous' : 'named';
-      const usernameClass = isAnonymous ? 'anonymous' : 'named';
-      
-      // Create avatar icon (room icon or anonymous icon)  
-      const avatarIcon = isAnonymous ? '<i class="fas fa-user-secret"></i>' : '<i class="fas fa-door-open"></i>';
-      
-      // Use timestamp as ID if id is not available
-      const feedbackId = feedback.id || feedback.timestamp || 'unknown';
-      
-      // Get both relative and absolute time
-      const relativeTime = this.getRelativeTime(feedback.timestamp);
-      const absoluteTime = this.formatFeedbackTime(feedback.timestamp);
-      
-      feedbackHTML += `
-        <div class="feedback-item new-item" data-id="${feedbackId}">
-          <div class="feedback-avatar ${avatarClass}">
-            ${avatarIcon}
-          </div>
-          <div class="feedback-content-wrapper">
-            <div class="feedback-message-content">
-              <span class="feedback-username ${usernameClass}">${roomDisplay}:</span>
-              <span class="feedback-message">${this.escapeHtml(feedback.content)}</span>
-            </div>
-            <span class="feedback-time" title="${absoluteTime}">${relativeTime}</span>
-          </div>
-        </div>
-      `;
+    // Get existing feedback IDs to identify new ones
+    const existingFeedbackIds = new Set();
+    feedbackList.querySelectorAll('.feedback-item').forEach(item => {
+      const id = item.getAttribute('data-id');
+      if (id) existingFeedbackIds.add(id);
     });
     
-    // Clear old content and add new content
-    feedbackList.innerHTML = feedbackHTML;
+    // If no existing items (first load after static HTML), render all
+    const isFirstRealUpdate = existingFeedbackIds.size === 0;
     
-    // Force scroll to top để hiển thị feedback mới nhất
-    feedbackList.scrollTop = 0;
+    // Identify new feedbacks
+    const newFeedbacks = isFirstRealUpdate ? 
+      sortedFeedbacks : 
+      sortedFeedbacks.filter(feedback => {
+        const feedbackId = feedback.id || feedback.timestamp || 'unknown';
+        return !existingFeedbackIds.has(feedbackId);
+      });
+    
+    // If there are new feedbacks (or first load), add them
+    if (newFeedbacks.length > 0) {
+      // Remove empty state if exists
+      const emptyState = feedbackList.querySelector('.feedback-empty');
+      if (emptyState) {
+        emptyState.remove();
+      }
+      
+      // Generate HTML for new feedbacks only
+      let newFeedbackHTML = '';
+      newFeedbacks.forEach((feedback) => {
+        const isAnonymous = feedback.isAnonymous || !feedback.phone || feedback.phone === 'anonymous';
+        const roomDisplay = isAnonymous ? 'Ẩn danh' : `Phòng ${feedback.roomNumber}`;
+        const avatarClass = isAnonymous ? 'anonymous' : 'named';
+        const usernameClass = isAnonymous ? 'anonymous' : 'named';
+        
+        // Create avatar icon (room icon or anonymous icon)  
+        const avatarIcon = isAnonymous ? '<i class="fas fa-user-secret"></i>' : '<i class="fas fa-door-open"></i>';
+        
+        // Use timestamp as ID if id is not available
+        const feedbackId = feedback.id || feedback.timestamp || 'unknown';
+        
+        // Get both relative and absolute time
+        const relativeTime = this.getRelativeTime(feedback.timestamp);
+        const absoluteTime = this.formatFeedbackTime(feedback.timestamp);
+        
+        newFeedbackHTML += `
+          <div class="feedback-item new-item" data-id="${feedbackId}">
+            <div class="feedback-avatar ${avatarClass}">
+              ${avatarIcon}
+            </div>
+            <div class="feedback-content-wrapper">
+              <div class="feedback-message-content">
+                <span class="feedback-username ${usernameClass}">${roomDisplay}:</span>
+                <span class="feedback-message">${this.escapeHtml(feedback.content)}</span>
+              </div>
+              <span class="feedback-time" title="${absoluteTime}">${relativeTime}</span>
+            </div>
+          </div>
+        `;
+      });
+      
+      // Insert new feedbacks at the top (newest first)
+      if (isFirstRealUpdate) {
+        // First load: replace all content
+        feedbackList.innerHTML = newFeedbackHTML;
+      } else {
+        // Subsequent updates: prepend new items only
+        feedbackList.insertAdjacentHTML('afterbegin', newFeedbackHTML);
+      }
+      
+      // Limit total items to 20
+      const allItems = feedbackList.querySelectorAll('.feedback-item');
+      if (allItems.length > 20) {
+        // Remove items beyond the 20th
+        for (let i = 20; i < allItems.length; i++) {
+          allItems[i].remove();
+        }
+      }
+      
+      // Force scroll to top để hiển thị feedback mới nhất
+      feedbackList.scrollTop = 0;
+    }
   }
 
   // Get relative time (2 phút trước, 1 giờ trước, etc.)
   getRelativeTime(timestamp) {
     try {
+      // Use UTC time for consistent comparison
       const now = new Date();
       const past = parseFeedbackTimestamp(timestamp);
-      const diffMs = now - past;
+      
+      // Convert local now to UTC for fair comparison
+      const nowUTC = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+      const diffMs = nowUTC - past;
       
       if (diffMs < 0) return "vừa xong"; // Future timestamp
       
@@ -210,13 +256,15 @@ class RealtimeFeedbackUpdater {
       }
       
       // Fallback to date parsing
-      const date = new Date(timestamp);
+      const date = parseFeedbackTimestamp(timestamp);
       if (!isNaN(date.getTime())) {
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear().toString().substring(2);
-        const hour = date.getHours().toString().padStart(2, '0');
-        const minute = date.getMinutes().toString().padStart(2, '0');
+        // Convert UTC to Vietnam timezone (UTC+7) for display
+        const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+        const day = vietnamTime.getUTCDate().toString().padStart(2, '0');
+        const month = (vietnamTime.getUTCMonth() + 1).toString().padStart(2, '0');
+        const year = vietnamTime.getUTCFullYear().toString().substring(2);
+        const hour = vietnamTime.getUTCHours().toString().padStart(2, '0');
+        const minute = vietnamTime.getUTCMinutes().toString().padStart(2, '0');
         
         return `vào lúc ${hour}:${minute} ngày ${day}/${month}/${year}`;
       }
