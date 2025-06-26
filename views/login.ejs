@@ -220,5 +220,15 @@
     
     <div class="footer">© 2025 Building Management System</div>
   </div>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div id="loginErrorModal" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:32px 24px 24px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);min-width:320px;max-width:90vw;text-align:center;position:relative;">
+        <div style="font-size:22px;color:#d32f2f;margin-bottom:12px;"><i class="fas fa-exclamation-triangle"></i> Đăng nhập thất bại</div>
+        <div style="color:#444;font-size:16px;margin-bottom:20px;"><%= error %></div>
+        <button onclick="document.getElementById('loginErrorModal').style.display='none'" style="background:#d32f2f;color:#fff;padding:10px 28px;border:none;border-radius:8px;font-size:15px;cursor:pointer;">Đóng</button>
+      </div>
+    </div>
+  <% } %>
 </body>
 </html>

@@ -1347,11 +1347,17 @@
       newNodeIdInput.name = 'newNodeId';
       newNodeIdInput.value = newNodeId;
       
-      // Always send customName if it exists
+      // Always send nodeType - required by backend
+      const nodeTypeInput = document.createElement('input');
+      nodeTypeInput.type = 'hidden';
+      nodeTypeInput.name = 'nodeType';
+      nodeTypeInput.value = currentManagedNodeType || 'custom';
+      
+      // Send customName for custom nodes
       if (currentManagedNodeType === 'custom') {
         const customNameInput = document.createElement('input');
         customNameInput.type = 'hidden';
-        customNameInput.name = 'customName';
+        customNameInput.name = 'customNodeType';
         customNameInput.value = newCustomName;
         form.appendChild(customNameInput);
       }
@@ -1359,6 +1365,7 @@
       form.appendChild(roomIdInput);
       form.appendChild(oldNodeIdInput);
       form.appendChild(newNodeIdInput);
+      form.appendChild(nodeTypeInput);
       document.body.appendChild(form);
       form.submit();
     }

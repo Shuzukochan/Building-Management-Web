@@ -64,13 +64,12 @@ class RealtimeFeedbackUpdater {
             phone: feedback.phone || null,
             roomNumber: feedback.roomNumber || null,
             content: feedback.feedback || feedback.content || '',
-            isAnonymous: !feedback.phone || feedback.phone === 'anonymous',
-            createdAt: parseFeedbackTimestamp(timestampKey)
+            isAnonymous: !feedback.phone || feedback.phone === 'anonymous'
           });
         });
         
         // Sort by timestamp (newest first - for display order)
-        feedbacks.sort((a, b) => b.createdAt - a.createdAt);
+        feedbacks.sort((a, b) => parseFeedbackTimestamp(b.timestamp) - parseFeedbackTimestamp(a.timestamp));
         
         // Limit to last 20 feedbacks
         const limitedFeedbacks = feedbacks.slice(0, 20);
@@ -120,8 +119,8 @@ class RealtimeFeedbackUpdater {
     
     // Sort feedbacks để đảm bảo mới nhất ở trên cùng
     const sortedFeedbacks = [...feedbacks].sort((a, b) => {
-      const dateA = a.createdAt || parseFeedbackTimestamp(a.timestamp);
-      const dateB = b.createdAt || parseFeedbackTimestamp(b.timestamp);
+      const dateA = parseFeedbackTimestamp(a.timestamp);
+      const dateB = parseFeedbackTimestamp(b.timestamp);
       return dateB - dateA; // Newest first
     });
     

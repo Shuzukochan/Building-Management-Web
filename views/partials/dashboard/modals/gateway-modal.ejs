@@ -1,0 +1,41 @@
+<!-- Modal Gateway Management -->
+<div class="modal fade" id="gatewayModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="gatewayModalTitle">
+          <i class="fas fa-network-wired"></i> <span id="gatewayModalTitleText">Thêm Gateway ID</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="gatewayForm">
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <span id="gatewayModalInfo">Nhập Gateway ID để kết nối với hệ thống IoT</span>
+          </div>
+          
+          <div class="mb-3">
+            <label for="gatewayId" class="form-label">
+              <i class="fas fa-network-wired"></i> Gateway ID <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="gatewayId" name="gatewayId" 
+                   placeholder="Nhập Gateway ID" required>
+            <div class="form-text">Gateway ID được cung cấp bởi nhà sản xuất thiết bị IoT</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times"></i> Hủy
+          </button>
+          <button type="button" class="btn btn-danger" id="gatewayDeleteBtn" onclick="deleteGatewayId()" style="display: none;">
+            <i class="fas fa-trash"></i> Xóa Gateway ID
+          </button>
+          <button type="submit" class="btn btn-primary" id="gatewaySubmitBtn">
+            <i class="fas fa-save"></i> Lưu Gateway ID
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> 

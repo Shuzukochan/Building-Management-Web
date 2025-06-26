@@ -33,7 +33,9 @@
         }
         
         database = firebase.database(app);
-        feedbackRef = database.ref('service_feedbacks');
+        // Use currentBuildingId from server (passed from dashboardController)
+        const buildingId = '<%= currentBuildingId || "building_id_1" %>';
+        feedbackRef = database.ref(`buildings/${buildingId}/service_feedbacks`);
         
         // Firebase Database access (no auth required for this project)
         

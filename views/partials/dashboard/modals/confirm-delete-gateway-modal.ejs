@@ -1,0 +1,30 @@
+<!-- Modal Confirm Delete Gateway ID -->
+<div class="modal fade" id="confirmDeleteGatewayModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Xác nhận xóa Gateway ID</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="mb-3">
+          <i class="fas fa-network-wired text-danger" style="font-size: 3rem;"></i>
+        </div>
+        <p class="mb-2">Bạn có chắc chắn muốn xóa Gateway ID?</p>
+        <p id="deleteGatewayInfo" class="text-muted small mb-2"></p>
+        <div class="alert alert-danger small">
+          <i class="fas fa-exclamation-triangle"></i>
+          Điều này có thể ảnh hưởng đến kết nối với hệ thống IoT
+        </div>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-danger" id="executeDeleteGatewayBtn" onclick="executeDeleteGateway()">
+          <i class="fas fa-trash"></i> Xóa Gateway ID
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

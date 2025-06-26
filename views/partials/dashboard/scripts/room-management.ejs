@@ -50,35 +50,365 @@
       return { valid: true };
     }
     
-    // Add room form validation
-    document.addEventListener('DOMContentLoaded', function() {
-      const addRoomForm = document.getElementById('addRoomForm');
-      if (addRoomForm) {
-        addRoomForm.addEventListener('submit', function(e) {
+    // Global variables for delete room
+    let deleteRoomData = null;
+    
+    // Open delete room modal
+    function openDeleteRoomModal(roomId, roomNumber) {
+      deleteRoomData = { roomId, roomNumber };
+      document.getElementById('deleteRoomInfo').textContent = `Phòng ${roomNumber}`;
+      new bootstrap.Modal(document.getElementById('confirmDeleteRoomModal')).show();
+    }
+    
+    // Alias function for compatibility with existing buttons
+    function confirmDeleteRoom(roomId) {
+      // Get room number from the table row
+      const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+      const roomNumber = roomRow ? roomRow.getAttribute('data-room-number') : roomId;
+      openDeleteRoomModal(roomId, roomNumber);
+    }
+    
+    // Execute delete room
+    async function executeDeleteRoom() {
+      if (!deleteRoomData) return;
+      
+      const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteRoomModal'));
+      const submitBtn = document.querySelector('#confirmDeleteRoomModal .btn-danger');
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xóa...';
+      
+      try {
+        const response = await fetch('/api/delete-room', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            roomId: deleteRoomData.roomId
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Xóa phòng thành công!', 'success');
+          
+          // Close modal
+          modal.hide();
+          
+          // Reload page to show updated list
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          showToast(result.message || 'Có lỗi xảy ra khi xóa phòng', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting room:', error);
+        showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-trash"></i> Xóa ngay';
+        deleteRoomData = null;
+      }
+    }
+    
+    // Add room function using API
+    async function addNewRoom() {
           const roomNumber = document.getElementById('newRoomNumber').value.trim();
+      const submitBtn = document.getElementById('addRoomSubmitBtn');
           
           if (!roomNumber) {
-            e.preventDefault();
-            alert('Vui lòng nhập số phòng');
-            return false;
+        showToast('Vui lòng nhập số phòng', 'error');
+        return;
           }
           
           // Validate room number format
           const validation = validateRoomNumber(roomNumber);
           if (!validation.valid) {
-            e.preventDefault();
-            alert(validation.message);
-            return false;
+        showToast(validation.message, 'error');
+        return;
           }
           
           // Show loading state
-          const submitBtn = addRoomForm.querySelector('button[type="submit"]');
-          if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo...';
+      
+      try {
+        const response = await fetch('/api/add-room', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            roomNumber: roomNumber
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Thêm phòng thành công!', 'success');
+          
+          // Close modal
+          bootstrap.Modal.getInstance(document.getElementById('addRoomModal')).hide();
+          
+          // Reset form
+          document.getElementById('addRoomForm').reset();
+          
+          // Reload page to show new room
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          showToast(result.message || 'Có lỗi xảy ra khi thêm phòng', 'error');
+        }
+      } catch (error) {
+        console.error('Error adding room:', error);
+        showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Thêm phòng';
+      }
+    }
+
+    // Add tenant function using API
+    async function addNewTenant() {
+      const roomId = document.getElementById('tenantRoomId').value;
+      const tenantName = document.getElementById('tenantName').value.trim();
+      const phoneNumber = document.getElementById('newPhoneNumber').value.trim();
+      const submitBtn = document.getElementById('addTenantSubmitBtn');
+      
+      if (!tenantName || !phoneNumber) {
+        showToast('Vui lòng nhập đầy đủ thông tin', 'error');
+        return;
+      }
+      
+      // Check if room is in maintenance status
+      const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+      if (roomRow && roomRow.getAttribute('data-status') === 'maintenance') {
+        showToast('Không thể thêm người thuê vào phòng đang bảo trì', 'error');
+        return;
+      }
+      
+      // Basic phone validation
+      if (!/^[0-9+\-\s()]+$/.test(phoneNumber)) {
+        showToast('Số điện thoại không đúng định dạng', 'error');
+        return;
+      }
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang thêm...';
+      
+      try {
+        const response = await fetch('/api/assign-tenant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            roomId: roomId,
+            tenantName: tenantName,
+            phoneNumber: phoneNumber
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Thêm người thuê thành công!', 'success');
+          
+          // Close modal
+          bootstrap.Modal.getInstance(document.getElementById('addTenantModal')).hide();
+          
+          // Reset form
+          document.getElementById('addTenantForm').reset();
+          
+          // Reload page to show updated room
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          showToast(result.message || 'Có lỗi xảy ra khi thêm người thuê', 'error');
+        }
+      } catch (error) {
+        console.error('Error adding tenant:', error);
+        showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Thêm người thuê';
+      }
+    }
+    
+    // Update room status function
+    async function updateRoomStatus(roomId, newStatus) {
+      try {
+        const response = await fetch('/api/update-room', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            roomId: roomId,
+            status: newStatus
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Cập nhật trạng thái thành công!', 'success');
+          
+          // Update the status in the table without reloading
+          const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+          if (roomRow) {
+            roomRow.setAttribute('data-status', newStatus);
+            
+            // Update the status badge
+            const statusSelect = roomRow.querySelector('select[name="status"]');
+            if (statusSelect) {
+              statusSelect.value = newStatus;
+              statusSelect.className = `form-select form-select-sm status-badge status-${newStatus}`;
+            }
+            
+            // Update representative button based on new status
+            updateRepresentativeButton(roomRow, newStatus);
           }
+        } else {
+          showToast(result.message || 'Có lỗi xảy ra khi cập nhật trạng thái', 'error');
+          
+          // Revert the select value
+          const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+          const statusSelect = roomRow?.querySelector('select[name="status"]');
+          if (statusSelect) {
+            statusSelect.value = roomRow.getAttribute('data-status');
+          }
+        }
+      } catch (error) {
+        console.error('Error updating room status:', error);
+        showToast('Lỗi kết nối. Vui lòng thử lại.', 'error');
+        
+        // Revert the select value
+        const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+        const statusSelect = roomRow?.querySelector('select[name="status"]');
+        if (statusSelect) {
+          statusSelect.value = roomRow.getAttribute('data-status');
+        }
+      }
+    }
+
+    // Update representative button based on room status and phone
+    function updateRepresentativeButton(roomRow, newStatus, phoneNumber = null) {
+      const representativeDiv = roomRow.querySelector('.representative-info');
+      if (!representativeDiv) return;
+      
+      const roomId = roomRow.getAttribute('data-room-id');
+      const roomNumber = roomRow.getAttribute('data-room-number');
+      
+      // If phoneNumber is provided, update the data attribute
+      if (phoneNumber !== null) {
+        roomRow.setAttribute('data-phone', phoneNumber);
+      }
+      
+      const hasPhone = roomRow.getAttribute('data-phone') && roomRow.getAttribute('data-phone').trim() !== '';
+      
+      let buttonHtml = '';
+      
+      if (hasPhone) {
+        // Room has tenant - always show tenant info regardless of status
+        const currentPhone = roomRow.getAttribute('data-phone');
+        buttonHtml = `
+          <button type="button" 
+                  class="representative-button occupied"
+                  onclick="openManageTenantsModal('${roomId}', '${roomNumber}')"
+                  title="Quản lý danh sách người thuê">
+            <div class="rep-info-column">
+              <div class="rep-name">
+                <i class="fas fa-user"></i>
+                <span>Người đại diện</span>
+              </div>
+              <div class="rep-phone">
+                <i class="fas fa-phone"></i>
+                <span>${currentPhone}</span>
+              </div>
+            </div>
+          </button>
+        `;
+      } else {
+        // Room is empty - check status
+        if (newStatus === 'maintenance') {
+          buttonHtml = `
+            <button type="button" 
+                    class="representative-button maintenance" 
+                    disabled
+                    title="Phòng đang bảo trì">
+              <div class="maintenance-room">
+                <i class="fas fa-tools"></i>
+                <span>Đang bảo trì</span>
+              </div>
+            </button>
+          `;
+        } else {
+          // vacant status
+          buttonHtml = `
+            <button type="button" 
+                    class="representative-button vacant" 
+                    onclick="openAddTenantModal('${roomId}', '${roomNumber}')"
+                    title="Thêm người thuê">
+              <div class="empty-room">
+                <i class="fas fa-user-plus"></i>
+                <span>Thêm người thuê</span>
+              </div>
+            </button>
+          `;
+        }
+      }
+      
+      representativeDiv.innerHTML = buttonHtml;
+    }
+
+    // Form validation and event handlers
+    document.addEventListener('DOMContentLoaded', function() {
+      // Add room form
+      const addRoomForm = document.getElementById('addRoomForm');
+      if (addRoomForm) {
+        addRoomForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          addNewRoom();
         });
       }
+      
+      // Add tenant form
+      const addTenantForm = document.getElementById('addTenantForm');
+      if (addTenantForm) {
+        addTenantForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          addNewTenant();
+        });
+      }
+      
+      // Status update handlers - replace form submit with API calls
+      document.addEventListener('change', function(e) {
+        if (e.target.matches('select[name="status"]')) {
+          e.preventDefault();
+          
+          const select = e.target;
+          const form = select.closest('form');
+          const roomIdInput = form?.querySelector('input[name="roomId"]');
+          
+          if (roomIdInput) {
+            const roomId = roomIdInput.value;
+            const newStatus = select.value;
+            updateRoomStatus(roomId, newStatus);
+          }
+        }
+      });
     });
   </script>
 

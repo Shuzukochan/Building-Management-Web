@@ -56,8 +56,27 @@ function calculateMonthlyUsageByType(historyData, month, year, roomId, dataType)
 // Get payments page
 const getPayments = async (req, res) => {
   try {
-    const roomsSnapshot = await db.ref("rooms").once("value");
+    // Xác định building_id để lấy dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        // Admin thường: lấy building_ids (là string, không phải array)
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        // Super admin: lấy theo dropdown đã chọn
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
+    // Lấy cả rooms data và phone mapping
+    const [roomsSnapshot, phoneToRoomSnapshot] = await Promise.all([
+      db.ref(`buildings/${targetBuildingId}/rooms`).once("value"),
+      db.ref('phone_to_room').once("value")
+    ]);
+    
     const roomsData = roomsSnapshot.val() || {};
+    const phoneToRoomData = phoneToRoomSnapshot.val() || {};
     
     // Lấy tháng từ query param hoặc tháng hiện tại
     let currentMonth, currentYear, currentMonthKey;
@@ -82,6 +101,19 @@ const getPayments = async (req, res) => {
     
     for (const [roomId, roomInfo] of Object.entries(roomsData)) {
       const floor = roomId.charAt(0);
+      
+      // Get tenants từ global mapping
+      const roomTenants = Object.entries(phoneToRoomData)
+        .filter(([phone, data]) => data.buildingId === targetBuildingId && data.roomId === roomId)
+        .map(([phone, data]) => ({
+          phone: phone,
+          name: data.name,
+          isRepresentative: data.isRepresentative
+        }))
+        .sort((a, b) => a.isRepresentative === b.isRepresentative ? 0 : a.isRepresentative ? -1 : 1); // Representative first
+
+      // Find representative tenant
+      const representative = roomTenants.find(t => t.isRepresentative) || roomTenants[0] || null;
       
       // Tính toán usage từ history (sử dụng logic từ index.js)
       let electricUsage = 0;
@@ -142,118 +174,149 @@ const getPayments = async (req, res) => {
         }
       }
       
+      // Tính due date (hạn thanh toán vào ngày 10 của tháng SAU)
+      const dueDate = new Date(currentYear, currentMonth, 10); // Ngày 10 của tháng SAU
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      const isDueToday = today.getTime() === dueDate.getTime();
+      const isOverdue = today > dueDate;
+      const daysToDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+      
+      // Tạo đối tượng phòng với đầy đủ thông tin (giống index.js)
       const room = {
         id: roomId,
         roomNumber: roomId,
-        phoneNumber: formatPhoneNumber(roomInfo.phone || ''),
         floor: parseInt(floor),
-        status: (roomInfo.phone && roomInfo.phone.trim()) ? 'occupied' : 'vacant',
-        currentMonth: currentMonthKey,
-        payment: {
-          isPaid: isPaid,
-          paymentDate: paymentDate,
-          paymentTimestamp: paymentTimestamp,
-          paymentMethod: paymentMethod,
-          electricUsage: electricUsage,
-          electricCost: electricCost,
-          waterUsage: waterUsage,
-          waterCost: waterCost,
-          totalCost: totalCost,
-          dueDate: new Date(currentYear, currentMonth, 5) // Hạn thanh toán ngày 5 tháng sau
-        }
+        phoneNumber: representative ? formatPhoneNumber(representative.phone) : "",
+        electricUsage: Math.round(electricUsage * 100) / 100,
+        waterUsage: Math.round(waterUsage * 100) / 100,
+        electricCost: electricCost,
+        waterCost: waterCost,
+        totalCost: totalCost,
+        isPaid: isPaid,
+        paymentDate: paymentDate,
+        paymentTimestamp: paymentTimestamp,
+        paymentMethod: paymentMethod,
+        // Due date logic
+        dueDate: dueDate,
+        isDueToday: isDueToday,
+        isOverdue: isOverdue,
+        daysToDue: daysToDue,
+        // Status để hiển thị UI
+        status: totalCost === 0 ? 'no-cost' : (isPaid ? 'paid' : 'unpaid'),
+        // Multi-tenant info
+        tenants: roomTenants,
+        tenantCount: roomTenants.length,
+        representativeTenant: representative,
+        // Backward compatibility
+        tenant: representative ? { name: representative.name, phone: representative.phone } : null
       };
       
       rooms.push(room);
     }
     
-    // Sắp xếp theo số phòng
+    // Sắp xếp phòng theo số phòng (giống index.js)
     rooms.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber));
     
-    // Tính thống kê (giống index.js)
-    const occupiedRooms = rooms.filter(r => r.status === 'occupied');
+    // Tính toán thống kê tổng hợp (giống index.js)
+    const totalRevenue = rooms.filter(r => r.isPaid).reduce((sum, r) => sum + r.totalCost, 0);
+    const unpaidRevenue = rooms.filter(r => !r.isPaid && r.totalCost > 0).reduce((sum, r) => sum + r.totalCost, 0);
+    const totalElectricUsage = rooms.reduce((sum, r) => sum + r.electricUsage, 0);
+    const totalWaterUsage = rooms.reduce((sum, r) => sum + r.waterUsage, 0);
     
-    // Chỉ tính các phòng có chi phí > 0 vào thống kê thanh toán
-    const roomsNeedPayment = occupiedRooms.filter(r => r.payment.totalCost > 0);
-    const paidRooms = roomsNeedPayment.filter(r => r.payment.isPaid);
-    const unpaidRooms = roomsNeedPayment.filter(r => !r.payment.isPaid);
+    // Thống kê theo phương thức thanh toán (giống index.js)
+    const cashRevenue = rooms.filter(r => r.isPaid && r.paymentMethod === 'cash').reduce((sum, r) => sum + r.totalCost, 0);
+    const transferRevenue = rooms.filter(r => r.isPaid && r.paymentMethod === 'transfer').reduce((sum, r) => sum + r.totalCost, 0);
     
-    // Tính overdueRooms - phòng quá hạn thanh toán (chỉ tính phòng có chi phí > 0)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const overdueRooms = roomsNeedPayment.filter(r => {
-      if (r.payment.isPaid) return false;
-      const dueDate = new Date(r.payment.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return today > dueDate;
-    });
+    // Đếm số phòng theo trạng thái (giống index.js)
+    const paidCount = rooms.filter(r => r.isPaid).length;
+    const unpaidCount = rooms.filter(r => !r.isPaid && r.totalCost > 0).length;
+    const noCostCount = rooms.filter(r => r.totalCost === 0).length;
     
-    const totalRevenue = paidRooms.reduce((sum, room) => sum + room.payment.totalCost, 0);
-    const pendingRevenue = unpaidRooms.reduce((sum, room) => sum + room.payment.totalCost, 0);
+    // Stats cho cards
+    const totalRooms = rooms.filter(r => r.phoneNumber && r.phoneNumber.trim() !== '').length; // Phòng có người thuê
+    const paidRooms = paidCount;
+    const overdueRooms = rooms.filter(r => !r.isPaid && r.totalCost > 0 && r.isOverdue).length;
+    const paymentRate = totalRooms > 0 ? Math.round((paidRooms / totalRooms) * 100) : 0;
     
-    // Tính doanh thu theo phương thức thanh toán
-    console.log('🔍 Debug payment methods:');
-    paidRooms.forEach(room => {
-      console.log(`Room ${room.roomNumber}: paymentMethod = "${room.payment.paymentMethod}", totalCost = ${room.payment.totalCost}`);
-    });
+    console.log(`💰 Payment summary for ${currentMonthKey}:`);
+    console.log(`   Paid: ${paidCount} rooms - ${totalRevenue.toLocaleString('vi-VN')}đ`);
+    console.log(`   Unpaid: ${unpaidCount} rooms - ${unpaidRevenue.toLocaleString('vi-VN')}đ`);
+    console.log(`   No cost: ${noCostCount} rooms`);
     
-    const cashRevenue = paidRooms
-      .filter(room => {
-        const method = room.payment.paymentMethod;
-        return method && (method.toLowerCase() === 'cash' || method.toUpperCase() === 'CASH');
-      })
-      .reduce((sum, room) => sum + room.payment.totalCost, 0);
-    
-    const transferRevenue = paidRooms
-      .filter(room => {
-        const method = room.payment.paymentMethod;
-        return !method || (method.toLowerCase() !== 'cash' && method.toUpperCase() !== 'CASH');
-      })
-      .reduce((sum, room) => sum + room.payment.totalCost, 0);
-      
     console.log(`💰 Revenue breakdown: Cash = ${cashRevenue}, Transfer = ${transferRevenue}, Total = ${totalRevenue}`);
     
+    const buildings = {
+      building_id_1: { name: "Tòa nhà A" },
+      building_id_2: { name: "Tòa nhà B" }
+    };
+    
     res.render("payments", {
-      rooms,
-      currentMonth,
-      currentYear,
-      currentMonthKey,
-      currentPage: 'payments',
+      rooms: rooms,
+      currentMonth: currentMonth,
+      currentYear: currentYear,
+      currentMonthKey: currentMonthKey,
       stats: {
-        totalRooms: occupiedRooms.length,
-        paidRooms: paidRooms.length,
-        unpaidRooms: unpaidRooms.length,
-        overdueRooms: overdueRooms.length,
         totalRevenue: totalRevenue,
-        pendingRevenue: pendingRevenue,
+        unpaidRevenue: unpaidRevenue,
+        totalElectricUsage: Math.round(totalElectricUsage * 100) / 100,
+        totalWaterUsage: Math.round(totalWaterUsage * 100) / 100,
+        paidCount: paidCount,
+        unpaidCount: unpaidCount,
+        noCostCount: noCostCount,
         cashRevenue: cashRevenue,
         transferRevenue: transferRevenue,
-        paymentRate: occupiedRooms.length > 0 ? Math.round((paidRooms.length / occupiedRooms.length) * 100) : 0
+        // Stats cho cards
+        totalRooms: totalRooms,
+        paidRooms: paidRooms,
+        overdueRooms: overdueRooms,
+        paymentRate: paymentRate
       },
+      currentPage: 'payments',
       success: req.query.success || null,
-      error: req.query.error || null
+      error: req.query.error || null,
+      admin: req.session.admin,
+      buildings,
+      selectedBuildingId: req.session.selectedBuildingId,
+      currentBuildingId: targetBuildingId
     });
     
   } catch (error) {
-    console.error("Error loading payments:", error);
+    console.error("Lỗi khi tải trang payments:", error);
+    const buildings = {
+      building_id_1: { name: "Tòa nhà A" },
+      building_id_2: { name: "Tòa nhà B" }
+    };
     res.render("payments", {
       rooms: [],
       currentMonth: new Date().getMonth() + 1,
       currentYear: new Date().getFullYear(),
-      currentMonthKey: `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, "0")}`,
-      currentPage: 'payments',
+      currentMonthKey: `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`,
       stats: {
-        totalRooms: 0,
-        paidRooms: 0,
-        unpaidRooms: 0,
-        overdueRooms: 0,
         totalRevenue: 0,
-        pendingRevenue: 0,
+        unpaidRevenue: 0,
+        totalElectricUsage: 0,
+        totalWaterUsage: 0,
+        paidCount: 0,
+        unpaidCount: 0,
+        noCostCount: 0,
         cashRevenue: 0,
         transferRevenue: 0,
+        // Stats cho cards  
+        totalRooms: 0,
+        paidRooms: 0,
+        overdueRooms: 0,
         paymentRate: 0
       },
+      currentPage: 'payments',
       success: null,
-      error: "Lỗi khi tải dữ liệu thanh toán"
+      error: "Lỗi khi tải dữ liệu thanh toán",
+      admin: req.session.admin,
+      buildings,
+      selectedBuildingId: req.session.selectedBuildingId,
+      currentBuildingId: 'building_id_1'
     });
   }
 };
@@ -280,8 +343,21 @@ const markPayment = async (req, res) => {
       });
     }
     
+    // Xác định building_id để lấy dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        // Admin thường: lấy building_ids (là string, không phải array)
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        // Super admin: lấy theo dropdown đã chọn
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
     // Kiểm tra phòng tồn tại
-    const roomSnapshot = await db.ref(`rooms/${roomId}`).once('value');
+    const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}`).once('value');
     if (!roomSnapshot.exists()) {
       return res.status(404).json({ 
         success: false, 
@@ -290,8 +366,8 @@ const markPayment = async (req, res) => {
     }
     
     // Kiểm tra xem đã thanh toán chưa
-    const paymentsSnapshot = await db.ref(`rooms/${roomId}/payments/${month}`).once('value');
-    const paymentSnapshot = await db.ref(`rooms/${roomId}/payment/${month}`).once('value');
+    const paymentsSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/payments/${month}`).once('value');
+    const paymentSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/payment/${month}`).once('value');
     
     const existingPayment = paymentsSnapshot.val() || paymentSnapshot.val();
     
@@ -333,22 +409,21 @@ const markPayment = async (req, res) => {
       amount: finalAmount,
       roomNumber: roomId,
       status: 'PAID',
-      timestamp: new Date().toISOString(),
       method: paymentMethod, // Trường chính
       paymentMethod: paymentMethod, // Trường backup để đảm bảo
       electricUsage: electricUsage,
       waterUsage: waterUsage,
       electricCost: electricUsage * 3300,
       waterCost: waterUsage * 15000,
-      paidAt: Date.now(),
       paidBy: 'admin', // Người đánh dấu thanh toán
+      timestamp: new Date().toISOString(), // Thêm ngày thanh toán
       note: `Thanh toán ${paymentMethod === 'cash' ? 'tiền mặt' : 'chuyển khoản'} tháng ${currentMonth}/${currentYear}`
     };
     
     console.log(`📝 Payment data to save:`, paymentData);
     
-    // Lưu vào Firebase theo cấu trúc rooms/{roomId}/payments/{month} (số nhiều)
-    await db.ref(`rooms/${roomId}/payments/${month}`).set(paymentData);
+    // Lưu vào Firebase theo cấu trúc buildings/{buildingId}/rooms/{roomId}/payments/{month}
+    await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/payments/${month}`).set(paymentData);
     
     console.log(`✅ Payment marked successfully for room ${roomId}, month ${month}:`, paymentData);
     
@@ -375,16 +450,26 @@ const createTestPayment = async (req, res) => {
       return res.status(400).json({ error: "Missing roomId or month" });
     }
     
+    // Xác định building_id để lưu dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
     // Tạo test payment data
     const testPayment = {
       amount: Math.floor(Math.random() * 500000) + 100000, // 100k - 600k VND
       status: "paid",
-      paidAt: Date.now(),
       month: month,
       note: "Test payment"
     };
     
-    await db.ref(`rooms/${roomId}/payments/${month}`).set(testPayment);
+    await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/payments/${month}`).set(testPayment);
     
     res.json({ success: true, message: "Test payment created", payment: testPayment });
   } catch (error) {
@@ -396,8 +481,25 @@ const createTestPayment = async (req, res) => {
 // Get unpaid previous months (matching index.js logic)
 const getUnpaidPreviousMonths = async (req, res) => {
   try {
-    const roomsSnapshot = await db.ref('rooms').once('value');
+    // Xác định building_id để lấy dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
+    // Lấy cả rooms data và phone mapping
+    const [roomsSnapshot, phoneToRoomSnapshot] = await Promise.all([
+      db.ref(`buildings/${targetBuildingId}/rooms`).once('value'),
+      db.ref('phone_to_room').once('value')
+    ]);
+    
     const roomsData = roomsSnapshot.val() || {};
+    const phoneToRoomData = phoneToRoomSnapshot.val() || {};
     
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
@@ -421,8 +523,12 @@ const getUnpaidPreviousMonths = async (req, res) => {
       
       // Đếm số phòng chưa thanh toán trong tháng này
       for (const [roomId, roomInfo] of Object.entries(roomsData)) {
+        // Check if room has tenants from global phone mapping
+        const roomTenants = Object.entries(phoneToRoomData)
+          .filter(([phone, data]) => data.buildingId === targetBuildingId && data.roomId === roomId);
+        
         // Chỉ kiểm tra phòng có người thuê
-        if (roomInfo.phone && roomInfo.phone.trim()) {
+        if (roomTenants.length > 0) {
           totalRoomsChecked++;
           
           // Kiểm tra thanh toán trước khi tính chi phí (tối ưu hóa)
@@ -472,19 +578,12 @@ const getUnpaidPreviousMonths = async (req, res) => {
         }
       }
     
-    console.log(`📊 Final result: ${unpaidMonths.length} months with unpaid rooms:`, unpaidMonths);
+    console.log(`🔍 Found ${unpaidMonths.length} unpaid months`);
     
-    res.json({
-      success: true,
-      unpaidMonths: unpaidMonths
-    });
-    
+    res.json({ success: true, unpaidMonths: unpaidMonths });
   } catch (error) {
-    console.error('Lỗi khi kiểm tra tháng chưa thanh toán:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Lỗi server khi kiểm tra tháng chưa thanh toán'
-    });
+    console.error("Error getting unpaid previous months:", error);
+    res.status(500).json({ error: "Failed to get unpaid previous months" });
   }
 };
 

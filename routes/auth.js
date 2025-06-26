@@ -2,24 +2,14 @@ const express = require("express");
 const router = express.Router();
 const { requireAuth } = require("../middleware/auth");
 const { getDashboard } = require("../controllers/dashboardController");
+const authController = require("../controllers/authController");
 
-// Get admin credentials from environment variables
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+router.get("/", authController.renderLogin);
+router.post("/login", authController.login);
 
-router.get("/", (req, res) => {
-  res.render("login");
-});
-
-router.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  
-  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    req.session.loggedIn = true;
-    res.redirect("/dashboard");
-  } else {
-    res.redirect("/");
-  }
+router.post('/select-building', (req, res) => {
+  req.session.selectedBuildingId = req.body.buildingId;
+  res.json({ success: true });
 });
 
 router.get("/dashboard", requireAuth, getDashboard);

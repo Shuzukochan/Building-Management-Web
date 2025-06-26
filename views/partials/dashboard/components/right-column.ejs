@@ -35,6 +35,15 @@
                 </button>
               </div>
               <div class="d-flex gap-2">
+                <% if (currentGatewayId && currentGatewayId !== null && currentGatewayId.trim() !== '') { %>
+                  <button class="btn btn-sm text-white" style="background-color: #fd7e14;" onclick="openGatewayModal()" title="Quản lý Gateway ID">
+                    <i class="fas fa-network-wired"></i> Gateway ID: <%= currentGatewayId %>
+                  </button>
+                <% } else { %>
+                  <button class="btn btn-outline-warning btn-sm" onclick="openGatewayModal()" title="Thêm Gateway ID">
+                    <i class="fas fa-plus"></i> Thêm Gateway ID
+                  </button>
+                <% } %>
                 <button class="btn btn-primary btn-sm" onclick="openBroadcastNotificationModal()" title="Gửi thông báo toàn toà nhà">
                   <i class="fas fa-bullhorn"></i> Gửi thông báo
                 </button>
@@ -132,7 +141,7 @@
                             <% if (room.status === 'maintenance') { %>
                       <form action="/update-room-status" method="POST" class="d-inline">
                         <input type="hidden" name="roomId" value="<%= room.id %>">
-                                <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+                                <select name="status" class="form-select form-select-sm status-badge status-maintenance">
                                   <option value="occupied">Đã thuê</option>
                                   <option value="maintenance" selected>Bảo trì</option>
                         </select>
@@ -140,7 +149,7 @@
                         <% } else { %>
                               <form action="/update-room-status" method="POST" class="d-inline">
                             <input type="hidden" name="roomId" value="<%= room.id %>">
-                                <select name="status" class="form-select form-select-sm status-badge status-occupied" onchange="this.form.submit()">
+                                <select name="status" class="form-select form-select-sm status-badge status-occupied">
                                   <option value="occupied" selected>Đã thuê</option>
                                   <option value="maintenance">Bảo trì</option>
                                 </select>
@@ -151,7 +160,7 @@
                             <% if (room.status === 'maintenance') { %>
                               <form action="/update-room-status" method="POST" class="d-inline">
                                 <input type="hidden" name="roomId" value="<%= room.id %>">
-                                <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+                                <select name="status" class="form-select form-select-sm status-badge status-maintenance">
                                   <option value="vacant">Trống</option>
                                   <option value="maintenance" selected>Bảo trì</option>
                                 </select>
@@ -159,7 +168,7 @@
                             <% } else { %>
                               <form action="/update-room-status" method="POST" class="d-inline">
                                 <input type="hidden" name="roomId" value="<%= room.id %>">
-                                <select name="status" class="form-select form-select-sm status-badge status-vacant" onchange="this.form.submit()">
+                                <select name="status" class="form-select form-select-sm status-badge status-vacant">
                                   <option value="vacant" selected>Trống</option>
                                   <option value="maintenance">Bảo trì</option>
                                 </select>

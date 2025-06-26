@@ -87,16 +87,41 @@ const getDashboard = async (req, res) => {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear()
   };
+  const buildings = {
+    building_id_1: { name: "Tòa nhà A" },
+    building_id_2: { name: "Tòa nhà B" }
+  };
   
+  // Xác định building_id để lấy dữ liệu
+  let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+  
+  if (req.session.admin) {
+    if (req.session.admin.role === 'admin') {
+      // Admin thường: lấy building_ids (là string, không phải array)
+      targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+    } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+      // Super admin: lấy theo dropdown đã chọn
+      targetBuildingId = req.session.selectedBuildingId;
+    }
+  }
+  
+  // Initialize variables outside try block
+  let currentGatewayId = null;
+
   try {
-    // Load rooms and feedback data in parallel
-    const [roomsSnapshot, feedbackSnapshot] = await Promise.all([
-      db.ref("rooms").once("value"),
-      db.ref("service_feedbacks").once("value")
+    
+    // Lấy dữ liệu từ building cụ thể và global phone mapping
+    const [roomsSnapshot, feedbackSnapshot, phoneToRoomSnapshot, gatewaySnapshot] = await Promise.all([
+      db.ref(`buildings/${targetBuildingId}/rooms`).once("value"),
+      db.ref(`buildings/${targetBuildingId}/service_feedbacks`).once("value"),
+      db.ref('phone_to_room').once("value"),
+      db.ref(`buildings/${targetBuildingId}/gateway_id`).once("value")
     ]);
     
     const roomsData = roomsSnapshot.val();
     const feedbackData = feedbackSnapshot.val();
+    const phoneToRoomData = phoneToRoomSnapshot.val() || {};
+    currentGatewayId = gatewaySnapshot.val() || null;
     
     // Calculate monthly statistics using same logic as API
     if (roomsData) {
@@ -128,30 +153,40 @@ const getDashboard = async (req, res) => {
         // Tự động xác định tầng từ số phòng
         const floor = roomId.charAt(0);
         
-        // Determine status: prioritize explicit status from Firebase, then auto-detect from phone
-        let roomStatus;
-        if (roomInfo.status) {
-          // Use explicit status from Firebase
-          roomStatus = roomInfo.status;
-        } else {
-          // Auto-detect based on phone presence (backward compatibility)
-          roomStatus = (roomInfo.phone && roomInfo.phone.trim()) ? "occupied" : "vacant";
+        // Get tenants từ global mapping
+        const roomTenants = Object.entries(phoneToRoomData)
+          .filter(([phone, data]) => data.buildingId === targetBuildingId && data.roomId === roomId)
+          .map(([phone, data]) => ({
+            phone: phone,
+            name: data.name,
+            isRepresentative: data.isRepresentative
+          }))
+          .sort((a, b) => a.isRepresentative === b.isRepresentative ? 0 : a.isRepresentative ? -1 : 1); // Representative first
+
+        // Determine status từ room hoặc auto-detect từ tenants
+        let roomStatus = roomInfo.status || 'vacant';
+        if (!roomInfo.status) {
+          // Auto-detect: có tenants = occupied, không có = vacant
+          roomStatus = roomTenants.length > 0 ? "occupied" : "vacant";
         }
+
+        // Find representative tenant
+        const representative = roomTenants.find(t => t.isRepresentative) || roomTenants[0] || null;
 
         const room = {
           id: roomId,
-          roomNumber: roomId,  // roomId chính là số phòng
-          phoneNumber: formatPhoneNumber(roomInfo.phone || ""),
+          roomNumber: roomId,
+          phoneNumber: representative ? formatPhoneNumber(representative.phone) : "",
           floor: parseInt(floor),
           status: roomStatus,
           nodes: {},
-          // New multi-tenant info (simplified)
-          tenants: roomInfo.tenants || [],
-          tenantCount: roomInfo.tenants ? roomInfo.tenants.length : 0,
-          representativeTenant: roomInfo.tenants && roomInfo.tenants.length > 0 ? roomInfo.tenants[0] : null,
+          // Simplified tenant info
+          tenants: roomTenants,
+          tenantCount: roomTenants.length,
+          representativeTenant: representative,
           // Backward compatibility
-          tenant: roomInfo.tenant || null,
-          tenantName: roomInfo.tenant ? roomInfo.tenant.name : (roomInfo.tenants && roomInfo.tenants.length > 0 ? roomInfo.tenants[0].name : null)
+          tenant: representative ? { name: representative.name, phone: representative.phone } : null,
+          tenantName: representative ? representative.name : null
         };
 
         // Xử lý nodes với cấu trúc mới - history ở room level
@@ -246,7 +281,7 @@ const getDashboard = async (req, res) => {
   const vacantRooms = safeRooms.filter(r => r.status === "vacant").length;
   const maintenanceRooms = safeRooms.filter(r => r.status === "maintenance").length;
   
-  res.render("dashboard", { 
+  res.render("dashboard", {
     rooms: rooms,
     feedbacks: feedbacks,
     monthlyStats: monthlyStats,
@@ -256,7 +291,12 @@ const getDashboard = async (req, res) => {
     maintenanceRooms,
     currentPage: 'dashboard',
     success: req.query.success || null,
-    error: req.query.error || null
+    error: req.query.error || null,
+    admin: req.session.admin,
+    buildings,
+    selectedBuildingId: req.session.selectedBuildingId,
+    currentBuildingId: targetBuildingId,
+    currentGatewayId: currentGatewayId
   });
 };
 

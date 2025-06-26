@@ -1,0 +1,180 @@
+  <script>
+    // ==================== GATEWAY MANAGEMENT FUNCTIONS ====================
+    
+    // Open Gateway Modal
+    function openGatewayModal() {
+      try {
+        console.log('🔧 Opening Gateway Modal...');
+        
+        const currentGatewayId = '<%= (currentGatewayId && currentGatewayId !== null) ? currentGatewayId : "" %>';
+        console.log('Current Gateway ID:', currentGatewayId);
+        
+        if (currentGatewayId && currentGatewayId.trim() !== '') {
+        // Edit mode
+        document.getElementById('gatewayModalTitleText').textContent = 'Sửa Gateway ID';
+        document.getElementById('gatewayModalInfo').textContent = `Gateway ID hiện tại: ${currentGatewayId}`;
+        document.getElementById('gatewayId').value = currentGatewayId;
+        document.getElementById('gatewaySubmitBtn').innerHTML = '<i class="fas fa-save"></i> Cập nhật Gateway ID';
+        // Show delete button
+        document.getElementById('gatewayDeleteBtn').style.display = 'inline-block';
+      } else {
+        // Add mode
+        document.getElementById('gatewayModalTitleText').textContent = 'Thêm Gateway ID';
+        document.getElementById('gatewayModalInfo').textContent = 'Nhập Gateway ID để kết nối với hệ thống IoT';
+        document.getElementById('gatewayId').value = '';
+        document.getElementById('gatewaySubmitBtn').innerHTML = '<i class="fas fa-save"></i> Lưu Gateway ID';
+        // Hide delete button
+        document.getElementById('gatewayDeleteBtn').style.display = 'none';
+      }
+      
+      // Open modal
+      new bootstrap.Modal(document.getElementById('gatewayModal')).show();
+      
+      // Focus on gateway input
+      setTimeout(() => {
+        document.getElementById('gatewayId').focus();
+      }, 500);
+      
+      } catch (error) {
+        console.error('❌ Error opening Gateway Modal:', error);
+        toastManager.error('Lỗi khi mở modal Gateway');
+      }
+    }
+    
+    // Save gateway ID using API
+    async function saveGatewayId() {
+      const gatewayId = document.getElementById('gatewayId').value.trim();
+      const submitBtn = document.getElementById('gatewaySubmitBtn');
+      
+      if (!gatewayId) {
+        toastManager.error('Vui lòng nhập Gateway ID');
+        return;
+      }
+      
+      // Basic validation - alphanumeric and some special chars
+      if (!/^[a-zA-Z0-9\-_]+$/.test(gatewayId)) {
+        toastManager.error('Gateway ID chỉ được chứa chữ cái, số, dấu gạch ngang và gạch dưới');
+        return;
+      }
+      
+      if (gatewayId.length < 3 || gatewayId.length > 50) {
+        toastManager.error('Gateway ID phải từ 3-50 ký tự');
+        return;
+      }
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+      
+      try {
+        const response = await fetch('/api/update-gateway', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            gatewayId: gatewayId
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          toastManager.success('Lưu Gateway ID thành công!');
+          
+          // Close modal
+          bootstrap.Modal.getInstance(document.getElementById('gatewayModal')).hide();
+          
+          // Reset form
+          document.getElementById('gatewayForm').reset();
+          
+          // Reload page to show updated button
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          toastManager.error(result.message || 'Có lỗi xảy ra khi lưu Gateway ID');
+        }
+      } catch (error) {
+        console.error('Error saving gateway ID:', error);
+        toastManager.error('Lỗi kết nối. Vui lòng thử lại.');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        const isEdit = '<%= (currentGatewayId && currentGatewayId !== null && currentGatewayId.trim() !== "") ? "true" : "false" %>' === 'true';
+        submitBtn.innerHTML = isEdit ? 
+          '<i class="fas fa-save"></i> Cập nhật Gateway ID' : 
+          '<i class="fas fa-save"></i> Lưu Gateway ID';
+      }
+    }
+    
+    // Open confirm delete modal for Gateway ID
+    function deleteGatewayId() {
+      const currentGatewayId = '<%= (currentGatewayId && currentGatewayId !== null) ? currentGatewayId : "" %>';
+      
+      // Set info in confirm modal
+      document.getElementById('deleteGatewayInfo').textContent = `Gateway ID: ${currentGatewayId}`;
+      
+      // Open confirm modal
+      new bootstrap.Modal(document.getElementById('confirmDeleteGatewayModal')).show();
+    }
+    
+    // Execute gateway deletion after confirmation
+    async function executeDeleteGateway() {
+      const executeBtn = document.getElementById('executeDeleteGatewayBtn');
+      
+      // Show loading state
+      executeBtn.disabled = true;
+      executeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xóa...';
+      
+      try {
+        const response = await fetch('/api/delete-gateway', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          toastManager.success('Xóa Gateway ID thành công!');
+          
+          // Close confirm modal
+          bootstrap.Modal.getInstance(document.getElementById('confirmDeleteGatewayModal')).hide();
+          
+          // Close gateway modal if it's open
+          const gatewayModal = bootstrap.Modal.getInstance(document.getElementById('gatewayModal'));
+          if (gatewayModal) {
+            gatewayModal.hide();
+          }
+          
+          // Reload page to show updated button
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          toastManager.error(result.message || 'Có lỗi xảy ra khi xóa Gateway ID');
+        }
+      } catch (error) {
+        console.error('Error deleting gateway ID:', error);
+        toastManager.error('Lỗi kết nối. Vui lòng thử lại.');
+      } finally {
+        // Reset button state
+        executeBtn.disabled = false;
+        executeBtn.innerHTML = '<i class="fas fa-trash"></i> Xóa Gateway ID';
+      }
+    }
+    
+    // Form validation and event handlers
+    document.addEventListener('DOMContentLoaded', function() {
+      // Gateway form
+      const gatewayForm = document.getElementById('gatewayForm');
+      if (gatewayForm) {
+        gatewayForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          saveGatewayId();
+        });
+      }
+    });
+  </script> 

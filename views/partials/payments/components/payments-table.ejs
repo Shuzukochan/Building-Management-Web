@@ -39,34 +39,35 @@
                 </div>
               </td>
               <td>
-                <% if (room.status === 'vacant') { %>
-                  <span class="status-badge status-vacant">Trống</span>
-                <% } else if (room.payment.totalCost === 0) { %>
+                <% if (room.totalCost === 0) { %>
                   <span class="status-badge status-no-charge">Không phát sinh</span>
-                <% } else if (room.payment.isPaid) { %>
+                <% } else if (room.isPaid) { %>
                   <span class="status-badge status-paid">Đã thanh toán</span>
+                <% } else if (!room.phoneNumber || room.phoneNumber.trim() === '') { %>
+                  <% if (room.isOverdue) { %>
+                    <span class="status-badge status-overdue">Trống - Quá hạn</span>
+                  <% } else { %>
+                    <span class="status-badge status-vacant-unpaid">Trống - Chưa thanh toán</span>
+                  <% } %>
                 <% } else { %>
-                  <% 
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const dueDate = new Date(room.payment.dueDate);
-                    dueDate.setHours(0, 0, 0, 0);
-                    const isOverdue = today > dueDate;
-                  %>
-                  <% if (isOverdue) { %>
+                  <% if (room.isOverdue) { %>
                     <span class="status-badge status-overdue">Quá hạn</span>
+                  <% } else if (room.isDueToday) { %>
+                    <span class="status-badge status-due-today">Hạn hôm nay</span>
+                  <% } else if (room.daysToDue <= 3 && room.daysToDue > 0) { %>
+                    <span class="status-badge status-due-soon">Còn <%= room.daysToDue %> ngày</span>
                   <% } else { %>
                     <span class="status-badge status-pending">Chưa tới hạn</span>
                   <% } %>
                 <% } %>
               </td>
               <td>
-                <% if (room.status !== 'vacant') { %>
+                <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
                   <div class="payment-details">
-                    <div class="payment-amount"><%= (room.payment.totalCost).toLocaleString('vi-VN') %>đ</div>
+                    <div class="payment-amount"><%= (room.totalCost).toLocaleString('vi-VN') %>đ</div>
                     <div class="payment-breakdown">
-                      Điện: <%= room.payment.electricUsage %>kWh - <%= (room.payment.electricCost).toLocaleString('vi-VN') %>đ<br>
-                      Nước: <%= room.payment.waterUsage %>m³ - <%= (room.payment.waterCost).toLocaleString('vi-VN') %>đ
+                      Điện: <%= room.electricUsage %>kWh - <%= (room.electricCost).toLocaleString('vi-VN') %>đ<br>
+                      Nước: <%= room.waterUsage %>m³ - <%= (room.waterCost).toLocaleString('vi-VN') %>đ
                     </div>
                   </div>
                 <% } else { %>
@@ -74,36 +75,26 @@
                 <% } %>
               </td>
               <td>
-                <% if (room.status !== 'vacant' && room.payment.isPaid && room.payment.paymentDate && room.payment.totalCost > 0) { %>
+                <% if (room.phoneNumber && room.phoneNumber.trim() !== '' && room.isPaid && room.paymentDate && room.totalCost > 0) { %>
                   <div class="payment-date">
                     <i class="fas fa-calendar-check text-success"></i>
-                    <%= room.payment.paymentDate.toLocaleDateString('vi-VN') %>
+                    <%= room.paymentDate.toLocaleDateString('vi-VN') %>
                   </div>
                 <% } else { %>
                   <span class="text-muted">-</span>
                 <% } %>
               </td>
               <td>
-                <% if (room.status !== 'vacant') { %>
-                  <% 
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const dueDate = new Date(room.payment.dueDate);
-                    dueDate.setHours(0, 0, 0, 0);
-                    const isDueToday = today.getTime() === dueDate.getTime();
-                    const isOverdue = today > dueDate;
-                    const canSelectMethod = isDueToday || isOverdue;
-                  %>
-                  
-                  <% if (room.payment.totalCost === 0) { %>
+                <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
+                  <% if (room.totalCost === 0) { %>
                     <div class="payment-method-display">
                       <i class="fas fa-check-circle text-success"></i>
                       Không cần thanh toán
                     </div>
-                  <% } else if (room.payment.isPaid) { %>
+                  <% } else if (room.isPaid) { %>
                     <div class="payment-method-display">
                       <% 
-                        const paymentMethod = room.payment.paymentMethod;
+                        const paymentMethod = room.paymentMethod;
                         const isCash = paymentMethod && paymentMethod.toString().toLowerCase() === 'cash';
                       %>
                       <% if (isCash) { %>
@@ -114,14 +105,19 @@
                         Chuyển khoản
                       <% } %>
                     </div>
-                  <% } else if (canSelectMethod) { %>
-                    <button class="btn-cash-payment" 
-                            onclick="showCashPaymentModal('<%= room.id %>', '<%= room.roomNumber %>', '<%= room.payment.totalCost %>')">
-                      <i class="fas fa-money-bill-wave"></i>
-                      Thanh toán tiền mặt
-                    </button>
                   <% } else { %>
-                    <span class="text-muted">Chưa tới hạn</span>
+                    <% 
+                      const canPayment = room.isDueToday || room.isOverdue;
+                    %>
+                    <% if (canPayment) { %>
+                      <button class="btn-cash-payment" 
+                              onclick="showCashPaymentModal('<%= room.id %>', '<%= room.roomNumber %>', '<%= room.totalCost %>')">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Thanh toán tiền mặt
+                      </button>
+                    <% } else { %>
+                      <span class="text-muted">Chưa tới hạn</span>
+                    <% } %>
                   <% } %>
                 <% } else { %>
                   <span class="text-muted">-</span>
@@ -129,15 +125,9 @@
               </td>
               <td>
                 <div class="action-buttons">
-                  <% if (room.status !== 'vacant') { %>
+                  <% if (room.phoneNumber && room.phoneNumber.trim() !== '') { %>
                     <% 
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const dueDate = new Date(room.payment.dueDate);
-                      dueDate.setHours(0, 0, 0, 0);
-                      const isDueToday = today.getTime() === dueDate.getTime();
-                      const isOverdue = today > dueDate;
-                      const canRemind = (isDueToday || isOverdue) && !room.payment.isPaid && room.payment.totalCost > 0;
+                      const canRemind = !room.isPaid && room.totalCost > 0 && (room.isDueToday || room.isOverdue);
                     %>
                     <button class="btn-remind-payment <%= !canRemind ? 'disabled' : '' %>" 
                             onclick="remindPayment('<%= room.id %>', '<%= room.roomNumber %>')"

@@ -2,6 +2,13 @@
     
     // Open Add Tenant Modal (for empty rooms)
     function openAddTenantModal(roomId, roomNumber) {
+      // Check if room is in maintenance status before opening modal
+      const roomRow = document.querySelector(`tr[data-room-id="${roomId}"]`);
+      if (roomRow && roomRow.getAttribute('data-status') === 'maintenance') {
+        showToast('Không thể thêm người thuê vào phòng đang bảo trì', 'error');
+        return;
+      }
+      
       // Set room info in hidden field and display
       document.getElementById('tenantRoomId').value = roomId;
       document.getElementById('tenantRoomNumber').textContent = roomNumber;
@@ -100,74 +107,108 @@
     // Hide add tenant form
     function hideAddTenantForm() {
       document.getElementById('addTenantFormSection').style.display = 'none';
-      document.getElementById('addTenantForm').reset();
+      document.getElementById('addTenantToRoomForm').reset();
     }
 
-    // Add tenant form submit handler
+    // Modal add tenant form handler (separate from main form)
     document.addEventListener('DOMContentLoaded', function() {
-      const addTenantForm = document.getElementById('addTenantForm');
-      if (addTenantForm) {
-        addTenantForm.addEventListener('submit', async function(e) {
+      const modalForm = document.getElementById('addTenantToRoomForm');
+      if (modalForm) {
+        modalForm.addEventListener('submit', async function(e) {
           e.preventDefault();
           
           const roomId = document.getElementById('manageTenantsRoomId').value;
-          const tenantName = document.getElementById('newTenantName').value.trim();
-          const tenantPhone = document.getElementById('newTenantPhone').value.trim();
+          const tenantName = document.getElementById('modalTenantName').value.trim();
+          const tenantPhone = document.getElementById('modalTenantPhone').value.trim();
+          const submitBtn = document.getElementById('modalAddTenantBtn');
           
           // Validation
           if (!tenantName || !tenantPhone) {
-            alert('Vui lòng nhập đầy đủ thông tin!');
+            showToast('Vui lòng nhập đầy đủ thông tin', 'error');
             return;
           }
           
           // Basic phone validation
           if (!/^[0-9+\-\s()]+$/.test(tenantPhone)) {
-            alert('Số điện thoại không đúng định dạng!');
+            showToast('Số điện thoại không đúng định dạng', 'error');
             return;
           }
           
+          // Show loading state
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang thêm...';
+          
           try {
-            // Normalize phone number for storage
-            const normalizedPhone = normalizePhoneForStorage(tenantPhone);
-            
-            // Submit to server using new API endpoint
-            const response = await fetch(`/api/room/${roomId}/add-tenant`, {
+            const response = await fetch('/api/assign-tenant', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
+                roomId: roomId,
                 tenantName: tenantName,
-                phoneNumber: normalizedPhone
+                phoneNumber: tenantPhone
               })
             });
             
             const result = await response.json();
             
             if (result.success) {
+              showToast('Thêm người thuê thành công!', 'success');
+              
               // Hide the add form
               hideAddTenantForm();
               
               // Reload the tenants list to show the new tenant
               await loadTenantsList(roomId);
               
-              // Show success message
-              showSuccessToast(result.message || 'Thêm người thuê thành công');
-              
-              // Refresh the specific room row in the main table
+              // Refresh the room row in main table without full reload
               await refreshRoomRow(roomId);
+              
             } else {
-              throw new Error(result.message || 'Lỗi khi thêm người thuê');
+              showToast(result.message || 'Lỗi khi thêm người thuê', 'error');
             }
             
           } catch (error) {
             console.error('Error adding tenant:', error);
-            showErrorToast('Lỗi khi thêm người thuê: ' + error.message);
+            showToast('Lỗi khi thêm người thuê: ' + error.message, 'error');
+          } finally {
+            // Reset button state
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu người thuê';
           }
         });
       }
     });
     
+    // Refresh room row in main table
+    async function refreshRoomRow(roomId) {
+      try {
+        // Reload page for now - can be optimized later to update just the row
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } catch (error) {
+        console.error('Error refreshing room row:', error);
+      }
+    }
+
+    // Format phone for display
+    function formatPhoneDisplay(phone) {
+      if (!phone) return '';
+      // Simple format for now
+      return phone;
+    }
+
+    // Toast functions (use global ones if available)
+    function showToast(message, type) {
+      if (window.showToast) {
+        window.showToast(message, type);
+      } else {
+        alert(message);
+      }
+    }
+
     // Edit tenant function
     function editTenant(tenantIndex) {
       const roomId = document.getElementById('manageTenantsRoomId').value;
@@ -324,21 +365,18 @@
       
       // Validation
       if (!tenantName || !tenantPhone) {
-        showErrorToast('Vui lòng nhập đầy đủ thông tin!');
+        showToast('Vui lòng nhập đầy đủ thông tin!', 'error');
         return;
       }
       
       // Basic phone validation
       if (!/^[0-9+\-\s()]+$/.test(tenantPhone)) {
-        showErrorToast('Số điện thoại không đúng định dạng!');
+        showToast('Số điện thoại không đúng định dạng!', 'error');
         return;
       }
       
       try {
-        // Normalize phone number for storage
-        const normalizedPhone = normalizePhoneForStorage(tenantPhone);
-        
-        // Submit to server
+        // Submit to server (no need to normalize - controller will handle)
         const response = await fetch(`/api/room/${roomId}/edit-tenant`, {
           method: 'POST',
           headers: {
@@ -347,7 +385,7 @@
           body: JSON.stringify({
             tenantIndex: tenantIndex,
             tenantName: tenantName,
-            phoneNumber: normalizedPhone
+            phoneNumber: tenantPhone
           })
         });
         
@@ -361,7 +399,7 @@
           await loadTenantsList(roomId);
           
           // Show success message
-          showSuccessToast(result.message || 'Cập nhật thông tin người thuê thành công');
+          showToast(result.message || 'Cập nhật thông tin người thuê thành công', 'success');
           
           // Refresh the specific room row in the main table
           await refreshRoomRow(roomId);
@@ -371,7 +409,7 @@
         
       } catch (error) {
         console.error('Error editing tenant:', error);
-        showErrorToast('Lỗi khi cập nhật thông tin: ' + error.message);
+        showToast('Lỗi khi cập nhật thông tin: ' + error.message, 'error');
       }
     }
 
@@ -395,7 +433,7 @@
           await loadTenantsList(roomId);
           
           // Show success message
-          showSuccessToast(result.message || 'Xóa người thuê thành công');
+          showToast(result.message || 'Xóa người thuê thành công', 'success');
           
           // Refresh the specific room row in the main table
           await refreshRoomRow(roomId);
@@ -405,7 +443,7 @@
         
       } catch (error) {
         console.error('Error deleting tenant:', error);
-        showErrorToast('Lỗi khi xóa người thuê: ' + error.message);
+        showToast('Lỗi khi xóa người thuê: ' + error.message, 'error');
       }
     }
 
@@ -517,7 +555,7 @@
           statusHtml = `
             <form action="/update-room-status" method="POST" class="d-inline">
               <input type="hidden" name="roomId" value="${room.id}">
-              <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+              <select name="status" class="form-select form-select-sm status-badge status-maintenance">
                 <option value="occupied">Đã thuê</option>
                 <option value="maintenance" selected>Bảo trì</option>
               </select>
@@ -527,7 +565,7 @@
           statusHtml = `
             <form action="/update-room-status" method="POST" class="d-inline">
               <input type="hidden" name="roomId" value="${room.id}">
-              <select name="status" class="form-select form-select-sm status-badge status-occupied" onchange="this.form.submit()">
+              <select name="status" class="form-select form-select-sm status-badge status-occupied">
                 <option value="occupied" selected>Đã thuê</option>
                 <option value="maintenance">Bảo trì</option>
               </select>
@@ -540,7 +578,7 @@
           statusHtml = `
             <form action="/update-room-status" method="POST" class="d-inline">
               <input type="hidden" name="roomId" value="${room.id}">
-              <select name="status" class="form-select form-select-sm status-badge status-maintenance" onchange="this.form.submit()">
+              <select name="status" class="form-select form-select-sm status-badge status-maintenance">
                 <option value="vacant">Trống</option>
                 <option value="maintenance" selected>Bảo trì</option>
               </select>
@@ -550,7 +588,7 @@
           statusHtml = `
             <form action="/update-room-status" method="POST" class="d-inline">
               <input type="hidden" name="roomId" value="${room.id}">
-              <select name="status" class="form-select form-select-sm status-badge status-vacant" onchange="this.form.submit()">
+              <select name="status" class="form-select form-select-sm status-badge status-vacant">
                 <option value="vacant" selected>Trống</option>
                 <option value="maintenance">Bảo trì</option>
               </select>

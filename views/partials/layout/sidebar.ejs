@@ -26,6 +26,26 @@
     </a>
   </div>
   
+  <% if (admin && admin.role === 'super_admin' && buildings) { %>
+    <div style="margin: 16px 0;">
+      <label for="buildingSelect" style="font-weight:600;">Tòa nhà:</label>
+      <select id="buildingSelect" style="width:100%;padding:6px 8px;border-radius:6px;margin-top:4px;">
+        <% Object.entries(buildings).forEach(([id, b]) => { %>
+          <option value="<%= id %>" <%= selectedBuildingId === id ? 'selected' : '' %>><%= b.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <script>
+      document.getElementById('buildingSelect').onchange = function() {
+        fetch('/select-building', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buildingId: this.value })
+        }).then(() => location.reload());
+      }
+    </script>
+  <% } %>
+  
   <a href="/logout" class="logout-btn">
     <i class="fas fa-sign-out-alt"></i>
     Đăng xuất

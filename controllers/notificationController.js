@@ -1,10 +1,28 @@
 const { db, messaging } = require("../config/database");
 const { formatPhoneNumber } = require("../services/phoneService");
 
+// Helper function để xác định building_id
+function getTargetBuildingId(req) {
+  let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+  
+  if (req.session.admin) {
+    if (req.session.admin.role === 'admin') {
+      // Admin thường: lấy building_ids (là string, không phải array)
+      targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+    } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+      // Super admin: lấy theo dropdown đã chọn
+      targetBuildingId = req.session.selectedBuildingId;
+    }
+  }
+  
+  return targetBuildingId;
+}
+
 // Send notification to specific room (updated to use topics - compatible with existing frontend)
 const sendNotification = async (req, res) => {
   try {
     let { roomId, title, message, phoneNumber } = req.body;
+    const targetBuildingId = getTargetBuildingId(req);
     
     // Validation
     if (!roomId || !title || !message) {
@@ -15,16 +33,16 @@ const sendNotification = async (req, res) => {
     }
 
     // Kiểm tra phòng tồn tại và lấy thông tin
-      const roomSnapshot = await db.ref(`rooms/${roomId}`).once("value");
-      const roomData = roomSnapshot.val();
-      
-      if (!roomData) {
-        return res.status(404).json({
-          success: false,
-          error: `Phòng ${roomId} không tồn tại`
-        });
-      }
-      
+    const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}`).once("value");
+    const roomData = roomSnapshot.val();
+    
+    if (!roomData) {
+      return res.status(404).json({
+        success: false,
+        error: `Phòng ${roomId} không tồn tại`
+      });
+    }
+    
     // Lấy phoneNumber từ room data nếu không có
     if (!phoneNumber) {
       phoneNumber = formatPhoneNumber(roomData.phone || "");
@@ -73,32 +91,26 @@ const sendNotification = async (req, res) => {
   }
 };
 
-// Send notification to specific room using topic (NEW METHOD)
-const sendRoomTopicNotification = async (req, res) => {
+// Send broadcast notification (to all rooms in building)
+const sendTopicNotification = async (req, res) => {
   try {
-    const { roomId, title, message } = req.body;
+    const { title, message } = req.body;
+    const targetBuildingId = getTargetBuildingId(req);
     
-    // Validation
-    if (!roomId || !title || !message) {
+    if (!title || !message) {
       return res.status(400).json({
         success: false,
-        error: "Thiếu thông tin cần thiết (roomId, title, message)"
+        error: "Thiếu thông tin cần thiết (title, message)"
       });
     }
 
-    // Kiểm tra phòng tồn tại
-    const roomSnapshot = await db.ref(`rooms/${roomId}`).once("value");
-    const roomData = roomSnapshot.val();
-    
-    if (!roomData) {
-      return res.status(404).json({
-        success: false,
-        error: `Phòng ${roomId} không tồn tại`
-      });
-    }
+    // Lấy danh sách phòng để biết số lượng gửi
+    const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms`).once("value");
+    const roomData = roomSnapshot.val() || {};
+    const roomCount = Object.keys(roomData).length;
 
-    // Topic theo format: room_101, room_102, etc.
-    const topic = `room_${roomId}`;
+    // Gửi broadcast notification đến tất cả phòng trong tòa nhà
+    const topic = `building_${targetBuildingId}`;
 
     const messagePayload = {
       notification: {
@@ -106,94 +118,68 @@ const sendRoomTopicNotification = async (req, res) => {
         body: message
       },
       data: {
-        roomId: roomId,
-        timestamp: Date.now().toString(),
-        type: "room_notification"
+        type: "broadcast_notification",
+        buildingId: targetBuildingId,
+        timestamp: Date.now().toString()
       },
       topic: topic
     };
 
     const result = await messaging.send(messagePayload);
-    
+
     res.json({
       success: true,
-      message: `Đã gửi thông báo đến phòng ${roomId} thành công`,
+      message: `Đã gửi thông báo broadcast đến ${roomCount} phòng`,
       messageId: result,
       details: {
-        roomId,
-        topic,
-        phoneNumber: formatPhoneNumber(roomData.phone || "")
+        topic: topic,
+        buildingId: targetBuildingId,
+        roomCount: roomCount
       }
     });
 
   } catch (error) {
-    console.error("Error sending room topic notification:", error);
+    console.error("Error sending broadcast notification:", error);
     res.status(500).json({
       success: false,
-      error: "Lỗi khi gửi thông báo: " + error.message
+      error: "Lỗi khi gửi thông báo broadcast: " + error.message
     });
   }
 };
 
-// Send topic notification
-const sendTopicNotification = async (req, res) => {
-  try {
-    const { topic, title, message } = req.body;
-    
-    if (!topic || !title || !message) {
-      return res.status(400).json({
-        success: false,
-        error: "Thiếu thông tin cần thiết (topic, title, message)"
-      });
-    }
-
-    const messagePayload = {
-      notification: {
-        title: title,
-        body: message
-      },
-      topic: topic
-    };
-
-    const result = await messaging.send(messagePayload);
-    
-    res.json({
-      success: true,
-      message: `Đã gửi thông báo topic "${topic}" thành công`,
-      messageId: result
-    });
-
-  } catch (error) {
-    console.error("Error sending topic notification:", error);
-    res.status(500).json({
-      success: false,
-      error: "Lỗi khi gửi thông báo topic"
-    });
-  }
-};
-
-// Get user tokens
+// Get user tokens (for compatibility)
 const getUserTokens = async (req, res) => {
   try {
-    const tokensSnapshot = await db.ref("fcm_tokens").once("value");
-    const tokensData = tokensSnapshot.val() || {};
+    const targetBuildingId = getTargetBuildingId(req);
+    const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms`).once("value");
+    const roomData = roomSnapshot.val() || {};
     
-    const tokens = Object.entries(tokensData).map(([key, data]) => ({
-      id: key,
-      ...data,
-      phoneNumber: formatPhoneNumber(data.phoneNumber || "")
-    }));
-    
-    res.json(tokens);
+    // Tạo danh sách token giả lập (compatibility)
+    const tokens = Object.entries(roomData)
+      .filter(([roomId, roomInfo]) => roomInfo.phone && roomInfo.phone.trim())
+      .map(([roomId, roomInfo]) => ({
+        token: `token_${roomId}`,
+        phone: formatPhoneNumber(roomInfo.phone),
+        roomId: roomId
+      }));
+
+    res.json({
+      success: true,
+      tokens: tokens,
+      count: tokens.length
+    });
+
   } catch (error) {
-    console.error("Error fetching user tokens:", error);
-    res.status(500).json({ error: "Failed to fetch user tokens" });
+    console.error("Error getting user tokens:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi lấy danh sách token: " + error.message
+    });
   }
 };
 
 module.exports = {
   sendNotification,
-  sendRoomTopicNotification,
   sendTopicNotification,
   getUserTokens
 };

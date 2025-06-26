@@ -27,7 +27,20 @@ const getStatistic = async (req, res) => {
       toYearWater
     } = req.query;
     
-    const roomSnap = await db.ref("rooms").once("value");
+    // Xác định building_id để lấy dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        // Admin thường: lấy building_ids (là string, không phải array)
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        // Super admin: lấy theo dropdown đã chọn
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
+    const roomSnap = await db.ref(`buildings/${targetBuildingId}/rooms`).once("value");
     const roomData = roomSnap.val() || {};
     
     // Lấy danh sách phòng
@@ -146,36 +159,73 @@ const getStatistic = async (req, res) => {
       });
     }
 
+    const buildings = {
+      building_id_1: { name: "Tòa nhà A" },
+      building_id_2: { name: "Tòa nhà B" }
+    };
+
     res.render('statistic', {
-      waterHistory,
-      electricHistory,
       roomList,
-      selectedRoom: roomId,
-      currentPage: 'statistic',
+      electricHistory,
+      waterHistory,
+      // Individual variables for backward compatibility
+      selectedRoom: roomId || '',
       fromElectric,
       toElectric,
       fromWater,
       toWater,
       viewTypeElectric,
       viewTypeWater,
-      fromMonthElectric,
-      fromYearElectric,
-      toMonthElectric,
-      toYearElectric,
-      fromMonthWater,
-      fromYearWater,
-      toMonthWater,
-      toYearWater
+      fromMonthElectric: fromMonthElectric || new Date().getMonth() + 1,
+      fromYearElectric: fromYearElectric || new Date().getFullYear(),
+      toMonthElectric: toMonthElectric || new Date().getMonth() + 1,
+      toYearElectric: toYearElectric || new Date().getFullYear(),
+      fromMonthWater: fromMonthWater || new Date().getMonth() + 1,
+      fromYearWater: fromYearWater || new Date().getFullYear(),
+      toMonthWater: toMonthWater || new Date().getMonth() + 1,
+      toYearWater: toYearWater || new Date().getFullYear(),
+      // Filters object for cleaner access
+      filters: {
+        roomId: roomId || '',
+        fromElectric,
+        toElectric,
+        fromWater,
+        toWater,
+        viewTypeElectric,
+        viewTypeWater,
+        fromMonthElectric: fromMonthElectric || new Date().getMonth() + 1,
+        fromYearElectric: fromYearElectric || new Date().getFullYear(),
+        toMonthElectric: toMonthElectric || new Date().getMonth() + 1,
+        toYearElectric: toYearElectric || new Date().getFullYear(),
+        fromMonthWater: fromMonthWater || new Date().getMonth() + 1,
+        fromYearWater: fromYearWater || new Date().getFullYear(),
+        toMonthWater: toMonthWater || new Date().getMonth() + 1,
+        toYearWater: toYearWater || new Date().getFullYear()
+      },
+      currentPage: 'statistic',
+      admin: req.session.admin,
+      buildings,
+      selectedBuildingId: req.session.selectedBuildingId,
+      currentBuildingId: targetBuildingId
     });
   } catch (error) {
     console.error('Lỗi khi tải thống kê:', error);
+    const buildings = {
+      building_id_1: { name: "Tòa nhà A" },
+      building_id_2: { name: "Tòa nhà B" }
+    };
     res.render('statistic', {
-      waterHistory: {},
-      electricHistory: {},
       roomList: [],
+      electricHistory: {},
+      waterHistory: {},
+      // Individual variables for backward compatibility
       selectedRoom: '',
-      currentPage: 'statistic',
-      error: 'Lỗi khi tải dữ liệu thống kê',
+      fromElectric: '',
+      toElectric: '',
+      fromWater: '',
+      toWater: '',
+      viewTypeElectric: 'day',
+      viewTypeWater: 'day',
       fromMonthElectric: new Date().getMonth() + 1,
       fromYearElectric: new Date().getFullYear(),
       toMonthElectric: new Date().getMonth() + 1,
@@ -184,8 +234,29 @@ const getStatistic = async (req, res) => {
       fromYearWater: new Date().getFullYear(),
       toMonthWater: new Date().getMonth() + 1,
       toYearWater: new Date().getFullYear(),
-      viewTypeElectric: 'day',
-      viewTypeWater: 'day'
+      // Filters object for cleaner access
+      filters: {
+        roomId: '',
+        fromElectric: '',
+        toElectric: '',
+        fromWater: '',
+        toWater: '',
+        fromMonthElectric: new Date().getMonth() + 1,
+        fromYearElectric: new Date().getFullYear(),
+        toMonthElectric: new Date().getMonth() + 1,
+        toYearElectric: new Date().getFullYear(),
+        fromMonthWater: new Date().getMonth() + 1,
+        fromYearWater: new Date().getFullYear(),
+        toMonthWater: new Date().getMonth() + 1,
+        toYearWater: new Date().getFullYear(),
+        viewTypeElectric: 'day',
+        viewTypeWater: 'day'
+      },
+      currentPage: 'statistic',
+      admin: req.session.admin,
+      buildings,
+      selectedBuildingId: req.session.selectedBuildingId,
+      currentBuildingId: 'building_id_1'
     });
   }
 };
@@ -199,7 +270,20 @@ const getMonthlyStatistics = async (req, res) => {
     
     console.log(`📊 Loading monthly statistics for ${currentMonth}/${currentYear}`);
     
-    const roomsSnapshot = await db.ref("rooms").once("value");
+    // Xác định building_id để lấy dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        // Admin thường: lấy building_ids (là string, không phải array)
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        // Super admin: lấy theo dropdown đã chọn
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
+    const roomsSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms`).once("value");
     const roomsData = roomsSnapshot.val() || {};
     
     let totalElectricUsage = 0;
@@ -249,7 +333,20 @@ const getRoomStatistics = async (req, res) => {
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
     
-    const roomSnapshot = await db.ref(`rooms/${roomId}`).once("value");
+    // Xác định building_id để lấy dữ liệu
+    let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        // Admin thường: lấy building_ids (là string, không phải array)
+        targetBuildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        // Super admin: lấy theo dropdown đã chọn
+        targetBuildingId = req.session.selectedBuildingId;
+      }
+    }
+    
+    const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}`).once("value");
     const roomData = roomSnapshot.val();
     
     if (!roomData) {

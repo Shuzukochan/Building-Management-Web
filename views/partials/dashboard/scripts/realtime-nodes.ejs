@@ -21,7 +21,9 @@ class RealtimeNodesUpdater {
         return false;
       }
 
-      this.roomsRef = database.ref('rooms');
+      // Use currentBuildingId from server (passed from dashboardController)
+      const buildingId = '<%= currentBuildingId || "building_id_1" %>';
+      this.roomsRef = database.ref(`buildings/${buildingId}/rooms`);
       this.isInitialized = true;
       
       // Start listening for all room nodes

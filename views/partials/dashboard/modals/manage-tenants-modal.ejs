@@ -32,19 +32,19 @@
         <div id="addTenantFormSection" style="display: none;">
           <hr>
           <h6><i class="fas fa-user-plus"></i> Thêm người thuê mới</h6>
-          <form id="addTenantForm">
+          <form id="addTenantToRoomForm">
             <div class="row">
               <div class="col-md-6">
-                <label for="newTenantName" class="form-label">
+                <label for="modalTenantName" class="form-label">
                   <i class="fas fa-user"></i> Họ tên <span class="text-danger">*</span>
                 </label>
-                <input type="text" class="form-control" id="newTenantName" required>
+                <input type="text" class="form-control" id="modalTenantName" required>
               </div>
               <div class="col-md-6">
-                <label for="newTenantPhone" class="form-label">
+                <label for="modalTenantPhone" class="form-label">
                   <i class="fas fa-phone"></i> Số điện thoại <span class="text-danger">*</span>
                 </label>
-                <input type="tel" class="form-control" id="newTenantPhone" required>
+                <input type="tel" class="form-control" id="modalTenantPhone" required>
               </div>
             </div>
                          <div class="form-text text-muted mt-2">
@@ -54,7 +54,7 @@
               <button type="button" class="btn btn-secondary btn-sm" onclick="hideAddTenantForm()">
                 <i class="fas fa-times"></i> Hủy
               </button>
-              <button type="submit" class="btn btn-success btn-sm">
+              <button type="submit" class="btn btn-success btn-sm" id="modalAddTenantBtn">
                 <i class="fas fa-save"></i> Lưu người thuê
               </button>
             </div>
