@@ -1,0 +1,53 @@
+<!-- Modal Pricing -->
+<div class="modal fade" id="pricingModal" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-money-bill-wave"></i> Cập nhật giá
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>Lưu ý:</strong> Thay đổi giá sẽ áp dụng cho tất cả tính toán mới. Vui lòng kiểm tra kỹ trước khi lưu.
+        </div>
+
+        <form id="pricingForm">
+          <div class="form-group">
+            <label for="electricityPrice" class="form-label">
+              <strong><i class="fas fa-bolt text-warning"></i> Giá điện:</strong>
+            </label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="electricityPrice" name="electricityPrice" 
+                     step="100" min="0" placeholder="3000" required>
+              <span class="input-group-text">VNĐ/kWh</span>
+            </div>
+            <div class="form-text">Giá điện theo kWh (kilowatt giờ)</div>
+          </div>
+
+          <div class="form-group">
+            <label for="waterPrice" class="form-label">
+              <strong><i class="fas fa-tint text-info"></i> Giá nước:</strong>
+            </label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="waterPrice" name="waterPrice" 
+                     step="100" min="0" placeholder="15000" required>
+              <span class="input-group-text">VNĐ/m³</span>
+            </div>
+            <div class="form-text">Giá nước theo mét khối (m³)</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-settings" onclick="submitPricing()">
+          <i class="fas fa-save"></i> Cập nhật giá
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

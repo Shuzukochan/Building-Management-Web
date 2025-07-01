@@ -72,19 +72,19 @@
         
         // Send FCM topic notification via API
         console.log('📢 Sending broadcast notification:', {
-          topic: target,
+          target: target,
           title,
           message
         });
         
-        // Call FCM Topic API
+        // Call FCM Topic API - Controller sẽ tự động sử dụng building ID hiện tại cho topic
         const response = await fetch('/api/send-topic-notification', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            topic: target,
+            target: target, // Chỉ gửi target để controller biết phạm vi, không phải topic cụ thể
             title,
             message
           })

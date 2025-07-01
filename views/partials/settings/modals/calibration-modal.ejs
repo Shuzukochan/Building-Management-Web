@@ -1,0 +1,74 @@
+<!-- Modal Calibration -->
+<div class="modal fade" id="calibrationModal" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-sliders-h"></i> 
+          <span id="calibrationModalTitle">Hiệu chuẩn cảm biến</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Hướng dẫn:</strong>
+          <ul class="mb-0 mt-2">
+            <li>Nhập giá trị hiển thị trên cảm biến</li>
+            <li>Nhập giá trị thực tế từ đồng hồ chuẩn</li>
+            <li>Hệ thống sẽ tự động tính hệ số hiệu chuẩn</li>
+          </ul>
+        </div>
+
+        <form id="calibrationForm">
+          <input type="hidden" id="calibrationType" name="type">
+          
+          <div class="form-group">
+            <label for="sensorValue" class="form-label">
+              <strong>Giá trị cảm biến:</strong>
+            </label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="sensorValue" name="sensorValue" 
+                     step="0.01" min="0" placeholder="0.00" required>
+              <span class="input-group-text" id="sensorUnit">kWh</span>
+            </div>
+            <div class="form-text">Giá trị của cảm biến</div>
+          </div>
+
+          <div class="form-group">
+            <label for="actualValue" class="form-label">
+              <strong>Giá trị thực tế:</strong>
+            </label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="actualValue" name="actualValue" 
+                     step="0.01" min="0" placeholder="0.00" required>
+              <span class="input-group-text" id="actualUnit">kWh</span>
+            </div>
+            <div class="form-text">Giá trị đọc từ đồng hồ chuẩn</div>
+          </div>
+
+          <!-- Preview Calibration Result -->
+          <div id="calibrationPreview" class="calibration-result" style="display: none;">
+            <h6><i class="fas fa-calculator"></i> Kết quả tính toán:</h6>
+            <div class="result-item">
+              <span class="result-label">Hệ số hiệu chuẩn:</span>
+              <span class="result-value" id="previewCalibrationFactor">1.0000</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Công thức:</span>
+              <span class="result-value">Giá trị thực = Cảm biến × Hệ số</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-settings" onclick="submitCalibration()">
+          <i class="fas fa-save"></i> Lưu hiệu chuẩn
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 

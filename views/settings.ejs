@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Cài đặt hệ thống</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="icon" type="image/png" href="https://hcmute.edu.vn/Resources/Imagephoto/logo.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Styles -->
+  <%- include('partials/payments/styles/sidebar-styles') %>
+  <%- include('partials/settings/styles/main-styles') %>
+  <%- include('partials/settings/styles/cards-styles') %>
+</head>
+
+<body>
+  <!-- Sidebar -->
+  <%- include('partials/layout/sidebar', { currentPage: 'settings' }) %>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="content-wrapper">
+      <!-- Page Header -->
+      <%- include('partials/settings/components/page-header') %>
+
+      <div class="content-body">
+        <!-- Settings Cards -->
+        <%- include('partials/settings/components/settings-cards') %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <%- include('partials/settings/modals/calibration-modal') %>
+  <%- include('partials/settings/modals/pricing-modal') %>
+  
+  <!-- Toast Container -->
+  <%- include('partials/shared/components/toast-container') %>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Shared Toast System -->
+  <%- include('partials/shared/styles/toast-styles') %>
+  <%- include('partials/shared/scripts/toast-manager') %>
+  
+  <!-- Core variables -->
+  <script>
+    const targetBuildingId = "<%= targetBuildingId %>";
+    
+    // Pricing data
+    const initialPricingData = {
+      electricityPrice: <%= currentSettings.electricityPrice %>,
+      waterPrice: <%= currentSettings.waterPrice %>
+    };
+    
+    <% if (currentSettings.electricityUpdatedAt) { %>
+    initialPricingData.electricityUpdatedAt = <%= currentSettings.electricityUpdatedAt %>;
+    <% } %>
+    
+    <% if (currentSettings.waterUpdatedAt) { %>
+    initialPricingData.waterUpdatedAt = <%= currentSettings.waterUpdatedAt %>;
+    <% } %>
+    
+    console.log('Initial pricing data:', initialPricingData);
+  </script>
+  
+  <!-- Settings Functions -->
+  <%- include('partials/settings/scripts/calibration-functions') %>
+  <%- include('partials/settings/scripts/pricing-functions') %>
+  <%- include('partials/settings/scripts/initialization') %>
+</body>
+</html> 

@@ -1,0 +1,159 @@
+<script>
+  // ==================== PRICING FUNCTIONS ====================
+  
+  // Open pricing modal
+  function openPricingModal() {
+    try {
+      // Lấy giá hiện tại từ UI
+      const currentElectricityPriceText = document.getElementById('currentElectricityPrice').textContent;
+      const currentWaterPriceText = document.getElementById('currentWaterPrice').textContent;
+      
+      // Parse giá từ text (ví dụ: "3.000 VNĐ/kWh" -> 3000)
+      const electricityPrice = parseFloat(currentElectricityPriceText.replace(/[^\d]/g, '')) || 3000;
+      const waterPrice = parseFloat(currentWaterPriceText.replace(/[^\d]/g, '')) || 15000;
+      
+      // Set giá trị vào form
+      document.getElementById('electricityPrice').value = electricityPrice;
+      document.getElementById('waterPrice').value = waterPrice;
+      
+      // Show modal
+      new bootstrap.Modal(document.getElementById('pricingModal')).show();
+      
+    } catch (error) {
+      console.error('Error opening pricing modal:', error);
+      if (typeof toastManager !== 'undefined') {
+        toastManager.error('Lỗi khi mở modal cập nhật giá: ' + error.message);
+      } else {
+        alert('Lỗi khi mở modal cập nhật giá: ' + error.message);
+      }
+    }
+  }
+  
+  // Update pricing preview
+  function updatePricingPreview() {
+    try {
+      const electricityPrice = parseFloat(document.getElementById('electricityPrice').value) || 0;
+      const waterPrice = parseFloat(document.getElementById('waterPrice').value) || 0;
+      
+      document.getElementById('previewElectricityPrice').textContent = 
+        new Intl.NumberFormat('vi-VN').format(electricityPrice) + ' VNĐ/kWh';
+      document.getElementById('previewWaterPrice').textContent = 
+        new Intl.NumberFormat('vi-VN').format(waterPrice) + ' VNĐ/m³';
+      
+      // Set apply date to today with dd/mm/yyyy format
+      const today = new Date();
+      const formattedDate = formatDateDDMMYYYY(today);
+      document.getElementById('previewElectricityDate').textContent = formattedDate;
+      document.getElementById('previewWaterDate').textContent = formattedDate;
+      
+    } catch (error) {
+      console.error('Error updating pricing preview:', error);
+    }
+  }
+  
+  // Format date as dd/mm/yyyy
+  function formatDateDDMMYYYY(date) {
+    if (!date) return '';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Submit pricing
+  async function submitPricing() {
+    try {
+      const electricityPrice = parseFloat(document.getElementById('electricityPrice').value);
+      const waterPrice = parseFloat(document.getElementById('waterPrice').value);
+      
+      // Validation
+      if (!electricityPrice || electricityPrice <= 0) {
+        alert('Vui lòng nhập giá điện hợp lệ');
+        return;
+      }
+      
+      if (!waterPrice || waterPrice <= 0) {
+        alert('Vui lòng nhập giá nước hợp lệ');
+        return;
+      }
+      
+            // Disable submit button
+      const submitBtn = document.querySelector('#pricingModal .btn-settings');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang cập nhật...';
+
+      // Send request
+      const response = await fetch('/api/update-pricing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          electricityPrice,
+          waterPrice
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Update UI
+      updatePricingUI(result.data);
+
+      // Show success message
+      if (typeof toastManager !== 'undefined') {
+        toastManager.success('Đã cập nhật giá thành công');
+      } else {
+        alert('Đã cập nhật giá thành công');
+      }
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('pricingModal'));
+      modal.hide();
+
+      // Reset button
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+    } catch (error) {
+      console.error('Error submitting pricing:', error);
+
+      // Reset button
+      const submitBtn = document.querySelector('#pricingModal .btn-settings');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> Cập nhật giá';
+      
+      alert('Lỗi khi cập nhật giá: ' + error.message);
+    }
+  }
+  
+  // Update pricing UI
+  function updatePricingUI(data) {
+    document.getElementById('currentElectricityPrice').textContent = 
+      new Intl.NumberFormat('vi-VN').format(data.electricityPrice) + ' VNĐ/kWh';
+    document.getElementById('currentWaterPrice').textContent = 
+      new Intl.NumberFormat('vi-VN').format(data.waterPrice) + ' VNĐ/m³';
+      
+    // Cập nhật ngày áp dụng giá điện
+    if (data.electricityUpdatedAt) {
+      const electricityDate = new Date(data.electricityUpdatedAt);
+      const formattedElectricityDate = formatDateDDMMYYYY(electricityDate);
+      document.getElementById('electricityPriceDate').textContent = formattedElectricityDate;
+    } else {
+      document.getElementById('electricityPriceDate').textContent = 'Chưa có dữ liệu';
+    }
+    
+    // Cập nhật ngày áp dụng giá nước
+    if (data.waterUpdatedAt) {
+      const waterDate = new Date(data.waterUpdatedAt);
+      const formattedWaterDate = formatDateDDMMYYYY(waterDate);
+      document.getElementById('waterPriceDate').textContent = formattedWaterDate;
+    } else {
+      document.getElementById('waterPriceDate').textContent = 'Chưa có dữ liệu';
+    }
+  }
+</script> 

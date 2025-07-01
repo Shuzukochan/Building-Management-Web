@@ -20,6 +20,7 @@ const { getPayments, markPayment, createTestPayment, getUnpaidPreviousMonths } =
 const { addNode, deleteNode, editNode } = require("./controllers/nodeController");
 const { getDashboard } = require("./controllers/dashboardController");
 const { getStatistic } = require("./controllers/statisticsController");
+const { getSettings, updateCalibration, updatePricing, getRoomCalibrationData } = require("./controllers/settingsController");
 const { requireAuth } = require("./middleware/auth");
 
 // Helper functions from index.js
@@ -68,6 +69,7 @@ app.use("/api", roomRoutes);  // Room API routes
 app.get("/dashboard", requireAuth, getDashboard);
 app.get("/statistic", requireAuth, getStatistic);
 app.get("/payments", requireAuth, getPayments);
+app.get("/settings", requireAuth, getSettings);
 app.get("/about", requireAuth, (req, res) => {
   // About page - ai cũng thấy như nhau, chỉ cần admin data cho sidebar
   const buildings = {
@@ -91,6 +93,11 @@ app.get("/privacy", (req, res) => {
 // Payment API routes
 app.post("/api/create-test-payment", requireAuth, createTestPayment);
 app.get("/api/unpaid-previous-months", requireAuth, getUnpaidPreviousMonths);
+
+// Settings API routes
+app.post("/api/update-calibration", requireAuth, updateCalibration);
+app.post("/api/update-pricing", requireAuth, updatePricing);
+app.get("/api/room-calibration/:roomId", requireAuth, getRoomCalibrationData);
 
 // Node management routes
 app.post("/add-node", requireAuth, addNode);

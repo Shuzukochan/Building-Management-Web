@@ -1,0 +1,75 @@
+<script>
+  // ==================== INITIALIZATION ====================
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      // Calibration input listeners
+      const sensorValueInput = document.getElementById('sensorValue');
+      const actualValueInput = document.getElementById('actualValue');
+      
+      if (sensorValueInput && actualValueInput) {
+        sensorValueInput.addEventListener('input', updateCalibrationPreview);
+        actualValueInput.addEventListener('input', updateCalibrationPreview);
+      }
+      
+      // Pricing input listeners
+      const electricityPriceInput = document.getElementById('electricityPrice');
+      const waterPriceInput = document.getElementById('waterPrice');
+      
+      if (electricityPriceInput && waterPriceInput) {
+        electricityPriceInput.addEventListener('input', updatePricingPreview);
+        waterPriceInput.addEventListener('input', updatePricingPreview);
+      }
+      
+      console.log('✅ Settings page initialized successfully');
+      
+    } catch (error) {
+      console.error('❌ Error initializing settings page:', error);
+    }
+  });
+
+  // Initialize pricing UI with data from Firebase
+  function initializePricing() {
+    try {
+      // Sử dụng dữ liệu ban đầu từ server để hiển thị ngay lập tức
+      if (typeof initialPricingData !== 'undefined') {
+        updatePricingUI(initialPricingData);
+      }
+      
+      // Sau đó lắng nghe cập nhật từ Firebase
+      const buildingRef = firebase.database().ref(`buildings/${targetBuildingId}`);
+      buildingRef.on('value', (snapshot) => {
+        const buildingData = snapshot.val();
+        if (buildingData) {
+          // Update UI with pricing from Firebase
+          updatePricingUI({
+            electricityPrice: buildingData.price_electric || 3000,
+            waterPrice: buildingData.price_water || 15000,
+            electricityUpdatedAt: buildingData.price_electric_updated_at || null,
+            waterUpdatedAt: buildingData.price_water_updated_at || null
+          });
+        } else {
+          // Nếu không có dữ liệu, vẫn hiển thị giá mặc định
+          updatePricingUI({
+            electricityPrice: 3000,
+            waterPrice: 15000,
+            electricityUpdatedAt: null,
+            waterUpdatedAt: null
+          });
+        }
+      }, (error) => {
+        console.error('Error loading pricing data:', error);
+        // Không hiển thị lỗi cho người dùng, chỉ log ra console
+      });
+    } catch (error) {
+      console.error('Error initializing pricing:', error);
+      // Không hiển thị lỗi cho người dùng, chỉ log ra console
+    }
+  }
+  
+  // Load room calibration data for the selected room
+  loadRoomCalibrationData();
+  
+  // Initialize pricing data from Firebase
+  initializePricing();
+</script> 

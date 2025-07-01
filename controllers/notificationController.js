@@ -94,7 +94,7 @@ const sendNotification = async (req, res) => {
 // Send broadcast notification (to all rooms in building)
 const sendTopicNotification = async (req, res) => {
   try {
-    const { title, message } = req.body;
+    const { title, message, target = 'all_residents' } = req.body;
     const targetBuildingId = getTargetBuildingId(req);
     
     if (!title || !message) {
@@ -104,13 +104,29 @@ const sendTopicNotification = async (req, res) => {
       });
     }
 
+    let topic;
+    let targetDescription;
+
+    // Xác định topic dựa trên target
+    if (target === 'all_residents') {
+      // Gửi tới toàn bộ tòa nhà với building ID hiện tại
+      topic = targetBuildingId; // Chỉ dùng building_id_1, building_id_2, etc.
+      targetDescription = 'toàn tòa nhà';
+    } else if (target.startsWith('floor_')) {
+      // Gửi tới tầng cụ thể của tòa nhà hiện tại
+      const floorNumber = target.replace('floor_', '');
+      topic = `${targetBuildingId}_floor_${floorNumber}`;
+      targetDescription = `tầng ${floorNumber}`;
+    } else {
+      // Fallback - gửi tới toàn tòa nhà
+      topic = targetBuildingId; // Chỉ dùng building_id_1, building_id_2, etc.
+      targetDescription = 'toàn tòa nhà';
+    }
+
     // Lấy danh sách phòng để biết số lượng gửi
     const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms`).once("value");
     const roomData = roomSnapshot.val() || {};
     const roomCount = Object.keys(roomData).length;
-
-    // Gửi broadcast notification đến tất cả phòng trong tòa nhà
-    const topic = `building_${targetBuildingId}`;
 
     const messagePayload = {
       notification: {
@@ -120,6 +136,7 @@ const sendTopicNotification = async (req, res) => {
       data: {
         type: "broadcast_notification",
         buildingId: targetBuildingId,
+        target: target,
         timestamp: Date.now().toString()
       },
       topic: topic
@@ -129,11 +146,12 @@ const sendTopicNotification = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Đã gửi thông báo broadcast đến ${roomCount} phòng`,
+      message: `Đã gửi thông báo broadcast đến ${targetDescription}`,
       messageId: result,
       details: {
         topic: topic,
         buildingId: targetBuildingId,
+        target: target,
         roomCount: roomCount
       }
     });

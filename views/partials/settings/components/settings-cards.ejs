@@ -1,0 +1,155 @@
+<%
+  // Khai báo biến chung cho toàn bộ file
+  const roomsWithNodes = currentSettings.rooms.filter(room => room.hasElectricity || room.hasWater);
+  const hasAnyElectricityRoom = roomsWithNodes.some(room => room.hasElectricity);
+  const hasAnyWaterRoom = roomsWithNodes.some(room => room.hasWater);
+%>
+
+<div class="settings-grid">
+  <!-- Calibration Card -->
+  <div class="settings-card">
+    <div class="settings-card-header">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5><i class="fas fa-sliders-h"></i> Hiệu chuẩn cảm biến</h5>
+        <div class="room-selector">
+          <label for="calibrationRoomSelect" class="form-label mb-1"><strong>Chọn phòng:</strong></label>
+          <select class="form-select" id="calibrationRoomSelect" onchange="loadRoomCalibrationData()">
+            <% if (roomsWithNodes.length === 0) { %>
+              <option value="">Không có phòng nào có cảm biến</option>
+            <% } else {
+              roomsWithNodes.forEach((room, index) => { 
+            %>
+              <option value="<%= room.id %>" 
+                      data-has-electricity="<%= room.hasElectricity %>" 
+                      data-has-water="<%= room.hasWater %>"
+                      <%= index === 0 ? 'selected' : '' %>>
+                <%= room.name %>
+              </option>
+            <% 
+              }); 
+            } 
+            %>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="settings-card-body">
+      <div class="settings-description">
+        Hiệu chuẩn cảm biến để đảm bảo độ chính xác của dữ liệu điện và nước.
+      </div>
+
+      <!-- Electricity Calibration -->
+      <div class="settings-section">
+        <h6><i class="fas fa-bolt" style="color: #f59e0b;"></i> Cảm biến điện</h6>
+        <div class="settings-info">
+          <span class="settings-label">Giá trị cảm biến:</span>
+          <span class="settings-value" id="electricSensorValue"><%= currentSettings.calibrationData.electricity.sensorValue %> kWh</span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Giá trị thực tế:</span>
+          <span class="settings-value" id="electricActualValue"><%= currentSettings.calibrationData.electricity.actualValue %> kWh</span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Hệ số hiệu chuẩn:</span>
+          <span class="settings-value" id="electricCalibrationFactor"><%= currentSettings.calibrationData.electricity.calibrationFactor %></span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Ngày hiệu chuẩn:</span>
+          <span class="settings-value" id="electricCalibrationDate">
+            <% if (currentSettings.calibrationData.electricity.calibratedAt) { %>
+              <%= new Date(currentSettings.calibrationData.electricity.calibratedAt).toLocaleDateString('vi-VN') %>
+            <% } else { %>
+              Chưa hiệu chuẩn
+            <% } %>
+          </span>
+        </div>
+        <button type="button" class="btn btn-settings" onclick="openCalibrationModal('electricity')" 
+                <%= !hasAnyElectricityRoom ? 'disabled title="Không có phòng nào có cảm biến điện"' : '' %>>
+          <i class="fas fa-edit"></i> Hiệu chuẩn điện
+        </button>
+      </div>
+
+      <!-- Water Calibration -->
+      <div class="settings-section">
+        <h6><i class="fas fa-tint" style="color: #06b6d4;"></i> Cảm biến nước</h6>
+        <div class="settings-info">
+          <span class="settings-label">Giá trị cảm biến:</span>
+          <span class="settings-value" id="waterSensorValue"><%= currentSettings.calibrationData.water.sensorValue %> m³</span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Giá trị thực tế:</span>
+          <span class="settings-value" id="waterActualValue"><%= currentSettings.calibrationData.water.actualValue %> m³</span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Hệ số hiệu chuẩn:</span>
+          <span class="settings-value" id="waterCalibrationFactor"><%= currentSettings.calibrationData.water.calibrationFactor %></span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Ngày hiệu chuẩn:</span>
+          <span class="settings-value" id="waterCalibrationDate">
+            <% if (currentSettings.calibrationData.water.calibratedAt) { %>
+              <%= new Date(currentSettings.calibrationData.water.calibratedAt).toLocaleDateString('vi-VN') %>
+            <% } else { %>
+              Chưa hiệu chuẩn
+            <% } %>
+          </span>
+        </div>
+        <button type="button" class="btn btn-settings" onclick="openCalibrationModal('water')" 
+                <%= !hasAnyWaterRoom ? 'disabled title="Không có phòng nào có cảm biến nước"' : '' %>>
+          <i class="fas fa-edit"></i> Hiệu chuẩn nước
+        </button>
+      </div>
+
+      <div class="settings-alert settings-alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Lưu ý:</strong> Việc hiệu chuẩn sẽ ảnh hưởng đến tất cả dữ liệu tương lai.
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Card -->
+  <div class="settings-card">
+    <div class="settings-card-header">
+      <h5><i class="fas fa-money-bill-wave"></i> Cài đặt giá</h5>
+    </div>
+    <div class="settings-card-body">
+      <div class="settings-description">
+        Cài đặt giá điện và nước để tính toán chi phí cho từng phòng.
+      </div>
+
+      <!-- Electricity Pricing -->
+      <div class="settings-section">
+        <h6><i class="fas fa-bolt" style="color: #f59e0b;"></i> Giá điện</h6>
+        <div class="settings-info">
+          <span class="settings-label">Giá hiện tại:</span>
+          <span class="settings-value" id="currentElectricityPrice">3.000 VNĐ/kWh</span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Áp dụng từ:</span>
+          <span class="settings-value" id="electricityPriceDate">Chưa có dữ liệu</span>
+        </div>
+      </div>
+
+      <!-- Water Pricing -->
+      <div class="settings-section">
+        <h6><i class="fas fa-tint" style="color: #06b6d4;"></i> Giá nước</h6>
+        <div class="settings-info">
+          <span class="settings-label">Giá hiện tại:</span>
+          <span class="settings-value" id="currentWaterPrice">15.000 VNĐ/m³</span>
+        </div>
+        <div class="settings-info">
+          <span class="settings-label">Áp dụng từ:</span>
+          <span class="settings-value" id="waterPriceDate">Chưa có dữ liệu</span>
+        </div>
+        <button type="button" class="btn btn-settings" onclick="openPricingModal()">
+          <i class="fas fa-edit"></i> Cập nhật giá
+        </button>
+      </div>
+
+      <div class="settings-alert settings-alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>Thông tin:</strong> Thay đổi giá sẽ áp dụng cho việc tính toán các hóa đơn mới.
+      </div>
+    </div>
+  </div>
+</div> 
