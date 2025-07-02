@@ -1,0 +1,274 @@
+<style>
+/* Main Content Layout - Synced with settings page */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.main-content {
+  margin-left: 220px;
+  padding: 15px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.page-header {
+  background: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 12px;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 20px;
+}
+
+/* Main content layout for viewport fit */
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 30px); /* 15px top + 15px bottom padding */
+  gap: 12px;
+}
+
+.content-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 15px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 20px;
+  flex: 1; /* Make grid take up remaining vertical space */
+}
+
+/* Cards Styles */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
+  background-color: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%; /* Make cards in a row have the same height */
+  overflow: hidden; /* Ensure child elements respect the border radius */
+}
+
+.card-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+}
+
+.card-title {
+  font-size: 1.1rem;
+}
+
+.card-body {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.card-padded-content {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+/* Form Styles */
+.form-label {
+  font-weight: 600;
+  color: #5a5c69;
+  margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+  border: 1px solid #d1d3e2;
+  border-radius: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-text {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+/* Button Styles */
+.btn {
+  font-weight: 600;
+  border-radius: 0.35rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-success {
+  background-color: #1cc88a;
+  border-color: #1cc88a;
+}
+
+.btn-success:hover {
+  background-color: #17a673;
+  border-color: #17a673;
+}
+
+.btn-primary {
+  background-color: #4e73df;
+  border-color: #4e73df;
+}
+
+.btn-primary:hover {
+  background-color: #3e63d4;
+  border-color: #3e63d4;
+}
+
+.btn-warning {
+  background-color: #f6c23e;
+  border-color: #f6c23e;
+  color: #5a5c69;
+}
+
+.btn-danger {
+  background-color: #e74a3b;
+  border-color: #e74a3b;
+}
+
+/* Table Styles */
+.table {
+  font-size: 0.9rem;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.table th {
+  border-top: none;
+  font-weight: 600;
+  color: #5a5c69;
+  background-color: #f8f9fc;
+  padding: 0.75rem;
+}
+
+.table td {
+  padding: 0.75rem;
+  vertical-align: middle;
+  border-top: 1px solid #e3e6f0;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+/* Badge Styles */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+}
+
+.badge.bg-success {
+  background-color: #1cc88a !important;
+}
+
+.badge.bg-primary {
+  background-color: #4e73df !important;
+}
+
+.badge.bg-warning {
+  background-color: #f6c23e !important;
+  color: #5a5c69 !important;
+}
+
+/* Action Buttons */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.btn-group .btn {
+  margin-right: 0.25rem;
+}
+
+/* Section Headers */
+h6.fw-bold {
+  color: #5a5c69;
+  border-bottom: 2px solid #e3e6f0;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.btn.loading {
+  position: relative;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  margin: -0.5rem 0 0 -0.5rem;
+  border: 2px solid transparent;
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 15px;
+  }
+  .page-header {
+    padding: 15px;
+  }
+}
+
+/* Animation */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.table-responsive {
+  max-height: 350px; /* Adjust as needed */
+  overflow-y: auto;
+}
+</style> 

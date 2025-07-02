@@ -248,10 +248,22 @@ const getPayments = async (req, res) => {
     
     console.log(`💰 Revenue breakdown: Cash = ${cashRevenue}, Transfer = ${transferRevenue}, Total = ${totalRevenue}`);
     
-    const buildings = {
-      building_id_1: { name: "Tòa nhà A" },
-      building_id_2: { name: "Tòa nhà B" }
-    };
+    // Load buildings từ Firebase
+    let buildings = {};
+    try {
+      const buildingsSnapshot = await db.ref('buildings').once('value');
+      const buildingsData = buildingsSnapshot.val() || {};
+      buildings = Object.fromEntries(
+        Object.entries(buildingsData).map(([id, data]) => [id, { name: data.name || id }])
+      );
+    } catch (buildingError) {
+      console.error('Error loading buildings in payments:', buildingError);
+      // Fallback to default buildings
+      buildings = {
+        building_id_1: { name: "Tòa nhà A" },
+        building_id_2: { name: "Tòa nhà B" }
+      };
+    }
     
     res.render("payments", {
       rooms: rooms,
@@ -285,10 +297,21 @@ const getPayments = async (req, res) => {
     
   } catch (error) {
     console.error("Lỗi khi tải trang payments:", error);
-    const buildings = {
-      building_id_1: { name: "Tòa nhà A" },
-      building_id_2: { name: "Tòa nhà B" }
-    };
+    // Load buildings cho error case
+    let buildings = {};
+    try {
+      const buildingsSnapshot = await db.ref('buildings').once('value');
+      const buildingsData = buildingsSnapshot.val() || {};
+      buildings = Object.fromEntries(
+        Object.entries(buildingsData).map(([id, data]) => [id, { name: data.name || id }])
+      );
+    } catch (buildingError) {
+      console.error('Error loading buildings in payments error case:', buildingError);
+      buildings = {
+        building_id_1: { name: "Tòa nhà A" },
+        building_id_2: { name: "Tòa nhà B" }
+      };
+    }
     res.render("payments", {
       rooms: [],
       currentMonth: new Date().getMonth() + 1,

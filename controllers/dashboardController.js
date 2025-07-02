@@ -87,10 +87,22 @@ const getDashboard = async (req, res) => {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear()
   };
-  const buildings = {
+  // Load buildings từ Firebase
+  let buildings = {};
+  try {
+    const buildingsSnapshot = await db.ref('buildings').once('value');
+    const buildingsData = buildingsSnapshot.val() || {};
+    buildings = Object.fromEntries(
+      Object.entries(buildingsData).map(([id, data]) => [id, { name: data.name || id }])
+    );
+  } catch (error) {
+    console.error('Error loading buildings:', error);
+    // Fallback to default buildings
+    buildings = {
     building_id_1: { name: "Tòa nhà A" },
     building_id_2: { name: "Tòa nhà B" }
   };
+  }
   
   // Xác định building_id để lấy dữ liệu
   let targetBuildingId = 'building_id_1'; // mặc định Tòa nhà A

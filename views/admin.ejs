@@ -2,42 +2,43 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Quản lí thanh toán</title>
+  <title>Quản lý Admin</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="icon" type="image/png" href="https://hcmute.edu.vn/Resources/Imagephoto/logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Sidebar Styles -->
   <%- include('partials/layout/sidebar-styles') %>
-  <!-- Page-specific Styles -->
-  <%- include('partials/payments/styles/main-styles') %>
-  <%- include('partials/payments/styles/stats-styles') %>
-  <%- include('partials/payments/styles/table-styles') %>
+  <!-- Admin Page Styles -->
+  <%- include('partials/admin/styles') %>
 </head>
+
 <body>
   <!-- Sidebar -->
-  <%- include('partials/layout/sidebar', { currentPage: 'payments' }) %>
+  <%- include('partials/layout/sidebar', { currentPage: 'admin' }) %>
 
   <!-- Main Content -->
   <div class="main-content">
     <div class="content-wrapper">
       <!-- Page Header -->
-      <%- include('partials/payments/components/page-header') %>
+      <%- include('partials/admin/components/page-header') %>
 
       <div class="content-body">
-        <!-- Statistics Grid -->
-        <%- include('partials/payments/components/stats-cards') %>
-
-        <!-- Payments Table -->
-        <%- include('partials/payments/components/payments-table') %>
+        <div class="settings-grid">
+          <!-- Admin Management Cards -->
+          <%- include('partials/admin/components/admin-cards') %>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Modals -->
-  <%- include('partials/payments/modals/payment-modal') %>
+  <%- include('partials/admin/modals/edit-admin-modal') %>
+  <%- include('partials/admin/modals/confirm-delete-admin-modal') %>
+  <%- include('partials/admin/modals/edit-building-modal') %>
+  <%- include('partials/admin/modals/confirm-delete-building-modal') %>
 
-  <!-- Shared Toast Container -->
+  <!-- Toast Container -->
   <%- include('partials/shared/components/toast-container') %>
 
   <!-- Scripts -->
@@ -47,7 +48,7 @@
   <%- include('partials/shared/styles/toast-styles') %>
   <%- include('partials/shared/scripts/toast-manager') %>
   
-  <%- include('partials/payments/scripts/payment-functions') %>
-  <%- include('partials/payments/scripts/unpaid-check') %>
+  <!-- Admin Scripts -->
+  <%- include('partials/admin/scripts') %>
 </body>
 </html> 

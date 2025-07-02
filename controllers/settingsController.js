@@ -20,10 +20,22 @@ function getTargetBuildingId(req) {
 const getSettings = async (req, res) => {
   try {
     const targetBuildingId = getTargetBuildingId(req);
-    const buildings = {
+    // Load buildings từ Firebase
+    let buildings = {};
+    try {
+      const buildingsSnapshot = await db.ref('buildings').once('value');
+      const buildingsData = buildingsSnapshot.val() || {};
+      buildings = Object.fromEntries(
+        Object.entries(buildingsData).map(([id, data]) => [id, { name: data.name || id }])
+      );
+    } catch (buildingError) {
+      console.error('Error loading buildings in settings:', buildingError);
+      // Fallback to default buildings
+      buildings = {
       building_id_1: { name: "Tòa nhà A" },
       building_id_2: { name: "Tòa nhà B" }
     };
+    }
 
     // Lấy dữ liệu building từ Firebase
     const buildingSnapshot = await db.ref(`buildings/${targetBuildingId}`).once("value");
@@ -82,8 +94,8 @@ const getSettings = async (req, res) => {
     res.render("settings", {
       currentPage: "settings",
       admin: req.session.admin,
-      buildings: req.session.admin?.role === 'super_admin' ? buildings : null,
-      selectedBuildingId: targetBuildingId,
+      buildings,
+      selectedBuildingId: req.session.selectedBuildingId,
       currentSettings: currentSettings,
       targetBuildingId: targetBuildingId
     });

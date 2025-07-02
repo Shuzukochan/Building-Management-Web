@@ -4,54 +4,229 @@
       <img src="https://upload.wikimedia.org/wikipedia/commons/b/b9/Logo_Tr%C6%B0%E1%BB%9Dng_%C4%90%E1%BA%A1i_H%E1%BB%8Dc_S%C6%B0_Ph%E1%BA%A1m_K%E1%BB%B9_Thu%E1%BA%ADt_TP_H%E1%BB%93_Ch%C3%AD_Minh.png" alt="SPKT Logo" class="logo-spkt">
       <img src="https://iotvision.vn/images/IoTVision-Logo.png" alt="IoTVision Logo" class="logo-iotvision">
     </div>
-    <h4>Building Management</h4>
+    
+    <% if (admin && admin.role === 'super_admin') { %>
+      <!-- Super Admin: Simple building dropdown -->
+      <select id="buildingSelector" class="building-simple-dropdown">
+        <% if (buildings && Object.keys(buildings).length > 0) { %>
+          <% Object.entries(buildings).forEach(([buildingId, building]) => { %>
+            <option value="<%= buildingId %>" 
+                    <%= (selectedBuildingId === buildingId) ? 'selected' : '' %>>
+              <%= building.name || buildingId %>
+            </option>
+          <% }); %>
+        <% } else { %>
+          <option value="building_id_1">Tòa nhà A</option>
+          <option value="building_id_2">Tòa nhà B</option>
+        <% } %>
+      </select>
+    <% } else { %>
+      <!-- Regular Admin: Show building name -->
+      <h4 class="building-title">
+        <% if (admin && buildings) { %>
+          <% const currentBuildingId = admin.building_ids || 'building_id_1'; %>
+          <% const currentBuilding = buildings[currentBuildingId]; %>
+          <%= currentBuilding ? currentBuilding.name : 'BUILDING MANAGEMENT' %>
+        <% } else { %>
+          BUILDING MANAGEMENT
+        <% } %>
+      </h4>
+    <% } %>
   </div>
   
   <div class="sidebar-nav">
-    <a href="/dashboard" <%= (typeof currentPage !== 'undefined' && currentPage === 'dashboard') ? 'class="active"' : '' %>>
+    <a href="/dashboard" class="nav-link <%= (typeof currentPage !== 'undefined' && currentPage === 'dashboard') ? 'active' : '' %>">
       <i class="fas fa-home"></i>
       Quản lý phòng
     </a>
-    <a href="/statistic" <%= (typeof currentPage !== 'undefined' && currentPage === 'statistic') ? 'class="active"' : '' %>>
+    <a href="/statistic" class="nav-link <%= (typeof currentPage !== 'undefined' && currentPage === 'statistic') ? 'active' : '' %>">
       <i class="fas fa-chart-bar"></i>
       Biểu đồ
     </a>
-    <a href="/payments" <%= (typeof currentPage !== 'undefined' && currentPage === 'payments') ? 'class="active"' : '' %>>
+    <a href="/payments" class="nav-link <%= (typeof currentPage !== 'undefined' && currentPage === 'payments') ? 'active' : '' %>">
       <i class="fas fa-money-bill-wave"></i>
       Thanh toán
     </a>
-    <a href="/settings" <%= (typeof currentPage !== 'undefined' && currentPage === 'settings') ? 'class="active"' : '' %>>
+    <a href="/settings" class="nav-link <%= (typeof currentPage !== 'undefined' && currentPage === 'settings') ? 'active' : '' %>">
       <i class="fas fa-cog"></i>
       Hiệu chỉnh
     </a>
-    <a href="/about" <%= (typeof currentPage !== 'undefined' && currentPage === 'about') ? 'class="active"' : '' %>>
+    <a href="/about" class="nav-link <%= (typeof currentPage !== 'undefined' && currentPage === 'about') ? 'active' : '' %>">
       <i class="fas fa-info-circle"></i>
       Giới thiệu
     </a>
+    <% if (admin && admin.role === 'super_admin') { %>
+      <a href="/admin" class="nav-link <%= (typeof currentPage !== 'undefined' && currentPage === 'admin') ? 'active' : '' %>">
+        <i class="fas fa-users-cog"></i>
+        Quản lý Admin
+      </a>
+    <% } %>
   </div>
   
-  <% if (admin && admin.role === 'super_admin' && buildings) { %>
-    <div style="margin: 16px 0;">
-      <label for="buildingSelect" style="font-weight:600;">Tòa nhà:</label>
-      <select id="buildingSelect" style="width:100%;padding:6px 8px;border-radius:6px;margin-top:4px;">
-        <% Object.entries(buildings).forEach(([id, b]) => { %>
-          <option value="<%= id %>" <%= selectedBuildingId === id ? 'selected' : '' %>><%= b.name %></option>
-        <% }) %>
-      </select>
+
+
+  <div class="sidebar-bottom">
+    <!-- User Account Section -->
+    <div class="user-account">
+      <div class="user-info">
+        <div class="user-avatar">
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="user-details">
+          <div class="username"><%= admin ? admin.username : 'Unknown' %></div>
+          <div class="user-role">
+            <% if (admin) { %>
+              <span class="role-badge <%= admin.role === 'super_admin' ? 'super-admin' : 'admin' %>">
+                <%= admin.role === 'super_admin' ? 'Super Admin' : 'Admin' %>
+              </span>
+            <% } %>
+          </div>
+        </div>
+        <button class="change-password-btn" onclick="openChangePasswordModal()" title="Đổi mật khẩu">
+          <i class="fas fa-key"></i>
+        </button>
+      </div>
     </div>
-    <script>
-      document.getElementById('buildingSelect').onchange = function() {
+    
+    <a href="/logout" class="logout-btn">
+      <i class="fas fa-sign-out-alt"></i>
+      Đăng xuất
+    </a>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-key me-2"></i>Đổi mật khẩu
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="changePasswordForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="currentPassword" class="form-label">Mật khẩu hiện tại</label>
+            <input type="password" class="form-control" id="currentPassword" name="currentPassword" required>
+          </div>
+          <div class="mb-3">
+            <label for="newPassword" class="form-label">Mật khẩu mới</label>
+            <input type="password" class="form-control" id="newPassword" name="newPassword" required minlength="6">
+            <div class="form-text">Mật khẩu phải có ít nhất 6 ký tự</div>
+          </div>
+          <div class="mb-3">
+            <label for="confirmPassword" class="form-label">Xác nhận mật khẩu mới</label>
+            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Đổi mật khẩu
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== BUILDING SELECTOR FUNCTIONS ====================
+
+// Function to handle building selection in dropdown
+document.addEventListener('DOMContentLoaded', function() {
+  const buildingSelector = document.getElementById('buildingSelector');
+  
+  if (buildingSelector) {
+    buildingSelector.addEventListener('change', function(e) {
+      const selectedBuildingId = e.target.value;
+      
+      if (selectedBuildingId) {
+        // Send building selection to server
         fetch('/select-building', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildingId: this.value })
-        }).then(() => location.reload());
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            buildingId: selectedBuildingId
+          })
+        }).then(response => {
+          if (response.ok) {
+            // Reload current page to update data
+            window.location.reload();
+          }
+        }).catch(error => {
+          console.error('Error selecting building:', error);
+        });
       }
-    </script>
-  <% } %>
-  
-  <a href="/logout" class="logout-btn">
-    <i class="fas fa-sign-out-alt"></i>
-    Đăng xuất
-  </a>
-</div> 
+    });
+  }
+});
+
+// ==================== CHANGE PASSWORD FUNCTIONS ====================
+
+function openChangePasswordModal() {
+  const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+  modal.show();
+}
+
+// Handle change password form submission
+document.addEventListener('DOMContentLoaded', function() {
+  const changePasswordForm = document.getElementById('changePasswordForm');
+  if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      // Validate passwords match
+      if (newPassword !== confirmPassword) {
+        showToast('Mật khẩu xác nhận không khớp!', 'error');
+        return;
+      }
+      
+      // Submit password change
+      fetch('/api/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentPassword: currentPassword,
+          newPassword: newPassword
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showToast('Đổi mật khẩu thành công!', 'success');
+          bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+          changePasswordForm.reset();
+        } else {
+          showToast(data.message || 'Lỗi khi đổi mật khẩu!', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error changing password:', error);
+        showToast('Lỗi kết nối! Vui lòng thử lại.', 'error');
+      });
+    });
+  }
+});
+
+// Simple toast function fallback
+function showToast(message, type = 'info') {
+  if (typeof window.showToast === 'function') {
+    window.showToast(message, type);
+  } else if (typeof toastManager !== 'undefined') {
+    toastManager[type](message);
+  } else {
+    alert(message);
+  }
+}
+</script> 

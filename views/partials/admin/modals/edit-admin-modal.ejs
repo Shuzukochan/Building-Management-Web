@@ -1,0 +1,46 @@
+<!-- Edit Admin Modal -->
+<div class="modal fade" id="editAdminModal" tabindex="-1" aria-labelledby="editAdminModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editAdminModalLabel">Chỉnh sửa Tài khoản Admin</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editAdminForm">
+          <input type="hidden" id="editAdminUsernameHidden">
+          
+          <div class="mb-3">
+            <label for="editAdminUsername" class="form-label">Tên đăng nhập</label>
+            <input type="text" class="form-control" id="editAdminUsername" disabled>
+          </div>
+          
+          <div class="mb-3">
+            <label for="editAdminPassword" class="form-label">Mật khẩu mới (để trống nếu không đổi)</label>
+            <input type="password" class="form-control" id="editAdminPassword" placeholder="Nhập mật khẩu mới">
+          </div>
+          
+          <div class="mb-3">
+            <label for="editAdminRole" class="form-label">Vai trò</label>
+            <select class="form-select" id="editAdminRole">
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+          </div>
+
+          <div class="mb-3" id="editAdminBuildingsContainer">
+            <label for="editAdminBuildings" class="form-label">Phân công Tòa nhà</label>
+            <select class="form-select" id="editAdminBuildings">
+              <!-- Options loaded by JS -->
+            </select>
+          </div>
+          
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button type="button" class="btn btn-primary" id="saveAdminChangesBtn">Lưu thay đổi</button>
+      </div>
+    </div>
+  </div>
+</div> 

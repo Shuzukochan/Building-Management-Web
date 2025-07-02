@@ -1,0 +1,20 @@
+<!-- Confirm Delete Building Modal -->
+<div class="modal fade" id="confirmDeleteBuildingModal" tabindex="-1" aria-labelledby="confirmDeleteBuildingModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteBuildingModalLabel">Xác nhận Xóa Tòa nhà</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Bạn có chắc chắn muốn xóa tòa nhà <strong id="buildingNameToDelete"></strong>? Hành động này không thể hoàn tác.</p>
+        <p class="text-danger small">Lưu ý: Bạn chỉ có thể xóa tòa nhà khi không có phòng hoặc admin nào được phân công.</p>
+        <input type="hidden" id="buildingIdToDelete">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBuildingButton">Xóa</button>
+      </div>
+    </div>
+  </div>
+</div> 

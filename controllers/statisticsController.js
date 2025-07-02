@@ -159,10 +159,22 @@ const getStatistic = async (req, res) => {
       });
     }
 
-    const buildings = {
-      building_id_1: { name: "Tòa nhà A" },
-      building_id_2: { name: "Tòa nhà B" }
-    };
+    // Load buildings từ Firebase
+    let buildings = {};
+    try {
+      const buildingsSnapshot = await db.ref('buildings').once('value');
+      const buildingsData = buildingsSnapshot.val() || {};
+      buildings = Object.fromEntries(
+        Object.entries(buildingsData).map(([id, data]) => [id, { name: data.name || id }])
+      );
+    } catch (buildingError) {
+      console.error('Error loading buildings in statistics:', buildingError);
+      // Fallback to default buildings
+      buildings = {
+        building_id_1: { name: "Tòa nhà A" },
+        building_id_2: { name: "Tòa nhà B" }
+      };
+    }
 
     res.render('statistic', {
       roomList,
@@ -210,10 +222,21 @@ const getStatistic = async (req, res) => {
     });
   } catch (error) {
     console.error('Lỗi khi tải thống kê:', error);
-    const buildings = {
-      building_id_1: { name: "Tòa nhà A" },
-      building_id_2: { name: "Tòa nhà B" }
-    };
+    // Load buildings cho error case
+    let buildings = {};
+    try {
+      const buildingsSnapshot = await db.ref('buildings').once('value');
+      const buildingsData = buildingsSnapshot.val() || {};
+      buildings = Object.fromEntries(
+        Object.entries(buildingsData).map(([id, data]) => [id, { name: data.name || id }])
+      );
+    } catch (buildingError) {
+      console.error('Error loading buildings in statistics error case:', buildingError);
+      buildings = {
+        building_id_1: { name: "Tòa nhà A" },
+        building_id_2: { name: "Tòa nhà B" }
+      };
+    }
     res.render('statistic', {
       roomList: [],
       electricHistory: {},

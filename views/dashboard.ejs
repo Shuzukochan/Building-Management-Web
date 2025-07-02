@@ -2,10 +2,12 @@
 <html lang="vi">
 <head>
   <%- include('partials/layout/head') %>
+  <!-- Sidebar shared styles -->
+  <%- include('partials/layout/sidebar-styles') %>
   <%- include('partials/dashboard/styles') %>
 </head>
 <body>
-  <%- include('partials/layout/sidebar') %>
+  <%- include('partials/layout/sidebar', { currentPage: 'dashboard' }) %>
 
   <!-- Main Content -->
   <div class="main-content">

@@ -1,0 +1,419 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<%- include('../shared/scripts/toast-manager') %>
+<%- include('../shared/styles/toast-styles') %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // =================================================================
+    // MODAL INSTANCES
+    // =================================================================
+    const editBuildingModal = new bootstrap.Modal(document.getElementById('editBuildingModal'));
+    const confirmDeleteBuildingModal = new bootstrap.Modal(document.getElementById('confirmDeleteBuildingModal'));
+    const editAdminModal = new bootstrap.Modal(document.getElementById('editAdminModal'));
+    const confirmDeleteAdminModal = new bootstrap.Modal(document.getElementById('confirmDeleteAdminModal'));
+
+    // =================================================================
+    // BUILDING MANAGEMENT
+    // =================================================================
+
+    // Load buildings data
+    function loadBuildings() {
+        fetch('/api/buildings')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    showToast(data.message, 'error');
+                    return;
+                }
+                const buildings = data.buildings;
+                const buildingsTableBody = document.getElementById('buildingsTableBody');
+                buildingsTableBody.innerHTML = '';
+                if (!buildings || buildings.length === 0) {
+                    buildingsTableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-muted">Chưa có tòa nhà nào.</td></tr>';
+                    return;
+                }
+                buildings.forEach(building => {
+                    const row = `
+                        <tr data-building-id="${building.id}" data-building-name="${building.name}">
+                            <td class="text-center">${building.id.replace('building_id_', '')}</td>
+                            <td class="text-center">${building.name}</td>
+                            <td class="text-center">${building.roomCount}</td>
+                            <td class="text-center">${building.adminCount}</td>
+                            <td class="text-center">
+                                <button class="btn btn-warning btn-sm edit-building-btn" title="Sửa">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm delete-building-btn" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    buildingsTableBody.innerHTML += row;
+                });
+            })
+            .catch(err => showToast('Lỗi tải danh sách tòa nhà: ' + err.message, 'error'));
+    }
+
+    // Handle Add Building Form Submission
+    document.getElementById('addBuildingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const buildingName = document.getElementById('buildingName').value;
+        const submitButton = this.querySelector('button[type="submit"]');
+        submitButton.classList.add('loading');
+        submitButton.disabled = true;
+
+        fetch('/api/buildings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ buildingName })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                this.reset();
+                loadBuildings();
+                loadBuildingOptionsForAdminForm(); // Refresh dropdowns
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Lỗi: ' + err.message, 'error'))
+        .finally(() => {
+            submitButton.classList.remove('loading');
+            submitButton.disabled = false;
+        });
+    });
+
+    // Handle Edit Building Form Submission
+    document.getElementById('editBuildingForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const buildingId = document.getElementById('editBuildingIdHidden').value;
+        const buildingName = document.getElementById('editBuildingName').value;
+        const submitButton = this.querySelector('button[type="submit"]');
+        submitButton.classList.add('loading');
+        submitButton.disabled = true;
+
+        fetch(`/api/buildings/${buildingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ buildingName })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Cập nhật tòa nhà thành công!', 'success');
+                editBuildingModal.hide();
+                loadBuildings();
+                loadBuildingOptionsForAdminForm(); // Refresh dropdowns
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Lỗi: ' + err.message, 'error'))
+        .finally(() => {
+            submitButton.classList.remove('loading');
+            submitButton.disabled = false;
+        });
+    });
+
+    // Handle Confirm Delete Building
+    document.getElementById('confirmDeleteBuildingButton').addEventListener('click', function() {
+        const buildingId = document.getElementById('buildingIdToDelete').value;
+        const button = this;
+        button.classList.add('loading');
+        button.disabled = true;
+
+        fetch(`/api/buildings/${buildingId}`, {
+            method: 'DELETE'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Xóa tòa nhà thành công!', 'success');
+                confirmDeleteBuildingModal.hide();
+                loadBuildings();
+                loadBuildingOptionsForAdminForm();
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Lỗi: ' + err.message, 'error'))
+        .finally(() => {
+            button.classList.remove('loading');
+            button.disabled = false;
+        });
+    });
+
+    // =================================================================
+    // ADMIN MANAGEMENT
+    // =================================================================
+
+    // Load buildings for admin assignment dropdowns
+    function loadBuildingOptionsForAdminForm() {
+        fetch('/api/buildings')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) return;
+                const buildings = data.buildings;
+                const selectElement = document.getElementById('adminBuildings');
+                const editSelectElement = document.getElementById('editAdminBuildings');
+                selectElement.innerHTML = '';
+                editSelectElement.innerHTML = '';
+                if(buildings.length === 0) {
+                    selectElement.add(new Option('Không có tòa nhà nào', ''));
+                    editSelectElement.add(new Option('Không có tòa nhà nào', ''));
+                    return;
+                }
+                buildings.forEach(b => {
+                    selectElement.add(new Option(b.name, b.id));
+                    editSelectElement.add(new Option(b.name, b.id));
+                });
+            });
+    }
+
+    // Load admins data
+    function loadAdminsData() {
+        const currentUser = '<%- admin.username %>';
+        fetch('/api/admins')
+            .then(res => res.json())
+            .then(admins => {
+                const adminsTableBody = document.getElementById('adminsTableBody');
+                adminsTableBody.innerHTML = '';
+                if (!admins || admins.length === 0) {
+                    adminsTableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-muted">Chưa có tài khoản admin nào.</td></tr>';
+                    return;
+                }
+                admins.forEach(admin => {
+                    let roleBadge = '';
+                    if (admin.role === 'super_admin') {
+                        roleBadge = '<span class="badge bg-warning text-dark"><i class="fas fa-crown me-1"></i>Super Admin</span>';
+                    } else {
+                        roleBadge = '<span class="badge bg-primary"><i class="fas fa-user-shield me-1"></i>Admin</span>';
+                    }
+
+                    let actionButtons = '';
+                    if (admin.username !== currentUser) {
+                        actionButtons = `
+                            <button class="btn btn-warning btn-sm edit-admin-btn" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm delete-admin-btn" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+                    } else {
+                        actionButtons = '<span class="text-muted fst-italic">Tài khoản hiện tại</span>';
+                    }
+
+                    const row = `
+                      <tr data-username="${admin.username}" data-role="${admin.role}" data-buildings="${admin.building_ids}">
+                        <td class="text-center">${admin.username}</td>
+                        <td class="text-center">${roleBadge}</td>
+                        <td class="text-center">${admin.buildingNames}</td>
+                        <td class="text-center">${actionButtons}</td>
+                      </tr>
+                    `;
+                    adminsTableBody.innerHTML += row;
+                });
+            })
+            .catch(err => showToast('Lỗi tải danh sách admin: ' + err.message, 'error'));
+    }
+
+    // Handle "super_admin" role change
+    function toggleBuildingSelectionForAdmin(formId = 'addAdminForm') {
+        const roleSelect = document.getElementById(formId === 'addAdminForm' ? 'adminRole' : 'editAdminRole');
+        const buildingSelectDiv = roleSelect.closest('.row, .mb-3').nextElementSibling;
+        
+        if (roleSelect.value === 'super_admin') {
+            buildingSelectDiv.style.display = 'none';
+        } else {
+            buildingSelectDiv.style.display = 'block';
+        }
+    }
+    document.getElementById('adminRole').addEventListener('change', () => toggleBuildingSelectionForAdmin('addAdminForm'));
+    document.getElementById('editAdminRole').addEventListener('change', () => toggleBuildingSelectionForAdmin('editAdminForm'));
+
+
+    // Handle Add Admin Form Submission
+    document.getElementById('addAdminForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitButton = this.querySelector('button[type="submit"]');
+        const formData = {
+            username: document.getElementById('adminUsername').value,
+            password: document.getElementById('adminPassword').value,
+            role: document.getElementById('adminRole').value,
+            building_ids: document.getElementById('adminBuildings').value
+        };
+
+        submitButton.classList.add('loading');
+        submitButton.disabled = true;
+
+        fetch('/api/create-admin-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Tạo tài khoản thành công!', 'success');
+                this.reset();
+                loadAdminsData();
+                loadBuildings(); // Refresh building admin count
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Lỗi: ' + err.message, 'error'))
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+        });
+    });
+
+    // Handle Edit Admin Form Submission
+    document.getElementById('editAdminForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitButton = this.querySelector('button[type="submit"]');
+        const username = document.getElementById('editAdminUsernameHidden').value;
+        const formData = {
+            password: document.getElementById('editAdminPassword').value,
+            role: document.getElementById('editAdminRole').value,
+            building_ids: document.getElementById('editAdminBuildings').value
+        };
+        
+        // Don't send empty password
+        if (!formData.password) {
+            delete formData.password;
+        }
+
+        submitButton.classList.add('loading');
+        submitButton.disabled = true;
+
+        fetch(`/api/admins/${username}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Cập nhật tài khoản thành công!', 'success');
+                editAdminModal.hide();
+                loadAdminsData();
+                loadBuildings(); // Refresh building admin count
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Lỗi: ' + err.message, 'error'))
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.classList.remove('loading');
+        });
+    });
+
+    // Handle Confirm Delete Admin
+    document.getElementById('confirmDeleteAdminButton').addEventListener('click', function() {
+        const username = document.getElementById('adminUsernameHiddenToDelete').value;
+        const button = this;
+        button.classList.add('loading');
+        button.disabled = true;
+        
+        fetch('/api/delete-admin-account', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Xóa tài khoản thành công!', 'success');
+                confirmDeleteAdminModal.hide();
+                loadAdminsData();
+                loadBuildings(); // Refresh building admin count
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(err => showToast('Lỗi: ' + err.message, 'error'))
+        .finally(() => {
+            button.classList.remove('loading');
+            button.disabled = false;
+        });
+    });
+
+    // =================================================================
+    // EVENT DELEGATION
+    // =================================================================
+    
+    // Buildings Table
+    document.getElementById('buildingsTableBody').addEventListener('click', function(e) {
+        const row = e.target.closest('tr');
+        if (!row) return;
+
+        // Edit Button
+        if (e.target.closest('.edit-building-btn')) {
+            const buildingId = row.dataset.buildingId;
+            const buildingName = row.dataset.buildingName;
+            document.getElementById('editBuildingIdHidden').value = buildingId;
+            document.getElementById('editBuildingName').value = buildingName;
+            editBuildingModal.show();
+        }
+
+        // Delete Button
+        if (e.target.closest('.delete-building-btn')) {
+            const buildingId = row.dataset.buildingId;
+            const buildingName = row.dataset.buildingName;
+            document.getElementById('buildingIdToDelete').value = buildingId;
+            document.getElementById('buildingNameToDelete').textContent = buildingName;
+            confirmDeleteBuildingModal.show();
+        }
+    });
+
+    // Admins Table
+    document.getElementById('adminsTableBody').addEventListener('click', function(e) {
+        const row = e.target.closest('tr');
+        if (!row) return;
+        const username = row.dataset.username;
+
+        // Edit Button
+        if (e.target.closest('.edit-admin-btn')) {
+            const role = row.dataset.role;
+            const buildingIds = row.dataset.buildings;
+            
+            document.getElementById('editAdminUsernameHidden').value = username;
+            document.getElementById('editAdminUsername').value = username;
+            document.getElementById('editAdminRole').value = role;
+            document.getElementById('editAdminPassword').value = ''; // Clear password field
+            
+            // Set selected buildings
+            const buildingSelect = document.getElementById('editAdminBuildings');
+            buildingSelect.value = buildingIds; // Handles single string assignment
+            
+            toggleBuildingSelectionForAdmin('editAdminForm');
+            editAdminModal.show();
+        }
+
+        // Delete Button
+        if (e.target.closest('.delete-admin-btn')) {
+            document.getElementById('adminUsernameToDelete').textContent = username;
+            document.getElementById('adminUsernameHiddenToDelete').value = username;
+            confirmDeleteAdminModal.show();
+        }
+    });
+
+
+    // =================================================================
+    // INITIALIZATION
+    // =================================================================
+    loadBuildings();
+    loadBuildingOptionsForAdminForm();
+    loadAdminsData();
+    toggleBuildingSelectionForAdmin('addAdminForm');
+    toggleBuildingSelectionForAdmin('editAdminForm');
+});
+</script> 
