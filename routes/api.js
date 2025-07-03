@@ -7,7 +7,7 @@ const { getRoomStatistics, getMonthlyStatistics } = require("../controllers/stat
 const { markPayment, createTestPayment, getUnpaidPreviousMonths } = require("../controllers/paymentController");
 const { calculateMonthlyUsageByType } = require("../services/statisticsService");
 const { updateGateway, getGateway, deleteGateway } = require("../controllers/gatewayController");
-const { verifyAdmin } = require("../services/adminService");
+const { verifyAdmin, hashPassword } = require("../services/adminService");
 
 // Feedback API removed - dashboard is read-only
 
@@ -81,8 +81,11 @@ router.post("/change-password", requireAuth, async (req, res) => {
       });
     }
 
+    // Hash password mới trước khi lưu
+    const hashedNewPassword = await hashPassword(newPassword);
+
     // Update password in Firebase
-    await db.ref(`admins/${username}/password`).set(newPassword);
+    await db.ref(`admins/${username}/password`).set(hashedNewPassword);
 
     console.log(`🔐 Password changed for admin: ${username}`);
 
@@ -142,8 +145,13 @@ router.get('/buildings', requireAuth, async (req, res) => {
       });
     }
 
-    // Sắp xếp theo tên
-    buildings.sort((a, b) => a.name.localeCompare(b.name));
+    // Sắp xếp theo ID từ bé tới lớn
+    buildings.sort((a, b) => {
+      // Extract số từ building_id (ví dụ: building_id_1 -> 1)
+      const idA = parseInt(a.id.replace('building_id_', '')) || 0;
+      const idB = parseInt(b.id.replace('building_id_', '')) || 0;
+      return idA - idB;
+    });
 
     res.json({
       success: true,
@@ -415,10 +423,13 @@ router.post('/create-admin-account', requireAuth, async (req, res) => {
       });
     }
 
+    // Hash password trước khi lưu
+    const hashedPassword = await hashPassword(password);
+
     // Tạo dữ liệu admin
     const adminData = {
       username: username,
-      password: password, // Trong production nên hash password
+      password: hashedPassword, // Mật khẩu đã được mã hóa
       role: role
     };
 
@@ -465,9 +476,12 @@ router.post('/create-admin-account', requireAuth, async (req, res) => {
 
 router.post('/create-sample-admin', async (req, res) => {
   try {
+    // Hash password cho sample admin
+    const hashedPassword = await hashPassword('admin123');
+    
     const sample = {
       username: 'admin',
-      password: 'admin123',
+      password: hashedPassword,
       role: 'super_admin',
       building_ids: ['building_id_1', 'building_id_2']
     };
@@ -681,7 +695,9 @@ router.put('/admins/:username', requireAuth, async (req, res) => {
       if (password.length < 6) {
         return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự!' });
       }
-      updates.password = password;
+      // Hash password mới trước khi lưu
+      const hashedPassword = await hashPassword(password);
+      updates.password = hashedPassword;
     }
 
     if (role) {

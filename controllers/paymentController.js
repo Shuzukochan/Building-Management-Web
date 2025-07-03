@@ -174,8 +174,8 @@ const getPayments = async (req, res) => {
         }
       }
       
-      // Tính due date (hạn thanh toán vào ngày 10 của tháng SAU)
-      const dueDate = new Date(currentYear, currentMonth, 10); // Ngày 10 của tháng SAU
+      // Tính due date (hạn thanh toán tiền tháng trước bắt đầu từ ngày 1 tháng sau)
+      const dueDate = new Date(currentYear, currentMonth, 1); // Ngày 1 của tháng SAU
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       dueDate.setHours(0, 0, 0, 0);

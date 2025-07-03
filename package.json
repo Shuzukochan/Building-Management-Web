@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "antd": "^5.26.0",
+    "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "dayjs": "^1.11.13",
     "dotenv": "^16.5.0",
