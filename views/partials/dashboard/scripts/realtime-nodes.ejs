@@ -7,6 +7,7 @@ class RealtimeNodesUpdater {
     this.roomsRef = null;
     this.listeners = new Map();
     this.isInitialized = false;
+    this.overcurrentWarnings = new Map(); // Track overcurrent warnings to prevent spam
   }
 
   async initialize() {
@@ -78,6 +79,41 @@ class RealtimeNodesUpdater {
     const lastData = nodeData.lastData || {};
     const electricValue = lastData.electric;
     const battLevel = lastData.batt;
+    const currentValue = lastData.current;
+
+    // Check for overcurrent warning
+    const roomId = roomRow.getAttribute('data-room-id');
+    const roomNumberElement = roomRow.querySelector('td:first-child');
+    const roomNumber = roomNumberElement ? roomNumberElement.textContent.trim() : 'N/A';
+    
+    if (currentValue !== null && currentValue !== undefined && currentValue > 25) {
+      // Check if we already showed warning for this room recently (within 30 seconds)
+      const now = Date.now();
+      const lastWarningTime = this.overcurrentWarnings.get(roomId);
+      
+      if (!lastWarningTime || (now - lastWarningTime) > 30000) { // 30 seconds cooldown
+        // Show overcurrent warning toast
+        if (typeof toastManager !== 'undefined') {
+          toastManager.warning(
+            `Phòng ${roomNumber} đang bị quá dòng điện! Dòng điện hiện tại: ${currentValue}A`,
+            5000,
+            'Cảnh báo quá dòng điện'
+          );
+        }
+        
+        // Show overcurrent warning modal for critical alert
+        this.showOvercurrentModal(roomNumber, currentValue);
+        
+        // Send automatic notification to the room
+        this.sendOvercurrentNotification(roomId, roomNumber, currentValue);
+        
+        // Update the last warning time for this room
+        this.overcurrentWarnings.set(roomId, now);
+      }
+    } else {
+      // Clear warning timestamp if current is back to normal
+      this.overcurrentWarnings.delete(roomId);
+    }
 
     // Update button text and data
     let buttonText = '<i class="fas fa-check"></i> Điện';
@@ -99,10 +135,19 @@ class RealtimeNodesUpdater {
 
     electricButton.innerHTML = buttonText + batteryHtml;
 
+    // Add overcurrent visual warning to button
+    if (currentValue !== null && currentValue !== undefined && currentValue > 25) {
+      electricButton.classList.add('overcurrent');
+    } else {
+      electricButton.classList.remove('overcurrent');
+    }
+
     // Update tooltip
     let tooltip = `Quản lý node điện: ${nodeId}`;
     if (battLevel !== null) tooltip += ` - Pin: ${battLevel}%`;
     if (electricValue !== null) tooltip += ` - Điện: ${electricValue} kWh`;
+    if (currentValue !== null) tooltip += ` - Dòng: ${currentValue}A`;
+    if (currentValue !== null && currentValue > 25) tooltip += ' ⚠️ QUÁ DÒNG!';
     electricButton.title = tooltip;
   }
 
@@ -184,13 +229,58 @@ class RealtimeNodesUpdater {
     return 'quarter';
   }
 
+  showOvercurrentModal(roomNumber, currentValue) {
+    try {
+      // Update modal content
+      document.getElementById('overcurrentRoomNumber').textContent = roomNumber;
+      document.getElementById('overcurrentValue').textContent = `${currentValue}A`;
+      
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('overcurrentWarningModal'));
+      modal.show();
+    } catch (error) {
+      console.error('Error showing overcurrent modal:', error);
+    }
+  }
 
+  async sendOvercurrentNotification(roomId, roomNumber, currentValue) {
+    try {
+      console.log(`🚨 Sending overcurrent notification to room ${roomId}`);
+      
+      const title = 'CẢNH BÁO QUÁ DÒNG ĐIỆN';
+      const message = `Dòng điện hiện tại: ${currentValue}A (vượt ngưỡng an toàn 25A). Vui lòng kiểm tra ngay các thiết bị điện để tránh nguy cơ cháy nổ.`;
+      
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomId: roomId,
+          title: title,
+          message: message
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Overcurrent notification sent to room ${roomNumber}`);
+      } else {
+        console.error('Failed to send overcurrent notification:', result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error sending overcurrent notification:', error);
+    }
+  }
 
   cleanup() {
     if (this.roomsRef) {
       this.roomsRef.off();
     }
     this.listeners.clear();
+    this.overcurrentWarnings.clear(); // Clear overcurrent warnings
     this.isInitialized = false;
   }
 }

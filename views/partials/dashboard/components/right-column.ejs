@@ -202,12 +202,14 @@
                             <!-- Button điện -->
                             <% if (hasElectricity) { %>
                               <% 
-                                // Lấy thông tin pin và số điện của node điện
+                                // Lấy thông tin pin, số điện và dòng điện của node điện
                                 let electricityBatt = null;
                                 let electricityValue = null;
+                                let electricityCurrent = null;
                                 if (room.nodes && room.nodes[electricityNodeId] && room.nodes[electricityNodeId].lastData) {
                                   electricityBatt = room.nodes[electricityNodeId].lastData.batt;
                                   electricityValue = room.nodes[electricityNodeId].lastData.electric;
+                                  electricityCurrent = room.nodes[electricityNodeId].lastData.current;
                                 }
                               %>
                               <button type="button"
@@ -216,7 +218,7 @@
                                  data-room-number="<%= room.roomNumber %>" 
                                  data-node-id="<%= electricityNodeId %>" 
                                  data-node-type="electricity"
-                                 title="Quản lý node điện: <%= electricityNodeId %><%= electricityBatt !== null ? ' - Pin: ' + electricityBatt + '%' : '' %><%= electricityValue !== null ? ' - Điện: ' + electricityValue + ' kWh' : '' %>">
+                                 title="Quản lý node điện: <%= electricityNodeId %><%= electricityBatt !== null ? ' - Pin: ' + electricityBatt + '%' : '' %><%= electricityValue !== null ? ' - Điện: ' + electricityValue + ' kWh' : '' %><%= electricityCurrent !== null ? ' - Dòng: ' + electricityCurrent + 'A' : '' %><%= electricityCurrent !== null && electricityCurrent > 25 ? ' ⚠️ QUÁ DÒNG!' : '' %>">
                                 <i class="fas fa-check"></i> Điện<% if (electricityValue !== null) { %>: <%= electricityValue %> kWh<% } %>
                                 <% if (electricityBatt !== null) { %>
                                   <span class="node-battery-inline">

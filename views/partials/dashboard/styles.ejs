@@ -2244,4 +2244,27 @@
     .feedback-status i {
       font-size: 0.8em;
     }
+
+    /* Overcurrent warning styles */
+    .overcurrent-warning {
+      animation: blink-warning 1s infinite;
+    }
+    
+    @keyframes blink-warning {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.5; }
+    }
+    
+    .quick-action-btn.electricity.has-node.overcurrent {
+      animation: pulse-danger 2s infinite;
+      border-color: #dc2626 !important;
+      background: #fee2e2 !important;
+      color: #dc2626 !important;
+    }
+    
+    @keyframes pulse-danger {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
   </style>

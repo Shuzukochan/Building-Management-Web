@@ -21,7 +21,7 @@ function getTargetBuildingId(req) {
 function getDefaultLastData(nodeType) {
   switch (nodeType) {
     case "electricity":
-      return { electric: 0, batt: 0 };
+      return { electric: 0, batt: 0, current: 0 };
     case "water":
       return { water: 0, batt: 0 };
     case "custom":
