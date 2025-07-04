@@ -8,6 +8,9 @@ class RealtimeNodesUpdater {
     this.listeners = new Map();
     this.isInitialized = false;
     this.overcurrentWarnings = new Map(); // Track overcurrent warnings to prevent spam
+    this.waterLeakWarnings = new Map(); // Track water leak warnings to prevent spam
+    this.acknowledgedOvercurrent = new Map(); // Track acknowledged overcurrent warnings
+    this.acknowledgedWaterLeak = new Map(); // Track acknowledged water leak warnings
   }
 
   async initialize() {
@@ -87,32 +90,38 @@ class RealtimeNodesUpdater {
     const roomNumber = roomNumberElement ? roomNumberElement.textContent.trim() : 'N/A';
     
     if (currentValue !== null && currentValue !== undefined && currentValue > 25) {
-      // Check if we already showed warning for this room recently (within 30 seconds)
-      const now = Date.now();
-      const lastWarningTime = this.overcurrentWarnings.get(roomId);
+      // Check if we already acknowledged this overcurrent for this room
+      const isAcknowledged = this.acknowledgedOvercurrent.get(roomId);
       
-      if (!lastWarningTime || (now - lastWarningTime) > 30000) { // 30 seconds cooldown
-        // Show overcurrent warning toast
-        if (typeof toastManager !== 'undefined') {
-          toastManager.warning(
-            `Phòng ${roomNumber} đang bị quá dòng điện! Dòng điện hiện tại: ${currentValue}A`,
-            5000,
-            'Cảnh báo quá dòng điện'
-          );
+      if (!isAcknowledged) {
+        // Check cooldown (30 seconds) to prevent spam
+        const now = Date.now();
+        const lastWarningTime = this.overcurrentWarnings.get(roomId);
+        
+        if (!lastWarningTime || (now - lastWarningTime) > 30000) {
+          // Show overcurrent warning toast
+          if (typeof toastManager !== 'undefined') {
+            toastManager.warning(
+              `Phòng ${roomNumber} đang bị quá dòng điện! Dòng điện hiện tại: ${currentValue}A`,
+              5000,
+              'Cảnh báo quá dòng điện'
+            );
+          }
+          
+          // Show overcurrent warning modal for critical alert
+          this.showOvercurrentModal(roomNumber, currentValue, roomId);
+          
+          // Send automatic notification to the room
+          this.sendOvercurrentNotification(roomId, roomNumber, currentValue);
+          
+          // Update the last warning time for this room
+          this.overcurrentWarnings.set(roomId, now);
         }
-        
-        // Show overcurrent warning modal for critical alert
-        this.showOvercurrentModal(roomNumber, currentValue);
-        
-        // Send automatic notification to the room
-        this.sendOvercurrentNotification(roomId, roomNumber, currentValue);
-        
-        // Update the last warning time for this room
-        this.overcurrentWarnings.set(roomId, now);
       }
     } else {
-      // Clear warning timestamp if current is back to normal
+      // Clear both warning timestamp and acknowledged flag when current is back to normal
       this.overcurrentWarnings.delete(roomId);
+      this.acknowledgedOvercurrent.delete(roomId);
     }
 
     // Update button text and data
@@ -158,6 +167,47 @@ class RealtimeNodesUpdater {
     const lastData = nodeData.lastData || {};
     const waterValue = lastData.water;
     const battLevel = lastData.batt;
+    const leakValue = lastData.leak;
+
+    // Check for water leak warning
+    const roomId = roomRow.getAttribute('data-room-id');
+    const roomNumberElement = roomRow.querySelector('td:first-child');
+    const roomNumber = roomNumberElement ? roomNumberElement.textContent.trim() : 'N/A';
+    
+    if (leakValue !== null && leakValue !== undefined && leakValue === 1) {
+      // Check if we already acknowledged this water leak for this room
+      const isAcknowledged = this.acknowledgedWaterLeak.get(roomId);
+      
+      if (!isAcknowledged) {
+        // Check cooldown (30 seconds) to prevent spam
+        const now = Date.now();
+        const lastWarningTime = this.waterLeakWarnings.get(roomId);
+        
+        if (!lastWarningTime || (now - lastWarningTime) > 30000) {
+          // Show water leak warning toast
+          if (typeof toastManager !== 'undefined') {
+            toastManager.warning(
+              `Phòng ${roomNumber} đang bị rò rỉ nước! Vui lòng kiểm tra hệ thống nước ngay.`,
+              5000,
+              'Cảnh báo rò rỉ nước'
+            );
+          }
+          
+          // Show water leak warning modal for critical alert
+          this.showWaterLeakModal(roomNumber, roomId);
+          
+          // Send automatic notification to the room
+          this.sendWaterLeakNotification(roomId, roomNumber);
+          
+          // Update the last warning time for this room
+          this.waterLeakWarnings.set(roomId, now);
+        }
+      }
+    } else {
+      // Clear both warning timestamp and acknowledged flag when leak is back to normal
+      this.waterLeakWarnings.delete(roomId);
+      this.acknowledgedWaterLeak.delete(roomId);
+    }
 
     // Update button text and data
     let buttonText = '<i class="fas fa-check"></i> Nước';
@@ -179,10 +229,18 @@ class RealtimeNodesUpdater {
 
     waterButton.innerHTML = buttonText + batteryHtml;
 
+    // Add water leak visual warning to button
+    if (leakValue !== null && leakValue !== undefined && leakValue === 1) {
+      waterButton.classList.add('water-leak');
+    } else {
+      waterButton.classList.remove('water-leak');
+    }
+
     // Update tooltip
     let tooltip = `Quản lý node nước: ${nodeId}`;
     if (battLevel !== null) tooltip += ` - Pin: ${battLevel}%`;
     if (waterValue !== null) tooltip += ` - Nước: ${waterValue} m³`;
+    if (leakValue !== null && leakValue === 1) tooltip += ' 💧 RÒ RỈ NƯỚC!';
     waterButton.title = tooltip;
   }
 
@@ -229,11 +287,14 @@ class RealtimeNodesUpdater {
     return 'quarter';
   }
 
-  showOvercurrentModal(roomNumber, currentValue) {
+  showOvercurrentModal(roomNumber, currentValue, roomId) {
     try {
       // Update modal content
       document.getElementById('overcurrentRoomNumber').textContent = roomNumber;
       document.getElementById('overcurrentValue').textContent = `${currentValue}A`;
+      
+      // Store roomId for acknowledge function
+      document.getElementById('overcurrentWarningModal').setAttribute('data-room-id', roomId);
       
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('overcurrentWarningModal'));
@@ -279,12 +340,77 @@ class RealtimeNodesUpdater {
     }
   }
 
+  showWaterLeakModal(roomNumber, roomId) {
+    try {
+      // Update modal content
+      document.getElementById('waterLeakRoomNumber').textContent = roomNumber;
+      
+      // Store roomId for acknowledge function
+      document.getElementById('waterLeakWarningModal').setAttribute('data-room-id', roomId);
+      
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('waterLeakWarningModal'));
+      modal.show();
+    } catch (error) {
+      console.error('Error showing water leak modal:', error);
+    }
+  }
+
+  async sendWaterLeakNotification(roomId, roomNumber) {
+    try {
+      console.log(`🚨 Sending water leak notification to room ${roomId}`);
+      
+      const title = 'CẢNH BÁO RÒ RỈ NƯỚC';
+      const message = `Phát hiện rò rỉ nước! Vui lòng kiểm tra hệ thống nước ngay để tránh thiệt hại.`;
+      
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomId: roomId,
+          title: title,
+          message: message
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Water leak notification sent and saved to room ${roomNumber}:`, {
+          messageId: result.messageId,
+          notificationId: result.notificationId,
+          savedToDatabase: result.details.savedToDatabase
+        });
+      } else {
+        console.error('Failed to send water leak notification:', result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error sending water leak notification:', error);
+    }
+  }
+
+  acknowledgeOvercurrent(roomId) {
+    this.acknowledgedOvercurrent.set(roomId, true);
+    console.log(`✓ Overcurrent acknowledged for room ${roomId}`);
+  }
+
+  acknowledgeWaterLeak(roomId) {
+    this.acknowledgedWaterLeak.set(roomId, true);
+    console.log(`✓ Water leak acknowledged for room ${roomId}`);
+  }
+
   cleanup() {
     if (this.roomsRef) {
       this.roomsRef.off();
     }
     this.listeners.clear();
     this.overcurrentWarnings.clear(); // Clear overcurrent warnings
+    this.waterLeakWarnings.clear(); // Clear water leak warnings
+    this.acknowledgedOvercurrent.clear(); // Clear acknowledged overcurrent
+    this.acknowledgedWaterLeak.clear(); // Clear acknowledged water leak
     this.isInitialized = false;
   }
 }
@@ -303,4 +429,31 @@ window.addEventListener('beforeunload', function() {
   if (window.realtimeNodesUpdater) {
     window.realtimeNodesUpdater.cleanup();
   }
-}); 
+});
+
+// Global functions for acknowledging warnings
+function acknowledgeOvercurrentWarning() {
+  try {
+    const modal = document.getElementById('overcurrentWarningModal');
+    const roomId = modal.getAttribute('data-room-id');
+    
+    if (roomId && window.realtimeNodesUpdater) {
+      window.realtimeNodesUpdater.acknowledgeOvercurrent(roomId);
+    }
+  } catch (error) {
+    console.error('Error acknowledging overcurrent warning:', error);
+  }
+}
+
+function acknowledgeWaterLeakWarning() {
+  try {
+    const modal = document.getElementById('waterLeakWarningModal');
+    const roomId = modal.getAttribute('data-room-id');
+    
+    if (roomId && window.realtimeNodesUpdater) {
+      window.realtimeNodesUpdater.acknowledgeWaterLeak(roomId);
+    }
+  } catch (error) {
+    console.error('Error acknowledging water leak warning:', error);
+  }
+} 

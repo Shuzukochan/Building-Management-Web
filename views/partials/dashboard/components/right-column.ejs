@@ -236,12 +236,14 @@
                             <!-- Button nước -->
                             <% if (hasWater) { %>
                               <% 
-                                // Lấy thông tin pin và số nước của node nước
+                                // Lấy thông tin pin, số nước và leak của node nước
                                 let waterBatt = null;
                                 let waterValue = null;
+                                let waterLeak = null;
                                 if (room.nodes && room.nodes[waterNodeId] && room.nodes[waterNodeId].lastData) {
                                   waterBatt = room.nodes[waterNodeId].lastData.batt;
                                   waterValue = room.nodes[waterNodeId].lastData.water;
+                                  waterLeak = room.nodes[waterNodeId].lastData.leak;
                                 }
                               %>
                               <button type="button"
@@ -250,7 +252,7 @@
                                  data-room-number="<%= room.roomNumber %>" 
                                  data-node-id="<%= waterNodeId %>" 
                                  data-node-type="water"
-                                 title="Quản lý node nước: <%= waterNodeId %><%= waterBatt !== null ? ' - Pin: ' + waterBatt + '%' : '' %><%= waterValue !== null ? ' - Nước: ' + waterValue + ' m³' : '' %>">
+                                 title="Quản lý node nước: <%= waterNodeId %><%= waterBatt !== null ? ' - Pin: ' + waterBatt + '%' : '' %><%= waterValue !== null ? ' - Nước: ' + waterValue + ' m³' : '' %><%= waterLeak !== null && waterLeak === 1 ? ' 💧 RÒ RỈ NƯỚC!' : '' %>">
                                 <i class="fas fa-check"></i> Nước<% if (waterValue !== null) { %>: <%= waterValue %> m³<% } %>
                                 <% if (waterBatt !== null) { %>
                                   <span class="node-battery-inline">
