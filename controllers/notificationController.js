@@ -51,6 +51,12 @@ const sendNotification = async (req, res) => {
     
     // Topic theo format: room_101, room_102, etc.
     const topic = `room_${roomId}`;
+    const timestamp = Date.now();
+    const notificationId = `notification_${timestamp}`;
+    
+    // Tạo định dạng thời gian dễ đọc: "HH:mm DD/MM/YYYY"
+    const now = new Date();
+    const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 
     const messagePayload = {
       notification: {
@@ -60,25 +66,43 @@ const sendNotification = async (req, res) => {
       data: {
         roomId: roomId,
         phoneNumber: formattedPhone,
-        timestamp: Date.now().toString(),
-        type: "room_notification"
+        timestamp: timestamp.toString(),
+        type: "room_notification",
+        notificationId: notificationId
       },
       topic: topic
     };
 
+    // 1. Gửi FCM notification
     const result = await messaging.send(messagePayload);
+
+    // 2. Lưu thông báo vào Firebase Database để app Android có thể xem lại
+    const notificationData = {
+      title: title,
+      message: message,
+      timestamp: formattedTime,
+      isRead: false,
+      sentBy: req.session.admin ? req.session.admin.username : 'system'
+    };
+
+    // Lưu vào path: buildings/{buildingId}/rooms/{roomId}/notifications/{notificationId}
+    await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/notifications/${notificationId}`).set(notificationData);
+
+    console.log(`✅ Notification sent and saved: Room ${roomId}, FCM result: ${result}`);
 
     res.json({
       success: true,
       message: `Đã gửi thông báo đến phòng ${roomId} thành công`,
       messageId: result,
+      notificationId: notificationId,
       details: {
         roomId,
         phoneNumber: formattedPhone,
         topic: topic,
         tokensFound: 1, // Compatibility với frontend
         successCount: 1,
-        failureCount: 0
+        failureCount: 0,
+        savedToDatabase: true
       }
     });
 
@@ -123,10 +147,17 @@ const sendTopicNotification = async (req, res) => {
       targetDescription = 'toàn tòa nhà';
     }
 
-    // Lấy danh sách phòng để biết số lượng gửi
+    // Lấy danh sách phòng để biết số lượng gửi và lưu thông báo cho từng phòng
     const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms`).once("value");
     const roomData = roomSnapshot.val() || {};
     const roomCount = Object.keys(roomData).length;
+
+    const timestamp = Date.now();
+    const notificationId = `broadcast_${timestamp}`;
+    
+    // Tạo định dạng thời gian dễ đọc: "HH:mm DD/MM/YYYY"
+    const now = new Date();
+    const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 
     const messagePayload = {
       notification: {
@@ -137,22 +168,63 @@ const sendTopicNotification = async (req, res) => {
         type: "broadcast_notification",
         buildingId: targetBuildingId,
         target: target,
-        timestamp: Date.now().toString()
+        timestamp: timestamp.toString(),
+        notificationId: notificationId
       },
       topic: topic
     };
 
+    // 1. Gửi FCM broadcast notification
     const result = await messaging.send(messagePayload);
+
+    // 2. Lưu thông báo vào từng phòng trong tòa nhà để app Android có thể xem lại
+    const notificationData = {
+      title: title,
+      message: message,
+      timestamp: formattedTime,
+      target: target,
+      targetDescription: targetDescription,
+      isRead: false,
+      sentBy: req.session.admin ? req.session.admin.username : 'system'
+    };
+
+    // Batch update để lưu notification vào tất cả phòng phù hợp
+    const updates = {};
+    
+    Object.keys(roomData).forEach(roomId => {
+      // Kiểm tra xem phòng có thuộc target không
+      let shouldReceive = false;
+      
+      if (target === 'all_residents') {
+        shouldReceive = true;
+      } else if (target.startsWith('floor_')) {
+        const floorNumber = target.replace('floor_', '');
+        const roomFloor = roomId.charAt(0); // Lấy ký tự đầu tiên làm tầng
+        shouldReceive = (roomFloor === floorNumber);
+      }
+      
+      if (shouldReceive) {
+        updates[`buildings/${targetBuildingId}/rooms/${roomId}/notifications/${notificationId}`] = notificationData;
+      }
+    });
+
+    // Thực hiện batch update
+    if (Object.keys(updates).length > 0) {
+      await db.ref().update(updates);
+      console.log(`✅ Broadcast notification sent and saved to ${Object.keys(updates).length} rooms`);
+    }
 
     res.json({
       success: true,
       message: `Đã gửi thông báo broadcast đến ${targetDescription}`,
       messageId: result,
+      notificationId: notificationId,
       details: {
         topic: topic,
         buildingId: targetBuildingId,
         target: target,
-        roomCount: roomCount
+        roomCount: roomCount,
+        savedToRooms: Object.keys(updates).length
       }
     });
 

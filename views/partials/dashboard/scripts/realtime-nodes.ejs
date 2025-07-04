@@ -265,7 +265,11 @@ class RealtimeNodesUpdater {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`✅ Overcurrent notification sent to room ${roomNumber}`);
+        console.log(`✅ Overcurrent notification sent and saved to room ${roomNumber}:`, {
+          messageId: result.messageId,
+          notificationId: result.notificationId,
+          savedToDatabase: result.details.savedToDatabase
+        });
       } else {
         console.error('Failed to send overcurrent notification:', result.error);
       }

@@ -46,6 +46,7 @@ router.post("/send-notification", requireAuth, sendNotification);
 router.post("/send-topic-notification", requireAuth, sendTopicNotification);
 router.get("/user-tokens", requireAuth, getUserTokens);
 
+
 // Gateway routes
 router.post("/update-gateway", requireAuth, updateGateway);
 router.get("/gateway", requireAuth, getGateway);

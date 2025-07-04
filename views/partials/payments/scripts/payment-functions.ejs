@@ -121,6 +121,9 @@
         throw new Error(result.error);
       }
       
+      // Log thông tin chi tiết về notification đã gửi và lưu
+      console.log('📱 Payment reminder sent and saved to room ' + roomId + ':', result);
+      
       // Show success message
       showSuccessToast(`Đã gửi nhắc nhở thanh toán tới phòng ${roomNumber}`);
       
