@@ -25,7 +25,7 @@
       <%- include('partials/settings/components/page-header') %>
 
       <div class="content-body">
-        <!-- Settings Cards -->
+        <!-- Settings Cards + Period (trong 1 grid) -->
         <%- include('partials/settings/components/settings-cards') %>
       </div>
     </div>
@@ -64,11 +64,15 @@
     <% } %>
     
     console.log('Initial pricing data:', initialPricingData);
+
+    // All rooms data (bao gồm nodes) cho chức năng điều chỉnh chu kỳ
+    window.allRoomsData = <%- JSON.stringify(allRoomsData) %>;
   </script>
   
   <!-- Settings Functions -->
   <%- include('partials/settings/scripts/calibration-functions') %>
   <%- include('partials/settings/scripts/pricing-functions') %>
+  <%- include('partials/settings/scripts/period-functions') %>
   <%- include('partials/settings/scripts/initialization') %>
 </body>
 </html> 

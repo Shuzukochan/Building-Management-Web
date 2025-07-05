@@ -1,0 +1,61 @@
+<!-- Period Adjustment Cards -->
+<div class="settings-card period-card">
+    <div class="settings-card-header">
+        <h5><i class="fas fa-clock"></i> Điều chỉnh chu kỳ gửi</h5>
+    </div>
+    <div class="settings-card-body">
+        <div class="settings-description">
+            Điều chỉnh chu kỳ gửi dữ liệu cho cảm biến điện và nước (tính bằng giây).
+        </div>
+
+        <!-- Electricity Period -->
+        <div class="settings-section">
+            <h6><i class="fas fa-bolt" style="color: #f59e0b;"></i> Chu kỳ gửi dữ liệu điện</h6>
+            <div class="mb-3">
+                <label for="electricRoomSelect" class="form-label">Chọn phòng</label>
+                <select class="form-select" id="electricRoomSelect">
+                    <option value="" selected>Chọn một phòng...</option>
+                    <% currentSettings.rooms.forEach(room => { if (room.hasElectricity) { %>
+                        <option value="<%= room.id %>"><%= room.name %></option>
+                    <% } }); %>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="electricNodeId" class="form-label">Node ID</label>
+                <input type="text" class="form-control" id="electricNodeId" placeholder="Node ID sẽ hiện ở đây" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="electricPeriodInput" class="form-label">Chu kỳ (giây)</label>
+                <div class="d-flex align-items-end gap-2">
+                    <input type="number" class="form-control period-input" id="electricPeriodInput" placeholder="Nhập chu kỳ">
+                    <button class="btn btn-settings period-btn" id="saveElectricPeriod" disabled><i class="fas fa-wrench"></i> Hiệu chỉnh</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Water Period -->
+        <div class="settings-section">
+            <h6><i class="fas fa-tint" style="color: #06b6d4;"></i> Chu kỳ gửi dữ liệu nước</h6>
+            <div class="mb-3">
+                <label for="waterRoomSelect" class="form-label">Chọn phòng</label>
+                <select class="form-select" id="waterRoomSelect">
+                    <option value="" selected>Chọn một phòng...</option>
+                    <% currentSettings.rooms.forEach(room => { if (room.hasWater) { %>
+                        <option value="<%= room.id %>"><%= room.name %></option>
+                    <% } }); %>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="waterNodeId" class="form-label">Node ID</label>
+                <input type="text" class="form-control" id="waterNodeId" placeholder="Node ID sẽ hiện ở đây" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="waterPeriodInput" class="form-label">Chu kỳ (giây)</label>
+                <div class="d-flex align-items-end gap-2">
+                    <input type="number" class="form-control period-input" id="waterPeriodInput" placeholder="Nhập chu kỳ">
+                    <button class="btn btn-settings period-btn" id="saveWaterPeriod" disabled><i class="fas fa-wrench"></i> Hiệu chỉnh</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

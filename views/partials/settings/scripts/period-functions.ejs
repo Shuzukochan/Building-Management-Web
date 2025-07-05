@@ -1,0 +1,87 @@
+<script>
+// ==================== PERIOD FUNCTIONS ====================
+
+// Script này phụ thuộc vào biến global window.allRoomsData
+document.addEventListener('DOMContentLoaded', () => {
+    // ==================== PERIOD FUNCTIONS ====================
+
+    // Tìm node id thuộc loại cảm biến trong phòng
+    function findNodeId(roomId, type) {
+        if (!window.allRoomsData || !window.allRoomsData[roomId] || !window.allRoomsData[roomId].nodes) return null;
+        const nodes = window.allRoomsData[roomId].nodes;
+        for (const [nodeId, node] of Object.entries(nodes)) {
+            if (node.type === type) return nodeId;
+        }
+        return null;
+    }
+
+    // Cấu hình cho từng phần (electric/water)
+    function setupPeriodSection(prefix, type) {
+        const roomSelect = document.getElementById(`${prefix}RoomSelect`);
+        const nodeIdInput = document.getElementById(`${prefix}NodeId`);
+        const periodInput = document.getElementById(`${prefix}PeriodInput`);
+        const sendBtn = document.getElementById(`save${prefix.charAt(0).toUpperCase() + prefix.slice(1)}Period`);
+
+        if (!roomSelect || !nodeIdInput || !periodInput || !sendBtn) return;
+
+        roomSelect.addEventListener('change', () => {
+            const roomId = roomSelect.value;
+            if (!roomId) {
+                nodeIdInput.value = 'Node ID sẽ hiện ở đây';
+                sendBtn.disabled = true;
+                return;
+            }
+            const nodeId = findNodeId(roomId, type);
+            if (nodeId) {
+                nodeIdInput.value = nodeId;
+                sendBtn.disabled = false;
+            } else {
+                nodeIdInput.value = 'Không tìm thấy node';
+                sendBtn.disabled = true;
+            }
+        });
+
+        sendBtn.addEventListener('click', async () => {
+            const nodeId = nodeIdInput.value;
+            const periodSeconds = parseInt(periodInput.value, 10);
+
+            if (!nodeId || nodeId === 'Không tìm thấy node') {
+                toastManager.error('Không có Node ID hợp lệ.');
+                return;
+            }
+            if (!periodSeconds || periodSeconds <= 0) {
+                toastManager.error('Vui lòng nhập chu kỳ hợp lệ (số dương).');
+                return;
+            }
+
+            sendBtn.disabled = true;
+            const originalHtml = sendBtn.innerHTML;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+
+            try {
+                const response = await fetch('/api/set-node-period', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeId, periodSeconds })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    toastManager.success(result.message || 'Gửi thành công!');
+                    periodInput.value = '';
+                } else {
+                    throw new Error(result.error || 'Có lỗi xảy ra.');
+                }
+            } catch (err) {
+                toastManager.error(err.message || 'Có lỗi xảy ra.');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // Khởi tạo cho điện và nước
+    setupPeriodSection('electric', 'electricity');
+    setupPeriodSection('water', 'water');
+});
+</script>

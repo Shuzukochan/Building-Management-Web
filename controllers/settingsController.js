@@ -1,4 +1,5 @@
 const { db } = require("../config/database");
+const axios = require('axios');
 
 // Helper function để xác định building_id
 function getTargetBuildingId(req) {
@@ -97,7 +98,8 @@ const getSettings = async (req, res) => {
       buildings,
       selectedBuildingId: req.session.selectedBuildingId,
       currentSettings: currentSettings,
-      targetBuildingId: targetBuildingId
+      targetBuildingId: targetBuildingId,
+      allRoomsData: roomsData
     });
 
   } catch (error) {
@@ -351,9 +353,57 @@ const getRoomCalibrationData = async (req, res) => {
   }
 };
 
+// API để đặt chu kỳ gửi dữ liệu cho node
+const setNodePeriod = async (req, res) => {
+  try {
+    const { nodeId, periodSeconds } = req.body;
+
+    if (!nodeId || !periodSeconds || periodSeconds <= 0) {
+      return res.status(400).json({ success: false, error: 'Thiếu nodeId hoặc periodSeconds không hợp lệ' });
+    }
+
+    const periodMs = periodSeconds * 1000;
+    const base64Data = Buffer.from(`period:${periodMs}`, 'utf8').toString('base64');
+
+    const payload = {
+      queueItem: {
+        confirmed: false,
+        data: base64Data,
+        fPort: 2
+      }
+    };
+
+    // Debug log
+    console.log(`🚀 Sending node period`, { nodeId, periodSeconds, periodMs, base64Data });
+
+    const apiToken = process.env.NODE_QUEUE_API_TOKEN;
+    if (!apiToken) {
+      return res.status(500).json({ success: false, error: 'Thiếu NODE_QUEUE_API_TOKEN trong .env' });
+    }
+
+    const url = `https://api.shuzuko.id.vn/api/devices/${nodeId}/queue`;
+    const response = await axios.post(url, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`
+      }
+    });
+
+    if (response.status >= 200 && response.status < 300) {
+      return res.json({ success: true, message: 'Thiết lập chu kỳ thành công!' });
+    } else {
+      return res.status(response.status).json({ success: false, error: 'Gửi thất bại', data: response.data });
+    }
+  } catch (error) {
+    console.error('Error setting node period:', error);
+    return res.status(500).json({ success: false, error: 'Lỗi server: ' + error.message });
+  }
+};
+
 module.exports = {
   getSettings,
   updateCalibration,
   updatePricing,
-  getRoomCalibrationData
+  getRoomCalibrationData,
+  setNodePeriod
 }; 
