@@ -20,7 +20,7 @@ const { getPayments, markPayment, createTestPayment, getUnpaidPreviousMonths } =
 const { addNode, deleteNode, editNode } = require("./controllers/nodeController");
 const { getDashboard } = require("./controllers/dashboardController");
 const { getStatistic } = require("./controllers/statisticsController");
-const { getSettings, updateCalibration, updatePricing, getRoomCalibrationData } = require("./controllers/settingsController");
+const { getSettings, updateCalibration, updateWaterCalibration, updatePricing, getRoomCalibrationData } = require("./controllers/settingsController");
 const { requireAuth } = require("./middleware/auth");
 
 // Helper functions from index.js
@@ -143,6 +143,7 @@ app.get("/api/unpaid-previous-months", requireAuth, getUnpaidPreviousMonths);
 
 // Settings API routes
 app.post("/api/update-calibration", requireAuth, updateCalibration);
+app.post("/api/update-calibration-water", requireAuth, updateWaterCalibration);
 app.post("/api/update-pricing", requireAuth, updatePricing);
 app.get("/api/room-calibration/:roomId", requireAuth, getRoomCalibrationData);
 

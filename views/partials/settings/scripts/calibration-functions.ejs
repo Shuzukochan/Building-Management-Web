@@ -1,7 +1,7 @@
 <script>
   // ==================== CALIBRATION FUNCTIONS ====================
   
-  let currentCalibrationType = null;
+  let currentElectricCalibrationData = null; // Lưu trữ dữ liệu hiệu chuẩn điện hiện tại
   
   // Load calibration data when room selection changes
   async function loadRoomCalibrationData() {
@@ -13,6 +13,7 @@
         // Reset to default values if no room selected
         document.getElementById('electricSensorValue').textContent = '0 kWh';
         document.getElementById('electricActualValue').textContent = '0 kWh';
+        document.getElementById('electricOffset').textContent = '0';
         document.getElementById('electricCalibrationFactor').textContent = '1';
         document.getElementById('electricCalibrationDate').textContent = 'Chưa hiệu chuẩn';
         document.getElementById('waterSensorValue').textContent = '0 m³';
@@ -30,23 +31,25 @@
         const data = result.data.calibrationData;
         
         // Update electricity values
-        document.getElementById('electricSensorValue').textContent = `${data.electricity.sensorValue} kWh`;
-        document.getElementById('electricActualValue').textContent = `${data.electricity.actualValue} kWh`;
-        document.getElementById('electricCalibrationFactor').textContent = data.electricity.calibrationFactor;
+        document.getElementById('electricSensorValue').textContent = `${data.electricity.sensorValue || 0} kWh`;
+        document.getElementById('electricActualValue').textContent = `${data.electricity.actualValue || 0} kWh`;
+        document.getElementById('electricOffset').textContent = data.electricity.offset || 0;
+        document.getElementById('electricCalibrationFactor').textContent = data.electricity.calibrationFactor || 1;
         document.getElementById('electricCalibrationDate').textContent = data.electricity.calibratedAt 
           ? new Date(data.electricity.calibratedAt).toLocaleDateString('vi-VN') 
           : 'Chưa hiệu chuẩn';
         
         // Update water values  
-        document.getElementById('waterSensorValue').textContent = `${data.water.sensorValue} m³`;
-        document.getElementById('waterActualValue').textContent = `${data.water.actualValue} m³`;
-        document.getElementById('waterCalibrationFactor').textContent = data.water.calibrationFactor;
+        document.getElementById('waterSensorValue').textContent = `${data.water.sensorValue || 0} m³`;
+        document.getElementById('waterActualValue').textContent = `${data.water.actualValue || 0} m³`;
+        document.getElementById('waterCalibrationFactor').textContent = data.water.calibrationFactor || 1;
         document.getElementById('waterCalibrationDate').textContent = data.water.calibratedAt 
           ? new Date(data.water.calibratedAt).toLocaleDateString('vi-VN') 
           : 'Chưa hiệu chuẩn';
           
         // Store calibration and lastData for later use
         window.currentRoomCalibrationData = result.data;
+        currentElectricCalibrationData = data.electricity;
       } else {
         console.error('Error loading room calibration data:', result.error);
       }
@@ -54,203 +57,429 @@
       console.error('Error loading room calibration data:', error);
     }
   }
+
+  // ==================== ELECTRIC INITIAL CALIBRATION ====================
   
-  // Open calibration modal
-  function openCalibrationModal(type) {
+  // Open electric initial calibration modal
+  function openElectricInitialCalibrationModal() {
     try {
-      currentCalibrationType = type;
-      
       // Check if there are any rooms available
       const roomSelect = document.getElementById('calibrationRoomSelect');
       if (!roomSelect.value) {
-        alert(`Không có phòng nào có cảm biến ${type === 'electricity' ? 'điện' : 'nước'}. Vui lòng thêm nodes vào phòng trước.`);
+        alert('Không có phòng nào có cảm biến điện. Vui lòng thêm nodes vào phòng trước.');
+        return;
+      }
+
+      // Reset form
+      document.getElementById('electricInitialSensorValue').value = '';
+      document.getElementById('electricInitialMeterValue').value = '';
+      document.getElementById('electricInitialPreview').style.display = 'none';
+      
+      // Show modal
+      new bootstrap.Modal(document.getElementById('electricInitialCalibrationModal')).show();
+      
+    } catch (error) {
+      console.error('Error opening electric initial calibration modal:', error);
+      if (typeof toastManager !== 'undefined') {
+        toastManager.error('Lỗi khi mở modal hiệu chuẩn ban đầu: ' + error.message);
+      } else {
+        alert('Lỗi khi mở modal hiệu chuẩn ban đầu: ' + error.message);
+      }
+    }
+  }
+  
+  // Calculate and preview electric initial calibration
+  function updateElectricInitialPreview() {
+    try {
+      const sensorValue = parseFloat(document.getElementById('electricInitialSensorValue').value);
+      const meterValue = parseFloat(document.getElementById('electricInitialMeterValue').value);
+      
+      if (sensorValue > 0 && meterValue > 0) {
+        const offset = meterValue - sensorValue;
+        
+        document.getElementById('electricInitialOffsetPreview').textContent = offset.toFixed(4);
+        document.getElementById('electricInitialPreview').style.display = 'block';
+      } else {
+        document.getElementById('electricInitialPreview').style.display = 'none';
+      }
+    } catch (error) {
+      document.getElementById('electricInitialPreview').style.display = 'none';
+    }
+  }
+  
+  // Submit electric initial calibration
+  async function submitElectricInitialCalibration() {
+    try {
+      const sensorValue = parseFloat(document.getElementById('electricInitialSensorValue').value);
+      const meterValue = parseFloat(document.getElementById('electricInitialMeterValue').value);
+      const roomId = document.getElementById('calibrationRoomSelect').value;
+      
+      // Validation
+      if (!roomId) {
+        alert('Vui lòng chọn phòng có cảm biến');
         return;
       }
       
-      // Ensure we have latest calibration data before opening modal
-      if (!window.currentRoomCalibrationData) {
-        console.log('🔄 Loading room calibration data before opening modal...');
-        loadRoomCalibrationData().then(() => {
-          // Retry opening modal after data is loaded
-          setTimeout(() => openCalibrationModal(type), 100);
-        });
+      if (!sensorValue || sensorValue <= 0) {
+        alert('Vui lòng nhập giá trị cảm biến hợp lệ');
         return;
       }
       
-      // Update modal title and units
-      const modalTitle = document.getElementById('calibrationModalTitle');
-      const sensorUnit = document.getElementById('sensorUnit');
-      const actualUnit = document.getElementById('actualUnit');
-      const currentRawSensorUnit = document.getElementById('currentRawSensorUnit');
-      const currentRawSensorGroup = document.getElementById('currentRawSensorGroup');
-      
-      if (type === 'electricity') {
-        modalTitle.textContent = 'Hiệu chuẩn cảm biến điện';
-        sensorUnit.textContent = 'kWh';
-        actualUnit.textContent = 'kWh';
-        currentRawSensorUnit.textContent = 'kWh';
-        // Ẩn trường giá trị thực tế cho điện (có thể bỏ comment dòng dưới nếu muốn hiển thị cho cả điện)
-        currentRawSensorGroup.style.display = 'none';
-      } else if (type === 'water') {
-        modalTitle.textContent = 'Hiệu chuẩn cảm biến nước';
-        sensorUnit.textContent = 'm³';
-        actualUnit.textContent = 'm³';
-        currentRawSensorUnit.textContent = 'm³';
-        // Hiển thị trường giá trị thực tế cho nước
-        currentRawSensorGroup.style.display = 'block';
+      if (!meterValue || meterValue <= 0) {
+        alert('Vui lòng nhập giá trị đồng hồ hợp lệ');
+        return;
       }
       
-      // Set calibration type
-      document.getElementById('calibrationType').value = type;
+      // Disable submit button
+      const submitBtn = event.target;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+      
+      // Calculate offset
+      const offset = meterValue - sensorValue;
+      
+      // Prepare data
+      const calibrationData = {
+        type: 'electricity',
+        roomId,
+        isInitialCalibration: true,
+        offset: offset,
+        calibrationFactor: 1,
+        firstSensorValue: sensorValue,
+        firstActualValue: meterValue
+      };
+      
+      console.log('📤 Sending electric initial calibration data:', JSON.stringify(calibrationData, null, 2));
+      
+      // Send request
+      const response = await fetch('/api/update-calibration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(calibrationData)
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Update UI
+      updateElectricCalibrationUI(result.data);
+
+      // Show success message
+      if (typeof toastManager !== 'undefined') {
+        toastManager.success(`Đã thiết lập hiệu chuẩn ban đầu điện cho phòng ${roomId}`);
+      } else {
+        alert(`Đã thiết lập hiệu chuẩn ban đầu điện cho phòng ${roomId}`);
+      }
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('electricInitialCalibrationModal'));
+      modal.hide();
+
+      // Reload calibration data
+      await loadRoomCalibrationData();
+
+      // Reset button
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+    } catch (error) {
+      console.error('Error submitting electric initial calibration:', error);
+
+      // Reset button
+      const submitBtn = event.target;
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu hiệu chuẩn ban đầu';
+      
+      alert('Lỗi khi lưu hiệu chuẩn ban đầu: ' + error.message);
+    }
+  }
+
+  // ==================== ELECTRIC ERROR CORRECTION ====================
+  
+  // Open electric error correction modal
+  function openElectricErrorCorrectionModal() {
+    try {
+      // Check if there are any rooms available
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      if (!roomSelect.value) {
+        alert('Không có phòng nào có cảm biến điện. Vui lòng thêm nodes vào phòng trước.');
+        return;
+      }
+
+      // Check if there's initial calibration data
+      if (!currentElectricCalibrationData || 
+          currentElectricCalibrationData.firstSensorValue === undefined || 
+          currentElectricCalibrationData.firstActualValue === undefined) {
+        alert('Chưa có dữ liệu hiệu chuẩn ban đầu. Vui lòng thực hiện hiệu chuẩn ban đầu trước.');
+        return;
+      }
+
+      // Display existing calibration data
+      document.getElementById('electricErrorFirstSensorValue').textContent = `${currentElectricCalibrationData.firstSensorValue} kWh`;
+      document.getElementById('electricErrorFirstActualValue').textContent = `${currentElectricCalibrationData.firstActualValue} kWh`;
+      document.getElementById('electricErrorCurrentOffset').textContent = currentElectricCalibrationData.offset || '0';
+      document.getElementById('electricErrorCurrentCalibrationFactor').textContent = currentElectricCalibrationData.calibrationFactor || '1';
+
+      // Reset form
+      document.getElementById('electricErrorCurrentSensorValue').value = '';
+      document.getElementById('electricErrorCurrentMeterValue').value = '';
+      document.getElementById('electricErrorPreview').style.display = 'none';
+      
+      // Show modal
+      new bootstrap.Modal(document.getElementById('electricErrorCorrectionModal')).show();
+      
+    } catch (error) {
+      console.error('Error opening electric error correction modal:', error);
+      if (typeof toastManager !== 'undefined') {
+        toastManager.error('Lỗi khi mở modal hiệu chuẩn sai số: ' + error.message);
+      } else {
+        alert('Lỗi khi mở modal hiệu chuẩn sai số: ' + error.message);
+      }
+    }
+  }
+  
+  // Calculate and preview electric error correction
+  function updateElectricErrorPreview() {
+    try {
+      const currentSensorValue = parseFloat(document.getElementById('electricErrorCurrentSensorValue').value);
+      const currentMeterValue = parseFloat(document.getElementById('electricErrorCurrentMeterValue').value);
+      
+      if (!currentElectricCalibrationData || !currentSensorValue || !currentMeterValue) {
+        document.getElementById('electricErrorPreview').style.display = 'none';
+        return;
+      }
+      
+      const firstSensorValue = currentElectricCalibrationData.firstSensorValue;
+      const firstActualValue = currentElectricCalibrationData.firstActualValue;
+      
+      if (currentSensorValue > 0 && currentMeterValue > 0 && firstSensorValue && firstActualValue) {
+        // Calculate new calibration factor
+        const newCalibrationFactor = (currentMeterValue - firstActualValue) / (currentSensorValue - firstSensorValue);
+        
+        // Calculate new offset
+        const newOffset = firstActualValue - (firstSensorValue * newCalibrationFactor);
+        
+        // Update preview
+        document.getElementById('electricErrorNewCalibrationFactor').textContent = newCalibrationFactor.toFixed(4);
+        document.getElementById('electricErrorNewOffset').textContent = newOffset.toFixed(4);
+        document.getElementById('electricErrorCalibrationFormula').textContent = 
+          `(${currentMeterValue} - ${firstActualValue}) / (${currentSensorValue} - ${firstSensorValue})`;
+        document.getElementById('electricErrorOffsetFormula').textContent = 
+          `${firstActualValue} - (${firstSensorValue} × ${newCalibrationFactor.toFixed(4)})`;
+        
+        document.getElementById('electricErrorPreview').style.display = 'block';
+      } else {
+        document.getElementById('electricErrorPreview').style.display = 'none';
+      }
+    } catch (error) {
+      document.getElementById('electricErrorPreview').style.display = 'none';
+    }
+  }
+  
+  // Submit electric error correction
+  async function submitElectricErrorCorrection() {
+    try {
+      const currentSensorValue = parseFloat(document.getElementById('electricErrorCurrentSensorValue').value);
+      const currentMeterValue = parseFloat(document.getElementById('electricErrorCurrentMeterValue').value);
+      const roomId = document.getElementById('calibrationRoomSelect').value;
+      
+      // Validation
+      if (!roomId) {
+        alert('Vui lòng chọn phòng có cảm biến');
+        return;
+      }
+      
+      if (!currentSensorValue || currentSensorValue <= 0) {
+        alert('Vui lòng nhập giá trị cảm biến hiện tại hợp lệ');
+        return;
+      }
+      
+      if (!currentMeterValue || currentMeterValue <= 0) {
+        alert('Vui lòng nhập giá trị đồng hồ hiện tại hợp lệ');
+        return;
+      }
+      
+      if (!currentElectricCalibrationData) {
+        alert('Không có dữ liệu hiệu chuẩn ban đầu');
+        return;
+      }
+      
+      // Disable submit button
+      const submitBtn = event.target;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+      
+      const firstSensorValue = currentElectricCalibrationData.firstSensorValue;
+      const firstActualValue = currentElectricCalibrationData.firstActualValue;
+      
+      // Calculate new calibration factor and offset
+      const newCalibrationFactor = (currentMeterValue - firstActualValue) / (currentSensorValue - firstSensorValue);
+      const newOffset = firstActualValue - (firstSensorValue * newCalibrationFactor);
+      
+      // Prepare data
+      const calibrationData = {
+        type: 'electricity',
+        roomId,
+        isErrorCorrection: true,
+        offset: newOffset,
+        calibrationFactor: newCalibrationFactor,
+        firstSensorValue: firstSensorValue,
+        firstActualValue: firstActualValue,
+        currentSensorValue: currentSensorValue,
+        currentMeterValue: currentMeterValue
+      };
+      
+      console.log('📤 Sending electric error correction data:', JSON.stringify(calibrationData, null, 2));
+      
+      // Send request
+      const response = await fetch('/api/update-calibration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(calibrationData)
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Update UI
+      updateElectricCalibrationUI(result.data);
+
+      // Show success message
+      if (typeof toastManager !== 'undefined') {
+        toastManager.success(`Đã cập nhật hiệu chỉnh sai số điện cho phòng ${roomId}`);
+      } else {
+        alert(`Đã cập nhật hiệu chỉnh sai số điện cho phòng ${roomId}`);
+      }
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('electricErrorCorrectionModal'));
+      modal.hide();
+
+      // Reload calibration data
+      await loadRoomCalibrationData();
+
+      // Reset button
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+    } catch (error) {
+      console.error('Error submitting electric error correction:', error);
+
+      // Reset button
+      const submitBtn = event.target;
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu hiệu chuẩn sai số';
+      
+      alert('Lỗi khi lưu hiệu chỉnh sai số: ' + error.message);
+    }
+  }
+
+  // ==================== WATER CALIBRATION (OLD LOGIC) ====================
+  
+  // Open water calibration modal (keep old logic)
+  function openCalibrationModal(type) {
+    if (type !== 'water') return; // Only handle water here
+    
+    try {
+      // Check if there are any rooms available
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      if (!roomSelect.value) {
+        alert('Không có phòng nào có cảm biến nước. Vui lòng thêm nodes vào phòng trước.');
+        return;
+      }
       
       // Reset form
-      document.getElementById('calibrationForm').reset();
-      document.getElementById('calibrationType').value = type;
-      document.getElementById('calibrationPreview').style.display = 'none';
+      document.getElementById('waterSensorValue').value = '';
+      document.getElementById('waterActualValue').value = '';
+      document.getElementById('waterCalibrationPreview').style.display = 'none';
       
-      // Check if selected room has the required sensor type
-      const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-      const hasElectricity = selectedOption.getAttribute('data-has-electricity') === 'true';
-      const hasWater = selectedOption.getAttribute('data-has-water') === 'true';
-      
-      if ((type === 'electricity' && !hasElectricity) || (type === 'water' && !hasWater)) {
-        alert(`Phòng đã chọn không có cảm biến ${type === 'electricity' ? 'điện' : 'nước'}. Vui lòng chọn phòng khác.`);
-        return;
-      }
-      
-      // Tính toán và hiển thị giá trị cảm biến thực tế hiện tại cho nước
-      if (type === 'water' && window.currentRoomCalibrationData) {
-        console.log('🔍 Debug - currentRoomCalibrationData:', window.currentRoomCalibrationData);
-        
+      // Handle water-specific logic (keep old behavior)
+      if (window.currentRoomCalibrationData) {
         const waterLastData = window.currentRoomCalibrationData.lastData.water;
         const waterCalibration = window.currentRoomCalibrationData.calibrationData.water;
-        
-        console.log('🔍 Debug - waterLastData:', waterLastData);
-        console.log('🔍 Debug - waterCalibration:', waterCalibration);
         
         if (waterLastData && waterLastData.water !== null && waterLastData.water !== undefined) {
           // Tính giá trị thô = lastData / hệ số cũ (nếu có), nếu không có hệ số thì giữ nguyên
           const oldCalibrationFactor = waterCalibration.calibrationFactor || 1.0;
           const currentRawValue = waterLastData.water / oldCalibrationFactor;
           
-          console.log(`🔍 Debug - lastData.water: ${waterLastData.water}, oldCalibrationFactor: ${oldCalibrationFactor}, currentRawValue: ${currentRawValue}`);
-          
           document.getElementById('currentRawSensorValue').value = currentRawValue.toFixed(3);
-          
-          // Pre-fill giá trị hiển thị hiện tại (lastData đã qua hiệu chỉnh)
-          document.getElementById('sensorValue').value = waterLastData.water.toFixed(3);
-          
-          // Ẩn alert warning
+          document.getElementById('waterSensorValue').value = waterLastData.water.toFixed(3);
+          document.getElementById('currentRawSensorGroup').style.display = 'block';
           document.getElementById('waterNoDataAlert').style.display = 'none';
         } else {
-          console.log('⚠️ Không có dữ liệu lastData.water hoặc giá trị = 0');
-          // Hiển thị thông báo cho người dùng
           document.getElementById('currentRawSensorValue').value = '';
           document.getElementById('currentRawSensorValue').placeholder = 'Chưa có dữ liệu cảm biến';
-          
-          // Hiển thị alert warning
+          document.getElementById('currentRawSensorGroup').style.display = 'block';
           document.getElementById('waterNoDataAlert').style.display = 'block';
         }
       }
       
-      // Ẩn waterNoDataAlert cho điện
-      if (type === 'electricity') {
-        document.getElementById('waterNoDataAlert').style.display = 'none';
-      }
-      
-      // Load current calibration data from UI for electricity (giữ nguyên logic cũ)
-      if (type === 'electricity') {
-        const prefix = 'electric';
-        const currentSensorValueText = document.getElementById(`${prefix}SensorValue`).textContent;
-        const currentActualValueText = document.getElementById(`${prefix}ActualValue`).textContent;
-        
-        // Extract numeric values (remove unit text)
-        const currentSensorValue = parseFloat(currentSensorValueText.replace(/[^\d.]/g, ''));
-        const currentActualValue = parseFloat(currentActualValueText.replace(/[^\d.]/g, ''));
-        
-        // Pre-fill form if we have existing data
-        if (currentSensorValue > 0) {
-          document.getElementById('sensorValue').value = currentSensorValue;
-        }
-        if (currentActualValue > 0) {
-          document.getElementById('actualValue').value = currentActualValue;
-        }
-        
-        // Update preview if both values exist
-        if (currentSensorValue > 0 && currentActualValue > 0) {
-          updateCalibrationPreview();
-        }
-      }
-      
       // Show modal
-      new bootstrap.Modal(document.getElementById('calibrationModal')).show();
+      new bootstrap.Modal(document.getElementById('waterCalibrationModal')).show();
       
     } catch (error) {
-      console.error('Error opening calibration modal:', error);
+      console.error('Error opening water calibration modal:', error);
       if (typeof toastManager !== 'undefined') {
-        toastManager.error('Lỗi khi mở modal hiệu chuẩn: ' + error.message);
+        toastManager.error('Lỗi khi mở modal hiệu chuẩn nước: ' + error.message);
       } else {
-        alert('Lỗi khi mở modal hiệu chuẩn: ' + error.message);
+        alert('Lỗi khi mở modal hiệu chuẩn nước: ' + error.message);
       }
     }
   }
   
-  // Calculate and preview calibration
-  function updateCalibrationPreview() {
+  // Calculate and preview water calibration
+  function updateWaterCalibrationPreview() {
     try {
-      const type = document.getElementById('calibrationType').value;
-      const sensorValue = parseFloat(document.getElementById('sensorValue').value);
-      const actualValue = parseFloat(document.getElementById('actualValue').value);
+      const sensorValue = parseFloat(document.getElementById('waterSensorValue').value);
+      const actualValue = parseFloat(document.getElementById('waterActualValue').value);
       
       let calibrationFactor = 0;
       let formula = '';
       
-      if (type === 'water') {
-        // Cho nước: kiểm tra xem có giá trị thô hay không
-        const currentRawSensorValue = parseFloat(document.getElementById('currentRawSensorValue').value);
-        
-        if (currentRawSensorValue && currentRawSensorValue > 0 && actualValue > 0) {
-          // Có dữ liệu lastData, sử dụng giá trị thô
-          calibrationFactor = actualValue / currentRawSensorValue;
-          formula = 'Giá trị thực = Cảm biến thô × Hệ số';
-        } else if (sensorValue > 0 && actualValue > 0) {
-          // Chưa có dữ liệu lastData, sử dụng sensorValue như điện
-          calibrationFactor = actualValue / sensorValue;
-          formula = 'Giá trị thực = Cảm biến hiển thị × Hệ số';
-        }
-      } else {
-        // Cho điện: giữ nguyên logic cũ
-        if (sensorValue > 0 && actualValue > 0) {
-          calibrationFactor = actualValue / sensorValue;
-          formula = 'Giá trị thực = Cảm biến × Hệ số';
-        }
+      // Cho nước: kiểm tra xem có giá trị thô hay không
+      const currentRawSensorValue = parseFloat(document.getElementById('currentRawSensorValue').value);
+      
+      if (currentRawSensorValue && currentRawSensorValue > 0 && actualValue > 0) {
+        // Có dữ liệu lastData, sử dụng giá trị thô
+        calibrationFactor = actualValue / currentRawSensorValue;
+        formula = 'Giá trị thực = Cảm biến thô × Hệ số';
+      } else if (sensorValue > 0 && actualValue > 0) {
+        // Chưa có dữ liệu lastData, sử dụng sensorValue
+        calibrationFactor = actualValue / sensorValue;
+        formula = 'Giá trị thực = Cảm biến hiển thị × Hệ số';
       }
       
       if (calibrationFactor > 0) {
-        document.getElementById('previewCalibrationFactor').textContent = calibrationFactor.toFixed(4);
-        document.getElementById('previewFormula').textContent = formula;
-        document.getElementById('calibrationPreview').style.display = 'block';
+        document.getElementById('waterPreviewCalibrationFactor').textContent = calibrationFactor.toFixed(4);
+        document.getElementById('waterPreviewFormula').textContent = formula;
+        document.getElementById('waterCalibrationPreview').style.display = 'block';
       } else {
-        document.getElementById('calibrationPreview').style.display = 'none';
+        document.getElementById('waterCalibrationPreview').style.display = 'none';
       }
     } catch (error) {
-      document.getElementById('calibrationPreview').style.display = 'none';
+      document.getElementById('waterCalibrationPreview').style.display = 'none';
     }
   }
   
-  // Submit calibration
-  async function submitCalibration() {
+  // Submit water calibration (old logic)
+  async function submitWaterCalibration() {
     try {
-      const form = document.getElementById('calibrationForm');
-      const formData = new FormData(form);
-      
-      const sensorValue = parseFloat(formData.get('sensorValue'));
-      const actualValue = parseFloat(formData.get('actualValue'));
-      const type = formData.get('type');
-      
-      // Get roomId from the external dropdown
-      const roomSelect = document.getElementById('calibrationRoomSelect');
-      const roomId = roomSelect.value;
+      const sensorValue = parseFloat(document.getElementById('waterSensorValue').value);
+      const actualValue = parseFloat(document.getElementById('waterActualValue').value);
+      const roomId = document.getElementById('calibrationRoomSelect').value;
       
       // Validation
       if (!roomId) {
@@ -268,35 +497,34 @@
         return;
       }
       
-      // Cho nước, cần kiểm tra thêm currentRawSensorValue
+      // Disable submit button
+      const submitBtn = event.target;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+
+      // Prepare old-style data for water
       let calibrationData = {
-        type,
+        type: 'water',
         roomId,
         sensorValue,
         actualValue
       };
       
-      if (type === 'water') {
-        const currentRawSensorValue = parseFloat(formData.get('currentRawSensorValue'));
-        if (currentRawSensorValue && currentRawSensorValue > 0) {
-          // Có dữ liệu lastData, sử dụng giá trị thô
-          calibrationData.currentRawSensorValue = currentRawSensorValue;
-          console.log('💧 Sử dụng giá trị cảm biến thô:', currentRawSensorValue);
-        } else {
-          // Chưa có dữ liệu lastData, sử dụng sensorValue như điện
-          console.log('💧 Chưa có dữ liệu lastData, sử dụng sensorValue như điện');
-          calibrationData.useDisplayValue = true; // Flag để controller biết cách tính
-        }
+      // Cho nước, cần kiểm tra thêm currentRawSensorValue
+      const currentRawSensorValue = parseFloat(document.getElementById('currentRawSensorValue').value);
+      if (currentRawSensorValue && currentRawSensorValue > 0) {
+        // Có dữ liệu lastData, sử dụng giá trị thô
+        calibrationData.currentRawSensorValue = currentRawSensorValue;
+      } else {
+        // Chưa có dữ liệu lastData, sử dụng sensorValue
+        calibrationData.useDisplayValue = true;
       }
-      
-      // Disable submit button
-      const submitBtn = document.querySelector('#calibrationModal .btn-settings');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
 
-      // Send request
-      const response = await fetch('/api/update-calibration', {
+      console.log('📤 Sending water calibration data:', JSON.stringify(calibrationData, null, 2));
+
+      // Send request to old endpoint (you'll need to add this back for water)
+      const response = await fetch('/api/update-calibration-water', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -311,57 +539,92 @@
       }
 
       // Update UI
-      updateCalibrationUI(type, result.data);
+      updateWaterCalibrationUI(result.data);
 
       // Show success message
       if (typeof toastManager !== 'undefined') {
-        toastManager.success(`Đã cập nhật hiệu chuẩn ${type === 'electricity' ? 'điện' : 'nước'} cho phòng ${roomId}`);
+        toastManager.success(`Đã cập nhật hiệu chuẩn nước cho phòng ${roomId}`);
       } else {
-        alert(`Đã cập nhật hiệu chuẩn ${type === 'electricity' ? 'điện' : 'nước'} cho phòng ${roomId}`);
+        alert(`Đã cập nhật hiệu chuẩn nước cho phòng ${roomId}`);
       }
 
       // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('calibrationModal'));
+      const modal = bootstrap.Modal.getInstance(document.getElementById('waterCalibrationModal'));
       modal.hide();
+
+      // Reload calibration data
+      await loadRoomCalibrationData();
 
       // Reset button
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
 
     } catch (error) {
-      console.error('Error submitting calibration:', error);
+      console.error('Error submitting water calibration:', error);
 
       // Reset button
-      const submitBtn = document.querySelector('#calibrationModal .btn-settings');
+      const submitBtn = event.target;
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu hiệu chuẩn';
       
-      alert('Lỗi khi lưu hiệu chuẩn: ' + error.message);
+      alert('Lỗi khi lưu hiệu chuẩn nước: ' + error.message);
     }
-  }
-  
-  // Update calibration UI
-  function updateCalibrationUI(type, data) {
-    const prefix = type === 'electricity' ? 'electric' : 'water';
-    const unit = type === 'electricity' ? 'kWh' : 'm³';
-    
-    document.getElementById(`${prefix}SensorValue`).textContent = `${data.sensorValue} ${unit}`;
-    document.getElementById(`${prefix}ActualValue`).textContent = `${data.actualValue} ${unit}`;
-    document.getElementById(`${prefix}CalibrationFactor`).textContent = data.calibrationFactor;
-    document.getElementById(`${prefix}CalibrationDate`).textContent = new Date().toLocaleDateString('vi-VN');
   }
 
+  // ==================== UI UPDATE FUNCTIONS ====================
+  
+  // Update electric calibration UI
+  function updateElectricCalibrationUI(data) {
+    document.getElementById('electricSensorValue').textContent = `${data.firstSensorValue || 0} kWh`;
+    document.getElementById('electricActualValue').textContent = `${data.firstActualValue || 0} kWh`;
+    document.getElementById('electricOffset').textContent = data.offset || 0;
+    document.getElementById('electricCalibrationFactor').textContent = data.calibrationFactor || 1;
+    document.getElementById('electricCalibrationDate').textContent = new Date().toLocaleDateString('vi-VN');
+  }
+
+  // Update water calibration UI (old style)
+  function updateWaterCalibrationUI(data) {
+    document.getElementById('waterSensorValue').textContent = `${data.sensorValue || 0} m³`;
+    document.getElementById('waterActualValue').textContent = `${data.actualValue || 0} m³`;
+    document.getElementById('waterCalibrationFactor').textContent = data.calibrationFactor || 1;
+    document.getElementById('waterCalibrationDate').textContent = new Date().toLocaleDateString('vi-VN');
+  }
+
+  // ==================== EVENT LISTENERS ====================
+  
   // Add event listeners for real-time preview updates
   document.addEventListener('DOMContentLoaded', function() {
-    // Add event listeners to form inputs
-    const sensorValueInput = document.getElementById('sensorValue');
-    const actualValueInput = document.getElementById('actualValue');
+    // Electric initial calibration inputs
+    const electricInitialSensorInput = document.getElementById('electricInitialSensorValue');
+    const electricInitialMeterInput = document.getElementById('electricInitialMeterValue');
     
-    if (sensorValueInput) {
-      sensorValueInput.addEventListener('input', updateCalibrationPreview);
+    if (electricInitialSensorInput) {
+      electricInitialSensorInput.addEventListener('input', updateElectricInitialPreview);
     }
-    if (actualValueInput) {
-      actualValueInput.addEventListener('input', updateCalibrationPreview);
+    if (electricInitialMeterInput) {
+      electricInitialMeterInput.addEventListener('input', updateElectricInitialPreview);
+    }
+    
+    // Electric error correction inputs
+    const electricErrorSensorInput = document.getElementById('electricErrorCurrentSensorValue');
+    const electricErrorMeterInput = document.getElementById('electricErrorCurrentMeterValue');
+    
+    if (electricErrorSensorInput) {
+      electricErrorSensorInput.addEventListener('input', updateElectricErrorPreview);
+    }
+    if (electricErrorMeterInput) {
+      electricErrorMeterInput.addEventListener('input', updateElectricErrorPreview);
+    }
+    
+    // Water calibration inputs
+    const waterSensorInput = document.getElementById('waterSensorValue');
+    const waterActualInput = document.getElementById('waterActualValue');
+    
+    if (waterSensorInput) {
+      waterSensorInput.addEventListener('input', updateWaterCalibrationPreview);
+    }
+    if (waterActualInput) {
+      waterActualInput.addEventListener('input', updateWaterCalibrationPreview);
     }
   });
 </script> 

@@ -23,11 +23,19 @@
       <!-- Electricity Calibration -->
       <div class="settings-section">
         <h6><i class="fas fa-bolt" style="color:#f59e0b;"></i> Cảm biến điện</h6>
-        <div class="settings-info"><span class="settings-label">Giá trị cảm biến:</span><span class="settings-value" id="electricSensorValue"><%= currentSettings.calibrationData.electricity.sensorValue %> kWh</span></div>
-        <div class="settings-info"><span class="settings-label">Giá trị thực tế:</span><span class="settings-value" id="electricActualValue"><%= currentSettings.calibrationData.electricity.actualValue %> kWh</span></div>
+        <div class="settings-info"><span class="settings-label">Giá trị cảm biến ban đầu:</span><span class="settings-value" id="electricSensorValue"><%= currentSettings.calibrationData.electricity.sensorValue %> kWh</span></div>
+        <div class="settings-info"><span class="settings-label">Giá trị thực tế ban đầu:</span><span class="settings-value" id="electricActualValue"><%= currentSettings.calibrationData.electricity.actualValue %> kWh</span></div>
+        <div class="settings-info"><span class="settings-label">Offset hiện tại:</span><span class="settings-value" id="electricOffset"><%= currentSettings.calibrationData.electricity.offset || 0 %></span></div>
         <div class="settings-info"><span class="settings-label">Hệ số hiệu chuẩn:</span><span class="settings-value" id="electricCalibrationFactor"><%= currentSettings.calibrationData.electricity.calibrationFactor %></span></div>
         <div class="settings-info"><span class="settings-label">Ngày hiệu chuẩn:</span><span class="settings-value" id="electricCalibrationDate"><%= currentSettings.calibrationData.electricity.calibratedAt? new Date(currentSettings.calibrationData.electricity.calibratedAt).toLocaleDateString('vi-VN') : 'Chưa hiệu chuẩn' %></span></div>
-        <button type="button" class="btn btn-settings" onclick="openCalibrationModal('electricity')" <%= !hasAnyElectricityRoom? 'disabled title="Không có phòng nào có cảm biến điện"':'' %>><i class="fas fa-edit"></i> Hiệu chuẩn điện</button>
+        <div class="d-flex gap-2 flex-wrap mt-3">
+          <button type="button" class="btn btn-primary btn-sm" onclick="openElectricInitialCalibrationModal()" <%= !hasAnyElectricityRoom? 'disabled title="Không có phòng nào có cảm biến điện"':'' %>>
+            <i class="fas fa-cog"></i> Hiệu chuẩn ban đầu
+          </button>
+          <button type="button" class="btn btn-success btn-sm" onclick="openElectricErrorCorrectionModal()" <%= !hasAnyElectricityRoom? 'disabled title="Không có phòng nào có cảm biến điện"':'' %>>
+            <i class="fas fa-adjust"></i> Hiệu chuẩn sai số
+          </button>
+        </div>
       </div>
       <!-- Water Calibration -->
       <div class="settings-section">

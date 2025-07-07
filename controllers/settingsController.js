@@ -113,7 +113,18 @@ const getSettings = async (req, res) => {
 // API để cập nhật calibration
 const updateCalibration = async (req, res) => {
   try {
-    const { type, sensorValue, actualValue, currentRawSensorValue } = req.body;
+    const { 
+      type, 
+      roomId, 
+      isInitialCalibration, 
+      isErrorCorrection,
+      offset,
+      calibrationFactor,
+      firstSensorValue,
+      firstActualValue,
+      currentSensorValue,
+      currentMeterValue
+    } = req.body;
     const targetBuildingId = getTargetBuildingId(req);
 
     // Validation
@@ -124,23 +135,6 @@ const updateCalibration = async (req, res) => {
       });
     }
 
-    if (typeof sensorValue !== 'number' || typeof actualValue !== 'number') {
-      return res.status(400).json({
-        success: false,
-        error: "Giá trị số không hợp lệ"
-      });
-    }
-
-    if (sensorValue <= 0 || actualValue <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Giá trị phải lớn hơn 0"
-      });
-    }
-
-    const { roomId } = req.body;
-
-    // Validation cho roomId
     if (!roomId) {
       return res.status(400).json({
         success: false,
@@ -148,32 +142,59 @@ const updateCalibration = async (req, res) => {
       });
     }
 
-    // Validation đặc biệt cho nước
-    if (type === 'water') {
-      // Nếu có currentRawSensorValue thì validate nó
-      if (currentRawSensorValue && typeof currentRawSensorValue !== 'number') {
+    // Validation cho hiệu chỉnh ban đầu
+    if (isInitialCalibration) {
+      if (typeof firstSensorValue !== 'number' || typeof firstActualValue !== 'number') {
         return res.status(400).json({
           success: false,
-          error: "Giá trị cảm biến thực tế hiện tại không hợp lệ"
+          error: "Giá trị sensor hoặc đồng hồ ban đầu không hợp lệ"
         });
       }
-      // Nếu không có currentRawSensorValue và không có useDisplayValue flag thì báo lỗi
-      if (!currentRawSensorValue && !req.body.useDisplayValue) {
+
+      if (firstSensorValue <= 0 || firstActualValue <= 0) {
         return res.status(400).json({
           success: false,
-          error: "Thiếu giá trị cảm biến thực tế hoặc flag useDisplayValue"
+          error: "Giá trị phải lớn hơn 0"
+        });
+      }
+
+      if (typeof offset !== 'number' || typeof calibrationFactor !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: "Offset hoặc calibration factor không hợp lệ"
         });
       }
     }
 
-    // Tính toán calibration factor
-    let calibrationFactor;
-    if (type === 'water' && currentRawSensorValue && currentRawSensorValue > 0) {
-      // Đối với nước có lastData: sử dụng giá trị thô của cảm biến
-      calibrationFactor = actualValue / currentRawSensorValue;
-    } else {
-      // Đối với điện hoặc nước chưa có lastData: sử dụng sensorValue
-      calibrationFactor = actualValue / sensorValue;
+    // Validation cho hiệu chỉnh sai số
+    if (isErrorCorrection) {
+      if (typeof currentSensorValue !== 'number' || typeof currentMeterValue !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: "Giá trị sensor hoặc đồng hồ hiện tại không hợp lệ"
+        });
+      }
+
+      if (currentSensorValue <= 0 || currentMeterValue <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Giá trị phải lớn hơn 0"
+        });
+      }
+
+      if (typeof firstSensorValue !== 'number' || typeof firstActualValue !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: "Thiếu dữ liệu hiệu chuẩn ban đầu"
+        });
+      }
+
+      if (typeof offset !== 'number' || typeof calibrationFactor !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: "Offset hoặc calibration factor không hợp lệ"
+        });
+      }
     }
 
     // Lấy dữ liệu room cụ thể
@@ -189,48 +210,78 @@ const updateCalibration = async (req, res) => {
 
     // Tìm và cập nhật nodes của type tương ứng trong phòng này
     let updatedCount = 0;
-    const calibrationData = {
-      sensorValue,
-      actualValue,
-      calibrationFactor: parseFloat(calibrationFactor.toFixed(4)),
-      calibratedAt: Date.now()
-    };
+    let calibrationData = {};
 
-    // Thêm currentRawSensorValue vào calibrationData nếu là nước
-    if (type === 'water' && currentRawSensorValue) {
-      calibrationData.currentRawSensorValue = currentRawSensorValue;
+    if (isInitialCalibration) {
+      // Hiệu chỉnh ban đầu
+      calibrationData = {
+        // Dữ liệu mới theo yêu cầu
+        offset: parseFloat(offset.toFixed(4)),
+        calibrationFactor: parseFloat(calibrationFactor.toFixed(4)),
+        firstSensorValue: parseFloat(firstSensorValue.toFixed(4)),
+        firstActualValue: parseFloat(firstActualValue.toFixed(4)),
+        calibratedAt: Date.now(),
+        
+        // Giữ tương thích ngược với UI cũ
+        sensorValue: parseFloat(firstSensorValue.toFixed(4)),
+        actualValue: parseFloat(firstActualValue.toFixed(4))
+      };
+    } else if (isErrorCorrection) {
+      // Hiệu chỉnh sai số
+      calibrationData = {
+        // Dữ liệu mới theo yêu cầu
+        offset: parseFloat(offset.toFixed(4)),
+        calibrationFactor: parseFloat(calibrationFactor.toFixed(4)),
+        firstSensorValue: parseFloat(firstSensorValue.toFixed(4)),
+        firstActualValue: parseFloat(firstActualValue.toFixed(4)),
+        lastSensorValue: parseFloat(currentSensorValue.toFixed(4)),
+        lastMeterValue: parseFloat(currentMeterValue.toFixed(4)),
+        calibratedAt: Date.now(),
+        
+        // Giữ tương thích ngược với UI cũ
+        sensorValue: parseFloat(firstSensorValue.toFixed(4)),
+        actualValue: parseFloat(firstActualValue.toFixed(4))
+      };
     }
 
     if (roomData.nodes) {
       for (const [nodeId, node] of Object.entries(roomData.nodes)) {
         if (node.type === type) {
+          // Log dữ liệu trước khi lưu
+          console.log(`🔄 Saving calibration to Firebase for node ${nodeId}:`, JSON.stringify(calibrationData, null, 2));
+          
           // Cập nhật calibration data cho node này
           await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/nodes/${nodeId}/calibration`).set(calibrationData);
           updatedCount++;
+          
+          // Log xác nhận đã lưu
+          console.log(`✅ Calibration saved successfully for node ${nodeId}`);
         }
       }
     }
 
     console.log(`📊 Calibration updated for ${targetBuildingId} room ${roomId}:`, {
       type,
-      sensorValue,
-      actualValue,
-      currentRawSensorValue: type === 'water' ? (currentRawSensorValue || 'N/A') : 'N/A',
-      useDisplayValue: req.body.useDisplayValue || false,
-      calculationMethod: type === 'water' && currentRawSensorValue ? 'Raw sensor value' : 'Display value',
+      calibrationType: isInitialCalibration ? 'initial' : 'error_correction',
+      offset,
       calibrationFactor,
+      firstSensorValue,
+      firstActualValue,
+      currentSensorValue: currentSensorValue || null,
+      currentMeterValue: currentMeterValue || null,
       nodesUpdated: updatedCount
     });
 
     res.json({
       success: true,
-      message: `Đã cập nhật calibration ${type === 'electricity' ? 'điện' : 'nước'} cho phòng ${roomId} (${updatedCount} node)`,
+      message: `Đã cập nhật hiệu chuẩn ${type === 'electricity' ? 'điện' : 'nước'} cho phòng ${roomId} (${updatedCount} node)`,
       data: {
         type,
         roomId,
-        sensorValue,
-        actualValue,
+        offset: parseFloat(offset.toFixed(4)),
         calibrationFactor: parseFloat(calibrationFactor.toFixed(4)),
+        firstSensorValue: parseFloat(firstSensorValue.toFixed(4)),
+        firstActualValue: parseFloat(firstActualValue.toFixed(4)),
         nodesUpdated: updatedCount
       }
     });
@@ -353,8 +404,24 @@ const getRoomCalibrationData = async (req, res) => {
     }
 
     // Tìm calibration data cho electricity và water
-    let electricityCalibration = { sensorValue: 0, actualValue: 0, calibrationFactor: 1.0, calibratedAt: null };
-    let waterCalibration = { sensorValue: 0, actualValue: 0, calibrationFactor: 1.0, calibratedAt: null };
+    let electricityCalibration = { 
+      offset: 0,
+      calibrationFactor: 1.0, 
+      firstSensorValue: undefined,
+      firstActualValue: undefined,
+      sensorValue: 0, // Keep for backward compatibility
+      actualValue: 0, // Keep for backward compatibility
+      calibratedAt: null 
+    };
+    let waterCalibration = { 
+      offset: 0,
+      calibrationFactor: 1.0, 
+      firstSensorValue: undefined,
+      firstActualValue: undefined,
+      sensorValue: 0, // Keep for backward compatibility
+      actualValue: 0, // Keep for backward compatibility
+      calibratedAt: null 
+    };
     
     // Tìm lastData cho water và electricity
     let electricityLastData = null;
@@ -363,10 +430,22 @@ const getRoomCalibrationData = async (req, res) => {
     if (roomData.nodes) {
       Object.values(roomData.nodes).forEach(node => {
         if (node.type === 'electricity' && node.calibration) {
-          electricityCalibration = node.calibration;
+          electricityCalibration = {
+            ...electricityCalibration,
+            ...node.calibration,
+            // Ensure backward compatibility
+            sensorValue: node.calibration.firstSensorValue || node.calibration.sensorValue || 0,
+            actualValue: node.calibration.firstActualValue || node.calibration.actualValue || 0
+          };
           electricityLastData = node.lastData;
         } else if (node.type === 'water' && node.calibration) {
-          waterCalibration = node.calibration;
+          waterCalibration = {
+            ...waterCalibration,
+            ...node.calibration,
+            // Ensure backward compatibility
+            sensorValue: node.calibration.firstSensorValue || node.calibration.sensorValue || 0,
+            actualValue: node.calibration.firstActualValue || node.calibration.actualValue || 0
+          };
           waterLastData = node.lastData;
         }
         // Nếu chưa có calibration thì vẫn lấy lastData
@@ -450,9 +529,136 @@ const setNodePeriod = async (req, res) => {
   }
 };
 
+// API để cập nhật calibration cho nước (logic cũ)
+const updateWaterCalibration = async (req, res) => {
+  try {
+    const { type, sensorValue, actualValue, currentRawSensorValue } = req.body;
+    const targetBuildingId = getTargetBuildingId(req);
+
+    // Force type to water
+    const calibrationType = 'water';
+
+    // Validation
+    if (typeof sensorValue !== 'number' || typeof actualValue !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: "Giá trị số không hợp lệ"
+      });
+    }
+
+    if (sensorValue <= 0 || actualValue <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Giá trị phải lớn hơn 0"
+      });
+    }
+
+    const { roomId } = req.body;
+
+    // Validation cho roomId
+    if (!roomId) {
+      return res.status(400).json({
+        success: false,
+        error: "Vui lòng chọn phòng"
+      });
+    }
+
+    // Validation đặc biệt cho nước
+    if (currentRawSensorValue && typeof currentRawSensorValue !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: "Giá trị cảm biến thực tế hiện tại không hợp lệ"
+      });
+    }
+
+    // Tính toán calibration factor (logic cũ)
+    let calibrationFactor;
+    if (currentRawSensorValue && currentRawSensorValue > 0) {
+      // Đối với nước có lastData: sử dụng giá trị thô của cảm biến
+      calibrationFactor = actualValue / currentRawSensorValue;
+    } else {
+      // Đối với nước chưa có lastData: sử dụng sensorValue
+      calibrationFactor = actualValue / sensorValue;
+    }
+
+    // Lấy dữ liệu room cụ thể
+    const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}`).once("value");
+    const roomData = roomSnapshot.val();
+
+    if (!roomData) {
+      return res.status(400).json({
+        success: false,
+        error: "Phòng không tồn tại"
+      });
+    }
+
+    // Tìm và cập nhật nodes của type tương ứng trong phòng này
+    let updatedCount = 0;
+    const calibrationData = {
+      sensorValue,
+      actualValue,
+      calibrationFactor: parseFloat(calibrationFactor.toFixed(4)),
+      calibratedAt: Date.now()
+    };
+
+    // Thêm currentRawSensorValue vào calibrationData nếu có
+    if (currentRawSensorValue) {
+      calibrationData.currentRawSensorValue = currentRawSensorValue;
+    }
+
+    if (roomData.nodes) {
+      for (const [nodeId, node] of Object.entries(roomData.nodes)) {
+        if (node.type === calibrationType) {
+          // Log dữ liệu trước khi lưu
+          console.log(`🔄 Saving water calibration to Firebase for node ${nodeId}:`, JSON.stringify(calibrationData, null, 2));
+          
+          // Cập nhật calibration data cho node này
+          await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}/nodes/${nodeId}/calibration`).set(calibrationData);
+          updatedCount++;
+          
+          // Log xác nhận đã lưu
+          console.log(`✅ Water calibration saved successfully for node ${nodeId}`);
+        }
+      }
+    }
+
+    console.log(`📊 Water Calibration updated for ${targetBuildingId} room ${roomId}:`, {
+      type: calibrationType,
+      sensorValue,
+      actualValue,
+      currentRawSensorValue: currentRawSensorValue || 'N/A',
+      useDisplayValue: req.body.useDisplayValue || false,
+      calculationMethod: currentRawSensorValue ? 'Raw sensor value' : 'Display value',
+      calibrationFactor,
+      nodesUpdated: updatedCount
+    });
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật calibration nước cho phòng ${roomId} (${updatedCount} node)`,
+      data: {
+        type: calibrationType,
+        roomId,
+        sensorValue,
+        actualValue,
+        calibrationFactor: parseFloat(calibrationFactor.toFixed(4)),
+        nodesUpdated: updatedCount
+      }
+    });
+
+  } catch (error) {
+    console.error("Error updating water calibration:", error);
+    res.status(500).json({
+      success: false,
+      error: "Lỗi khi cập nhật calibration nước: " + error.message
+    });
+  }
+};
+
 module.exports = {
   getSettings,
   updateCalibration,
+  updateWaterCalibration,
   updatePricing,
   getRoomCalibrationData,
   setNodePeriod
