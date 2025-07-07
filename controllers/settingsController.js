@@ -113,7 +113,7 @@ const getSettings = async (req, res) => {
 // API để cập nhật calibration
 const updateCalibration = async (req, res) => {
   try {
-    const { type, sensorValue, actualValue } = req.body;
+    const { type, sensorValue, actualValue, currentRawSensorValue } = req.body;
     const targetBuildingId = getTargetBuildingId(req);
 
     // Validation
@@ -148,8 +148,33 @@ const updateCalibration = async (req, res) => {
       });
     }
 
+    // Validation đặc biệt cho nước
+    if (type === 'water') {
+      // Nếu có currentRawSensorValue thì validate nó
+      if (currentRawSensorValue && typeof currentRawSensorValue !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: "Giá trị cảm biến thực tế hiện tại không hợp lệ"
+        });
+      }
+      // Nếu không có currentRawSensorValue và không có useDisplayValue flag thì báo lỗi
+      if (!currentRawSensorValue && !req.body.useDisplayValue) {
+        return res.status(400).json({
+          success: false,
+          error: "Thiếu giá trị cảm biến thực tế hoặc flag useDisplayValue"
+        });
+      }
+    }
+
     // Tính toán calibration factor
-    const calibrationFactor = actualValue / sensorValue;
+    let calibrationFactor;
+    if (type === 'water' && currentRawSensorValue && currentRawSensorValue > 0) {
+      // Đối với nước có lastData: sử dụng giá trị thô của cảm biến
+      calibrationFactor = actualValue / currentRawSensorValue;
+    } else {
+      // Đối với điện hoặc nước chưa có lastData: sử dụng sensorValue
+      calibrationFactor = actualValue / sensorValue;
+    }
 
     // Lấy dữ liệu room cụ thể
     const roomSnapshot = await db.ref(`buildings/${targetBuildingId}/rooms/${roomId}`).once("value");
@@ -171,6 +196,11 @@ const updateCalibration = async (req, res) => {
       calibratedAt: Date.now()
     };
 
+    // Thêm currentRawSensorValue vào calibrationData nếu là nước
+    if (type === 'water' && currentRawSensorValue) {
+      calibrationData.currentRawSensorValue = currentRawSensorValue;
+    }
+
     if (roomData.nodes) {
       for (const [nodeId, node] of Object.entries(roomData.nodes)) {
         if (node.type === type) {
@@ -185,6 +215,9 @@ const updateCalibration = async (req, res) => {
       type,
       sensorValue,
       actualValue,
+      currentRawSensorValue: type === 'water' ? (currentRawSensorValue || 'N/A') : 'N/A',
+      useDisplayValue: req.body.useDisplayValue || false,
+      calculationMethod: type === 'water' && currentRawSensorValue ? 'Raw sensor value' : 'Display value',
       calibrationFactor,
       nodesUpdated: updatedCount
     });
@@ -322,13 +355,26 @@ const getRoomCalibrationData = async (req, res) => {
     // Tìm calibration data cho electricity và water
     let electricityCalibration = { sensorValue: 0, actualValue: 0, calibrationFactor: 1.0, calibratedAt: null };
     let waterCalibration = { sensorValue: 0, actualValue: 0, calibrationFactor: 1.0, calibratedAt: null };
+    
+    // Tìm lastData cho water và electricity
+    let electricityLastData = null;
+    let waterLastData = null;
 
     if (roomData.nodes) {
       Object.values(roomData.nodes).forEach(node => {
         if (node.type === 'electricity' && node.calibration) {
           electricityCalibration = node.calibration;
+          electricityLastData = node.lastData;
         } else if (node.type === 'water' && node.calibration) {
           waterCalibration = node.calibration;
+          waterLastData = node.lastData;
+        }
+        // Nếu chưa có calibration thì vẫn lấy lastData
+        if (node.type === 'electricity' && !electricityLastData && node.lastData) {
+          electricityLastData = node.lastData;
+        }
+        if (node.type === 'water' && !waterLastData && node.lastData) {
+          waterLastData = node.lastData;
         }
       });
     }
@@ -340,6 +386,10 @@ const getRoomCalibrationData = async (req, res) => {
         calibrationData: {
           electricity: electricityCalibration,
           water: waterCalibration
+        },
+        lastData: {
+          electricity: electricityLastData,
+          water: waterLastData
         }
       }
     });

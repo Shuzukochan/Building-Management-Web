@@ -20,28 +20,47 @@
           </ul>
         </div>
 
+        <!-- Alert cho nước khi không có dữ liệu lastData -->
+        <div class="alert alert-warning" id="waterNoDataAlert" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>Lưu ý:</strong> Chưa có dữ liệu từ cảm biến nước. Hệ số sẽ được tính dựa trên giá trị hiển thị.
+        </div>
+
         <form id="calibrationForm">
           <input type="hidden" id="calibrationType" name="type">
           
+          <!-- Giá trị cảm biến thực tế hiện tại (chỉ hiển thị cho nước) -->
+          <div class="form-group" id="currentRawSensorGroup" style="display: none;">
+            <label for="currentRawSensorValue" class="form-label">
+              <strong>Giá trị cảm biến thực tế hiện tại:</strong>
+            </label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="currentRawSensorValue" name="currentRawSensorValue" 
+                     step="0.01" readonly>
+              <span class="input-group-text" id="currentRawSensorUnit">m³</span>
+            </div>
+            <div class="form-text">Giá trị thô của cảm biến (đã loại bỏ hệ số cũ)</div>
+          </div>
+
           <div class="form-group">
             <label for="sensorValue" class="form-label">
-              <strong>Giá trị cảm biến:</strong>
+              <strong>Giá trị cảm biến đang hiển thị:</strong>
             </label>
             <div class="input-group">
               <input type="number" class="form-control" id="sensorValue" name="sensorValue" 
-                     step="0.01" min="0" placeholder="0.00" required>
+                     step="0.01" min="0" placeholder="0.0000" required>
               <span class="input-group-text" id="sensorUnit">kWh</span>
             </div>
-            <div class="form-text">Giá trị của cảm biến</div>
+            <div class="form-text">Giá trị của cảm biến hiện đang hiển thị</div>
           </div>
 
           <div class="form-group">
             <label for="actualValue" class="form-label">
-              <strong>Giá trị thực tế:</strong>
+              <strong>Giá trị thực tế từ đồng hồ cơ:</strong>
             </label>
             <div class="input-group">
               <input type="number" class="form-control" id="actualValue" name="actualValue" 
-                     step="0.01" min="0" placeholder="0.00" required>
+                     step="0.01" min="0" placeholder="0.000" required>
               <span class="input-group-text" id="actualUnit">kWh</span>
             </div>
             <div class="form-text">Giá trị đọc từ đồng hồ chuẩn</div>
@@ -56,7 +75,7 @@
             </div>
             <div class="result-item">
               <span class="result-label">Công thức:</span>
-              <span class="result-value">Giá trị thực = Cảm biến × Hệ số</span>
+              <span class="result-value" id="previewFormula">Giá trị thực = Cảm biến × Hệ số</span>
             </div>
           </div>
         </form>
