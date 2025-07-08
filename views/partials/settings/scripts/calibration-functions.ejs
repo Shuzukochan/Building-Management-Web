@@ -616,7 +616,7 @@
       electricErrorMeterInput.addEventListener('input', updateElectricErrorPreview);
     }
     
-    // Water calibration inputs
+    // Water calibration inputs (old modal)
     const waterSensorInput = document.getElementById('waterSensorValue');
     const waterActualInput = document.getElementById('waterActualValue');
     
@@ -626,5 +626,465 @@
     if (waterActualInput) {
       waterActualInput.addEventListener('input', updateWaterCalibrationPreview);
     }
+    
+    // Water error correction inputs (new modal)
+    const waterErrorSensorInput = document.getElementById('waterCurrentSensorValue');
+    const waterErrorMeterInput = document.getElementById('waterCurrentMeterValue');
+    
+    if (waterErrorSensorInput) {
+      waterErrorSensorInput.addEventListener('input', calculateWaterPreview);
+    }
+    if (waterErrorMeterInput) {
+      waterErrorMeterInput.addEventListener('input', calculateWaterPreview);
+    }
   });
+
+  // ==================== WATER INITIAL CALIBRATION (NEW) ====================
+  
+  // Open water initial calibration modal
+  function openWaterInitialCalibrationModal() {
+    try {
+      // Check if there are any rooms available
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      if (!roomSelect.value) {
+        alert('Vui lòng chọn phòng có cảm biến nước trước.');
+        return;
+      }
+
+      const roomId = roomSelect.value;
+      const roomName = roomSelect.options[roomSelect.selectedIndex].text;
+
+      // Kiểm tra có water node không
+      const nodeId = getWaterNodeIdForRoom(roomId);
+      if (!nodeId) {
+        alert('Phòng này không có cảm biến nước. Vui lòng chọn phòng khác.');
+        return;
+      }
+
+      // Hiển thị tên phòng đã chọn
+      document.getElementById('waterInitialSelectedRoom').textContent = roomName;
+
+      // Reset form
+      document.getElementById('waterMeterValue').value = '';
+      
+      // Show modal
+      new bootstrap.Modal(document.getElementById('waterInitialCalibrationModal')).show();
+      
+    } catch (error) {
+      console.error('Error opening water initial calibration modal:', error);
+      if (typeof toastManager !== 'undefined') {
+        toastManager.error('Lỗi khi mở modal hiệu chuẩn ban đầu nước: ' + error.message);
+      } else {
+        alert('Lỗi khi mở modal hiệu chuẩn ban đầu nước: ' + error.message);
+      }
+    }
+  }
+  
+  // Submit water initial calibration (send via setNodePeriod API)
+  async function submitWaterInitialCalibration() {
+    try {
+      const waterMeterValue = parseFloat(document.getElementById('waterMeterValue').value);
+      
+      // Lấy roomId từ dropdown chính
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      const roomId = roomSelect.value;
+      
+      // Validation
+      if (!roomId) {
+        alert('Vui lòng chọn phòng có cảm biến nước');
+        return;
+      }
+      
+      if (!waterMeterValue || waterMeterValue <= 0) {
+        alert('Vui lòng nhập giá trị đồng hồ nước hợp lệ');
+        return;
+      }
+      
+      // Disable submit button
+      const submitBtn = event.target;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+      
+      // Get nodeId for water sensor in this room
+      const nodeId = getWaterNodeIdForRoom(roomId);
+      if (!nodeId) {
+        throw new Error('Không tìm thấy cảm biến nước trong phòng này');
+      }
+      
+      // Prepare data for setNodePeriod API (send water:value like period:value)
+      const requestData = {
+        nodeId: nodeId,
+        waterValue: waterMeterValue // This will be converted to water:value base64
+      };
+      
+      console.log('📤 Sending water initial calibration via setNodePeriod:', JSON.stringify(requestData, null, 2));
+      
+      // Send request to a new endpoint that handles water initial calibration
+      const response = await fetch('/api/set-water-initial-calibration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Sau khi gửi lệnh thành công, lưu dữ liệu calibration ban đầu lên Firebase
+      console.log('📤 Sending water initial calibration data to Firebase...');
+      
+      const calibrationResponse = await fetch('/api/update-calibration-water', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'water',
+          roomId,
+          isInitialCalibration: true,
+          offset: 0, // Ban đầu offset = 0
+          calibrationFactor: 1, // Ban đầu calibrationFactor = 1
+          firstSensorValue: waterMeterValue, // Cảm biến sẽ được set thành giá trị này
+          firstActualValue: waterMeterValue, // Giá trị đồng hồ người dùng nhập
+          initialMeterValue: waterMeterValue // Lưu giá trị ban đầu để tham khảo
+        })
+      });
+
+      const calibrationResult = await calibrationResponse.json();
+      
+      if (!calibrationResult.success) {
+        console.warn('Gửi lệnh thành công nhưng lưu calibration data thất bại:', calibrationResult.error);
+        // Vẫn show success vì lệnh đã gửi thành công
+      } else {
+        // Update UI nếu lưu calibration data thành công
+        updateWaterCalibrationUINew(calibrationResult.data);
+      }
+
+      // Show success message
+      if (typeof toastManager !== 'undefined') {
+        toastManager.success(`Đã gửi lệnh và lưu hiệu chuẩn ban đầu nước cho phòng ${roomId}`);
+      } else {
+        alert(`Đã gửi lệnh và lưu hiệu chuẩn ban đầu nước cho phòng ${roomId}`);
+      }
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('waterInitialCalibrationModal'));
+      modal.hide();
+
+      // Reload calibration data để cập nhật UI
+      await loadRoomCalibrationData();
+
+      // Reset button
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+    } catch (error) {
+      console.error('Error submitting water initial calibration:', error);
+
+      // Reset button
+      const submitBtn = event.target;
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu hiệu chuẩn ban đầu';
+      
+      alert('Lỗi khi gửi hiệu chuẩn ban đầu nước: ' + error.message);
+    }
+  }
+
+  // ==================== WATER ERROR CORRECTION (NEW) ====================
+  
+  let currentWaterCalibrationData = null; // Lưu trữ dữ liệu hiệu chuẩn nước hiện tại
+  
+  // Open water error correction modal
+  function openWaterErrorCorrectionModal() {
+    try {
+      // Check if there are any rooms available
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      if (!roomSelect.value) {
+        alert('Vui lòng chọn phòng có cảm biến nước trước.');
+        return;
+      }
+
+      const roomId = roomSelect.value;
+
+      // Kiểm tra có water node không
+      const nodeId = getWaterNodeIdForRoom(roomId);
+      if (!nodeId) {
+        alert('Phòng này không có cảm biến nước. Vui lòng chọn phòng khác.');
+        return;
+      }
+
+      // Get current water calibration data from window.currentRoomCalibrationData
+      if (window.currentRoomCalibrationData) {
+        currentWaterCalibrationData = window.currentRoomCalibrationData.calibrationData.water;
+      }
+
+      // Check if there's initial calibration data
+      if (!currentWaterCalibrationData || 
+          currentWaterCalibrationData.firstSensorValue === undefined || 
+          currentWaterCalibrationData.firstActualValue === undefined) {
+        alert('Chưa có dữ liệu hiệu chuẩn ban đầu nước. Vui lòng thực hiện hiệu chuẩn ban đầu trước.');
+        return;
+      }
+
+      // Modal mới không hiển thị tên phòng (giống như modal điện)
+
+      // Display existing calibration data
+      console.log('🔍 Current Water Calibration Data:', currentWaterCalibrationData);
+      
+      document.getElementById('waterErrorFirstSensorValue').textContent = `${currentWaterCalibrationData.firstSensorValue || 'N/A'}`;
+      document.getElementById('waterErrorFirstActualValue').textContent = `${currentWaterCalibrationData.firstActualValue || 'N/A'}`;
+      document.getElementById('waterErrorCurrentOffset').textContent = currentWaterCalibrationData.offset || '0';
+      document.getElementById('waterErrorCurrentCalibrationFactor').textContent = currentWaterCalibrationData.calibrationFactor || '1';
+
+      // Reset form
+      document.getElementById('waterCurrentSensorValue').value = '';
+      document.getElementById('waterCurrentMeterValue').value = '';
+      document.getElementById('waterErrorPreview').style.display = 'none';
+      
+      // Show modal
+      new bootstrap.Modal(document.getElementById('waterErrorCorrectionModal')).show();
+      
+    } catch (error) {
+      console.error('Error opening water error correction modal:', error);
+      if (typeof toastManager !== 'undefined') {
+        toastManager.error('Lỗi khi mở modal hiệu chuẩn sai số nước: ' + error.message);
+      } else {
+        alert('Lỗi khi mở modal hiệu chuẩn sai số nước: ' + error.message);
+      }
+    }
+  }
+  
+  // Calculate and preview water error correction
+  function calculateWaterPreview() {
+    try {
+      const currentSensorValue = parseFloat(document.getElementById('waterCurrentSensorValue').value);
+      const currentMeterValue = parseFloat(document.getElementById('waterCurrentMeterValue').value);
+      
+      if (!currentWaterCalibrationData || !currentSensorValue || !currentMeterValue) {
+        document.getElementById('waterErrorPreview').style.display = 'none';
+        return;
+      }
+      
+      const firstSensorValue = currentWaterCalibrationData.firstSensorValue;
+      const firstActualValue = currentWaterCalibrationData.firstActualValue;
+      
+      // Debug log
+      console.log('Water Preview Calculation:', {
+        currentSensorValue,
+        currentMeterValue,
+        firstSensorValue,
+        firstActualValue,
+        sensorDifference: currentSensorValue - firstSensorValue,
+        meterDifference: currentMeterValue - firstActualValue
+      });
+      
+      if (currentSensorValue > 0 && currentMeterValue > 0 && firstSensorValue !== undefined && firstActualValue !== undefined) {
+        const sensorDifference = currentSensorValue - firstSensorValue;
+        const meterDifference = currentMeterValue - firstActualValue;
+        
+        // Kiểm tra chia cho 0
+        if (Math.abs(sensorDifference) < 0.001) {
+          // Nếu sensorDifference quá nhỏ (gần bằng 0)
+          document.getElementById('waterErrorNewCalibrationFactor').textContent = 'Lỗi: Giá trị cảm biến không thay đổi';
+          document.getElementById('waterErrorNewOffset').textContent = 'Lỗi: Không thể tính toán';
+          document.getElementById('waterErrorCalibrationFormula').textContent = 
+            `(${currentMeterValue} - ${firstActualValue}) / (${currentSensorValue} - ${firstSensorValue}) = Chia cho 0`;
+          document.getElementById('waterErrorOffsetFormula').textContent = 'Không thể tính toán';
+        } else {
+          // Calculate new calibration factor
+          const newCalibrationFactor = meterDifference / sensorDifference;
+          
+          // Calculate new offset
+          const newOffset = firstActualValue - (firstSensorValue * newCalibrationFactor);
+          
+          // Update preview
+          document.getElementById('waterErrorNewCalibrationFactor').textContent = newCalibrationFactor.toFixed(4);
+          document.getElementById('waterErrorNewOffset').textContent = newOffset.toFixed(4);
+          document.getElementById('waterErrorCalibrationFormula').textContent = 
+            `(${currentMeterValue} - ${firstActualValue}) / (${currentSensorValue} - ${firstSensorValue})`;
+          document.getElementById('waterErrorOffsetFormula').textContent = 
+            `${firstActualValue} - (${firstSensorValue} × ${newCalibrationFactor.toFixed(4)})`;
+        }
+        
+        document.getElementById('waterErrorPreview').style.display = 'block';
+      } else {
+        document.getElementById('waterErrorPreview').style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error in calculateWaterPreview:', error);
+      document.getElementById('waterErrorPreview').style.display = 'none';
+    }
+  }
+  
+  // Submit water error correction
+  async function submitWaterErrorCorrection() {
+    try {
+      const currentSensorValue = parseFloat(document.getElementById('waterCurrentSensorValue').value);
+      const currentMeterValue = parseFloat(document.getElementById('waterCurrentMeterValue').value);
+      
+      // Lấy roomId từ dropdown chính
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      const roomId = roomSelect.value;
+      
+      // Validation
+      if (!roomId) {
+        alert('Vui lòng chọn phòng có cảm biến nước');
+        return;
+      }
+      
+      if (!currentSensorValue || currentSensorValue <= 0) {
+        alert('Vui lòng nhập giá trị cảm biến hiện tại hợp lệ');
+        return;
+      }
+      
+      if (!currentMeterValue || currentMeterValue <= 0) {
+        alert('Vui lòng nhập giá trị đồng hồ hiện tại hợp lệ');
+        return;
+      }
+      
+      if (!currentWaterCalibrationData) {
+        alert('Không có dữ liệu hiệu chuẩn ban đầu nước');
+        return;
+      }
+      
+      // Disable submit button
+      const submitBtn = event.target;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+      
+      const firstSensorValue = currentWaterCalibrationData.firstSensorValue;
+      const firstActualValue = currentWaterCalibrationData.firstActualValue;
+      
+      // Calculate new calibration factor and offset
+      const newCalibrationFactor = (currentMeterValue - firstActualValue) / (currentSensorValue - firstSensorValue);
+      const newOffset = firstActualValue - (firstSensorValue * newCalibrationFactor);
+      
+      // Prepare data for water error correction
+      const calibrationData = {
+        type: 'water',
+        roomId,
+        isErrorCorrection: true,
+        offset: newOffset,
+        calibrationFactor: newCalibrationFactor,
+        firstSensorValue: firstSensorValue,
+        firstActualValue: firstActualValue,
+        currentSensorValue: currentSensorValue,
+        currentMeterValue: currentMeterValue
+      };
+      
+      console.log('📤 Sending water error correction data:', JSON.stringify(calibrationData, null, 2));
+      
+      // Send request to water calibration endpoint
+      const response = await fetch('/api/update-calibration-water', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(calibrationData)
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Update UI for water
+      updateWaterCalibrationUINew(result.data);
+
+      // Show success message
+      if (typeof toastManager !== 'undefined') {
+        toastManager.success(`Đã cập nhật hiệu chỉnh sai số nước cho phòng ${roomId}`);
+      } else {
+        alert(`Đã cập nhật hiệu chỉnh sai số nước cho phòng ${roomId}`);
+      }
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('waterErrorCorrectionModal'));
+      modal.hide();
+
+      // Reload calibration data
+      await loadRoomCalibrationData();
+
+      // Reset button
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+
+    } catch (error) {
+      console.error('Error submitting water error correction:', error);
+
+      // Reset button
+      const submitBtn = event.target;
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu hiệu chuẩn sai số';
+      
+      alert('Lỗi khi lưu hiệu chỉnh sai số nước: ' + error.message);
+    }
+  }
+
+  // ==================== HELPER FUNCTIONS ====================
+  
+  // Get water node ID for a room (sử dụng window.allRoomsData giống period-functions)
+  function getWaterNodeIdForRoom(roomId) {
+    try {
+      if (!window.allRoomsData || !window.allRoomsData[roomId] || !window.allRoomsData[roomId].nodes) {
+        console.error('No room data found for:', roomId);
+        return null;
+      }
+      
+      const nodes = window.allRoomsData[roomId].nodes;
+      for (const [nodeId, node] of Object.entries(nodes)) {
+        if (node.type === 'water') {
+          console.log('Found water node:', nodeId, 'for room:', roomId);
+          return nodeId;
+        }
+      }
+      console.error('No water node found in room:', roomId);
+      return null;
+    } catch (error) {
+      console.error('Error getting water node ID:', error);
+      return null;
+    }
+  }
+
+  // Update water calibration UI (new style with offset)
+  function updateWaterCalibrationUINew(data) {
+    // Hiển thị giá trị cảm biến (ưu tiên firstSensorValue, fallback sensorValue)
+    const sensorValue = data.firstSensorValue !== undefined ? data.firstSensorValue : (data.sensorValue || 0);
+    document.getElementById('waterSensorValue').textContent = `${sensorValue} m³`;
+    
+    // Hiển thị giá trị thực tế (ưu tiên firstActualValue, fallback actualValue)  
+    const actualValue = data.firstActualValue !== undefined ? data.firstActualValue : (data.actualValue || 0);
+    document.getElementById('waterActualValue').textContent = `${actualValue} m³`;
+    
+    document.getElementById('waterOffset').textContent = data.offset || 0;
+    document.getElementById('waterCalibrationFactor').textContent = data.calibrationFactor || 1;
+    document.getElementById('waterCalibrationDate').textContent = new Date().toLocaleDateString('vi-VN');
+  }
+
+       // Update loadRoomCalibrationData to include water offset
+  const originalLoadRoomCalibrationData = loadRoomCalibrationData;
+  loadRoomCalibrationData = async function() {
+    await originalLoadRoomCalibrationData();
+    
+    // Add water offset display if available
+    if (window.currentRoomCalibrationData) {
+      const waterCalibration = window.currentRoomCalibrationData.calibrationData.water;
+      console.log('🔍 Water calibration data after load:', waterCalibration);
+      
+      if (waterCalibration.offset !== undefined) {
+        document.getElementById('waterOffset').textContent = waterCalibration.offset;
+      }
+      
+      // Update global water calibration data for error correction modal
+      currentWaterCalibrationData = waterCalibration;
+    }
+  };
+
 </script> 

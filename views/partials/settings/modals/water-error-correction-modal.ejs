@@ -1,0 +1,137 @@
+<!-- Modal Hiệu chuẩn sai số nước -->
+<div class="modal fade" id="waterErrorCorrectionModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-adjust"></i> Hiệu chuẩn sai số - Cảm biến nước
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Hướng dẫn:</strong>
+          <ul class="mb-0 mt-2">
+            <li>Cần có dữ liệu hiệu chuẩn ban đầu trước khi thực hiện</li>
+            <li>Nhập giá trị cảm biến và đồng hồ hiện tại</li>
+            <li>Hệ thống sẽ tính toán lại hệ số và offset</li>
+          </ul>
+        </div>
+
+        <!-- Hiển thị thông tin hiệu chuẩn ban đầu -->
+        <div class="alert alert-light border mb-4">
+          <h6><i class="fas fa-info-circle"></i> Thông tin hiệu chuẩn ban đầu:</h6>
+          <div class="row">
+            <div class="col-md-3">
+              <strong>Giá trị cảm biến ban đầu:</strong><br>
+              <span id="waterErrorFirstSensorValue">-</span>
+            </div>
+            <div class="col-md-3">
+              <strong>Giá trị đồng hồ ban đầu:</strong><br>
+              <span id="waterErrorFirstActualValue">-</span>
+            </div>
+            <div class="col-md-3">
+              <strong>Offset hiện tại:</strong><br>
+              <span id="waterErrorCurrentOffset">-</span>
+            </div>
+            <div class="col-md-3">
+              <strong>Calibration Factor hiện tại:</strong><br>
+              <span id="waterErrorCurrentCalibrationFactor">-</span>
+            </div>
+          </div>
+        </div>
+
+        <form id="waterErrorCorrectionForm">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group mb-3">
+                <label for="waterErrorCurrentSensorValue" class="form-label">
+                  <strong>Giá trị cảm biến hiện tại:</strong>
+                </label>
+                <div class="input-group">
+                  <input type="number" class="form-control" id="waterCurrentSensorValue" 
+                         step="0.001" min="0" placeholder="0.000" required oninput="calculateWaterPreview()">
+                  <span class="input-group-text">m³</span>
+                </div>
+                <div class="form-text">Giá trị hiển thị trên cảm biến nước hiện tại</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group mb-3">
+                <label for="waterErrorCurrentMeterValue" class="form-label">
+                  <strong>Giá trị đồng hồ hiện tại:</strong>
+                </label>
+                <div class="input-group">
+                  <input type="number" class="form-control" id="waterCurrentMeterValue" 
+                         step="0.001" min="0" placeholder="0.000" required oninput="calculateWaterPreview()">
+                  <span class="input-group-text">m³</span>
+                </div>
+                <div class="form-text">Giá trị thực tế từ đồng hồ nước cơ hiện tại</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview kết quả -->
+          <div id="waterErrorPreview" class="calibration-result" style="display: none;">
+            <h6><i class="fas fa-calculator"></i> Kết quả tính toán mới:</h6>
+            <div class="result-item">
+              <span class="result-label">Calibration Factor mới:</span>
+              <span class="result-value" id="waterErrorNewCalibrationFactor">1.0000</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Offset mới:</span>
+              <span class="result-value" id="waterErrorNewOffset">0.0000</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Công thức Calibration Factor:</span>
+              <span class="result-value" id="waterErrorCalibrationFormula">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Công thức Offset:</span>
+              <span class="result-value" id="waterErrorOffsetFormula">-</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times"></i> Hủy
+        </button>
+        <button type="button" class="btn btn-success" onclick="submitWaterErrorCorrection()">
+          <i class="fas fa-save"></i> Lưu hiệu chuẩn sai số
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.calibration-result {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.result-item:last-child {
+  margin-bottom: 0;
+}
+
+.result-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.result-value {
+  font-weight: 600;
+  color: #007bff;
+}
+</style> 

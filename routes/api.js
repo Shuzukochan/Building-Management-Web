@@ -8,7 +8,7 @@ const { markPayment, createTestPayment, getUnpaidPreviousMonths } = require("../
 const { calculateMonthlyUsageByType } = require("../services/statisticsService");
 const { updateGateway, getGateway, deleteGateway } = require("../controllers/gatewayController");
 const { verifyAdmin, hashPassword } = require("../services/adminService");
-const { setNodePeriod } = require("../controllers/settingsController");
+const { setNodePeriod, setWaterInitialCalibration } = require("../controllers/settingsController");
 
 // Feedback API removed - dashboard is read-only
 
@@ -49,6 +49,7 @@ router.get("/user-tokens", requireAuth, getUserTokens);
 
 // Node period routes
 router.post("/set-node-period", requireAuth, setNodePeriod);
+router.post("/set-water-initial-calibration", requireAuth, setWaterInitialCalibration);
 
 // Gateway routes
 router.post("/update-gateway", requireAuth, updateGateway);

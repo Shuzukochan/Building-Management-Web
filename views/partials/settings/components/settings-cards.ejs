@@ -40,11 +40,19 @@
       <!-- Water Calibration -->
       <div class="settings-section">
         <h6><i class="fas fa-tint" style="color:#06b6d4;"></i> Cảm biến nước</h6>
-        <div class="settings-info"><span class="settings-label">Giá trị cảm biến:</span><span class="settings-value" id="waterSensorValue"><%= currentSettings.calibrationData.water.sensorValue %> m³</span></div>
-        <div class="settings-info"><span class="settings-label">Giá trị thực tế:</span><span class="settings-value" id="waterActualValue"><%= currentSettings.calibrationData.water.actualValue %> m³</span></div>
+        <div class="settings-info"><span class="settings-label">Giá trị cảm biến ban đầu:</span><span class="settings-value" id="waterSensorValue"><%= currentSettings.calibrationData.water.sensorValue %> m³</span></div>
+        <div class="settings-info"><span class="settings-label">Giá trị thực tế ban đầu:</span><span class="settings-value" id="waterActualValue"><%= currentSettings.calibrationData.water.actualValue %> m³</span></div>
+        <div class="settings-info"><span class="settings-label">Offset hiện tại:</span><span class="settings-value" id="waterOffset"><%= currentSettings.calibrationData.water.offset || 0 %></span></div>
         <div class="settings-info"><span class="settings-label">Hệ số hiệu chuẩn:</span><span class="settings-value" id="waterCalibrationFactor"><%= currentSettings.calibrationData.water.calibrationFactor %></span></div>
         <div class="settings-info"><span class="settings-label">Ngày hiệu chuẩn:</span><span class="settings-value" id="waterCalibrationDate"><%= currentSettings.calibrationData.water.calibratedAt? new Date(currentSettings.calibrationData.water.calibratedAt).toLocaleDateString('vi-VN') : 'Chưa hiệu chuẩn' %></span></div>
-        <button type="button" class="btn btn-settings" onclick="openCalibrationModal('water')" <%= !hasAnyWaterRoom? 'disabled title="Không có phòng nào có cảm biến nước"':'' %>><i class="fas fa-edit"></i> Hiệu chuẩn nước</button>
+        <div class="d-flex gap-2 flex-wrap mt-3">
+          <button type="button" class="btn btn-primary btn-sm" onclick="openWaterInitialCalibrationModal()" <%= !hasAnyWaterRoom? 'disabled title="Không có phòng nào có cảm biến nước"':'' %>>
+            <i class="fas fa-cog"></i> Hiệu chuẩn ban đầu
+          </button>
+          <button type="button" class="btn btn-success btn-sm" onclick="openWaterErrorCorrectionModal()" <%= !hasAnyWaterRoom? 'disabled title="Không có phòng nào có cảm biến nước"':'' %>>
+            <i class="fas fa-adjust"></i> Hiệu chuẩn sai số
+          </button>
+        </div>
       </div>
       <div class="settings-alert settings-alert-warning"><i class="fas fa-exclamation-triangle"></i> <strong>Lưu ý:</strong> Việc hiệu chuẩn sẽ ảnh hưởng đến tất cả dữ liệu tương lai.</div>
     </div>

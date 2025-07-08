@@ -1,0 +1,53 @@
+<!-- Modal hiệu chuẩn ban đầu nước -->
+<div class="modal fade" id="waterInitialCalibrationModal" tabindex="-1" aria-labelledby="waterInitialCalibrationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="waterInitialCalibrationModalLabel">
+          <i class="fas fa-tint me-2"></i>Hiệu chuẩn ban đầu - Nước
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="waterInitialCalibrationForm">
+          <!-- Hiển thị phòng đã chọn -->
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Phòng được chọn:</strong> <span id="waterInitialSelectedRoom">-</span>
+            </div>
+          </div>
+
+          <!-- Giá trị đồng hồ nước -->
+          <div class="mb-3">
+            <label for="waterMeterValue" class="form-label">
+              <i class="fas fa-tint me-1"></i>Số đồng hồ nước (m³):
+            </label>
+            <input type="number" step="0.001" class="form-control" id="waterMeterValue" required 
+                   placeholder="Nhập số hiển thị trên đồng hồ nước cơ">
+            <div class="form-text">Nhập số hiển thị trên đồng hồ nước cơ tại thời điểm hiệu chuẩn</div>
+          </div>
+
+          <!-- Thông báo -->
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Hướng dẫn:</strong>
+            <ul class="mb-0 mt-2">
+              <li>Nhập số đồng hồ nước hiển thị trên đồng hồ cơ</li>
+              <li>Hệ thống sẽ gửi lệnh hiệu chuẩn ban đầu đến thiết bị</li>
+              <li>Đây là bước đầu tiên để thiết lập hệ thống đo nước</li>
+            </ul>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times me-1"></i>Hủy
+        </button>
+        <button type="button" class="btn btn-primary" onclick="submitWaterInitialCalibration()">
+          <i class="fas fa-save me-1"></i>Lưu hiệu chuẩn ban đầu
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 
