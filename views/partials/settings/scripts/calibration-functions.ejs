@@ -57,7 +57,7 @@
       console.error('Error loading room calibration data:', error);
     }
   }
-
+  
   // ==================== ELECTRIC INITIAL CALIBRATION ====================
   
   // Open electric initial calibration modal
@@ -225,7 +225,7 @@
       document.getElementById('electricErrorFirstActualValue').textContent = `${currentElectricCalibrationData.firstActualValue} kWh`;
       document.getElementById('electricErrorCurrentOffset').textContent = currentElectricCalibrationData.offset || '0';
       document.getElementById('electricErrorCurrentCalibrationFactor').textContent = currentElectricCalibrationData.calibrationFactor || '1';
-
+      
       // Reset form
       document.getElementById('electricErrorCurrentSensorValue').value = '';
       document.getElementById('electricErrorCurrentMeterValue').value = '';
@@ -449,17 +449,17 @@
       let calibrationFactor = 0;
       let formula = '';
       
-      // Cho nước: kiểm tra xem có giá trị thô hay không
-      const currentRawSensorValue = parseFloat(document.getElementById('currentRawSensorValue').value);
-      
-      if (currentRawSensorValue && currentRawSensorValue > 0 && actualValue > 0) {
-        // Có dữ liệu lastData, sử dụng giá trị thô
-        calibrationFactor = actualValue / currentRawSensorValue;
-        formula = 'Giá trị thực = Cảm biến thô × Hệ số';
-      } else if (sensorValue > 0 && actualValue > 0) {
+        // Cho nước: kiểm tra xem có giá trị thô hay không
+        const currentRawSensorValue = parseFloat(document.getElementById('currentRawSensorValue').value);
+        
+        if (currentRawSensorValue && currentRawSensorValue > 0 && actualValue > 0) {
+          // Có dữ liệu lastData, sử dụng giá trị thô
+          calibrationFactor = actualValue / currentRawSensorValue;
+          formula = 'Giá trị thực = Cảm biến thô × Hệ số';
+        } else if (sensorValue > 0 && actualValue > 0) {
         // Chưa có dữ liệu lastData, sử dụng sensorValue
-        calibrationFactor = actualValue / sensorValue;
-        formula = 'Giá trị thực = Cảm biến hiển thị × Hệ số';
+          calibrationFactor = actualValue / sensorValue;
+          formula = 'Giá trị thực = Cảm biến hiển thị × Hệ số';
       }
       
       if (calibrationFactor > 0) {
@@ -513,10 +513,10 @@
       
       // Cho nước, cần kiểm tra thêm currentRawSensorValue
       const currentRawSensorValue = parseFloat(document.getElementById('currentRawSensorValue').value);
-      if (currentRawSensorValue && currentRawSensorValue > 0) {
-        // Có dữ liệu lastData, sử dụng giá trị thô
-        calibrationData.currentRawSensorValue = currentRawSensorValue;
-      } else {
+        if (currentRawSensorValue && currentRawSensorValue > 0) {
+          // Có dữ liệu lastData, sử dụng giá trị thô
+          calibrationData.currentRawSensorValue = currentRawSensorValue;
+        } else {
         // Chưa có dữ liệu lastData, sử dụng sensorValue
         calibrationData.useDisplayValue = true;
       }
@@ -591,7 +591,7 @@
   }
 
   // ==================== EVENT LISTENERS ====================
-  
+
   // Add event listeners for real-time preview updates
   document.addEventListener('DOMContentLoaded', function() {
     // Electric initial calibration inputs
@@ -1025,6 +1025,58 @@
       submitBtn.innerHTML = '<i class="fas fa-save"></i> Lưu hiệu chuẩn sai số';
       
       alert('Lỗi khi lưu hiệu chỉnh sai số nước: ' + error.message);
+    }
+  }
+
+  // ==================== WATER SENSOR VALUE FUNCTIONS ====================
+  
+  // Get current water sensor value from lastData
+  function getWaterSensorValue() {
+    try {
+      // Lấy roomId hiện tại
+      const roomSelect = document.getElementById('calibrationRoomSelect');
+      const roomId = roomSelect.value;
+      
+      if (!roomId) {
+        alert('Vui lòng chọn phòng trước');
+        return;
+      }
+      
+      // Kiểm tra có dữ liệu không
+      if (!window.currentRoomCalibrationData || !window.currentRoomCalibrationData.lastData) {
+        alert('Không có dữ liệu cảm biến. Vui lòng đợi cảm biến gửi dữ liệu.');
+        return;
+      }
+      
+      const waterLastData = window.currentRoomCalibrationData.lastData.water;
+      
+      if (!waterLastData || typeof waterLastData.rawWater !== 'number') {
+        alert('Không tìm thấy dữ liệu cảm biến nước. Vui lòng kiểm tra kết nối cảm biến.');
+        return;
+      }
+      
+      // Điền giá trị vào input
+      const sensorInput = document.getElementById('waterCurrentSensorValue');
+      sensorInput.value = waterLastData.rawWater.toFixed(3);
+      
+      // Trigger preview calculation
+      calculateWaterPreview();
+      
+      // Show success message
+      if (typeof toastManager !== 'undefined') {
+        toastManager.success(`Đã lấy giá trị cảm biến: ${waterLastData.rawWater.toFixed(3)} m³`);
+      }
+      
+      console.log('🔍 Retrieved water sensor value:', {
+        roomId,
+        rawWater: waterLastData.rawWater,
+        water: waterLastData.water,
+        lastDataTimestamp: waterLastData.timestamp
+      });
+      
+    } catch (error) {
+      console.error('Error getting water sensor value:', error);
+      alert('Lỗi khi lấy giá trị cảm biến: ' + error.message);
     }
   }
 

@@ -52,6 +52,10 @@
                 <div class="input-group">
                   <input type="number" class="form-control" id="waterCurrentSensorValue" 
                          step="0.001" min="0" placeholder="0.000" required oninput="calculateWaterPreview()">
+                  <button class="btn btn-secondary" type="button" onclick="getWaterSensorValue()" 
+                          title="Lấy giá trị từ cảm biến">
+                    <i class="fas fa-download"></i>
+                  </button>
                   <span class="input-group-text">m³</span>
                 </div>
                 <div class="form-text">Giá trị hiển thị trên cảm biến nước hiện tại</div>
