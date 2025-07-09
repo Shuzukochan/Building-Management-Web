@@ -1,0 +1,230 @@
+<script>
+// ==================== GATEWAY STATUS FUNCTIONS ====================
+
+// Global variables
+let gatewayStatusCheckInterval = null;
+let lastGatewayStatus = null; // Track để chỉ log khi thay đổi
+const GATEWAY_TIMEOUT_SECONDS = 30; // Cứng 30 giây như yêu cầu
+
+/**
+ * Gọi API để lấy trạng thái gateway
+ * @returns {Promise<Object>} Gateway data hoặc null nếu lỗi
+ */
+async function fetchGatewayStatus() {
+    try {
+        // console.log('📡 Calling gateway status API...');
+        
+        const response = await fetch('/api/gateway-status', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // console.log(`📡 API Response status: ${response.status}`);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ API Error: ${response.status} - ${errorText}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        // console.log('📡 Raw API response:', data);
+        
+        if (!data.success) {
+            console.error('❌ API returned success: false', data);
+            throw new Error(data.error || 'API trả về không thành công');
+        }
+        
+        // console.log('📡 Gateway data:', data.gateway);
+        return data.gateway || null;
+    } catch (error) {
+        console.error('❌ Lỗi khi gọi API trạng thái gateway:', error);
+        return null;
+    }
+}
+
+/**
+ * Kiểm tra trạng thái gateway dựa trên lastSeenAt với timeout cứng 30 giây
+ * @param {string} lastSeenAt - Thời gian cuối cùng gateway được thấy (ISO string)
+ * @returns {string} 'online' hoặc 'offline'
+ */
+function getGatewayStatus(lastSeenAt) {
+    if (!lastSeenAt) return 'offline';
+    
+    const lastSeen = new Date(lastSeenAt);
+    const now = new Date();
+    const diffInSeconds = (now - lastSeen) / 1000;
+    
+    // Cứng 30 giây: nếu > 30 giây thì offline
+    return diffInSeconds <= GATEWAY_TIMEOUT_SECONDS ? 'online' : 'offline';
+}
+
+/**
+ * Cập nhật trạng thái của gateway indicator
+ * @param {string} gatewayId - Gateway ID
+ * @param {string} status - Trạng thái: 'online' hoặc 'offline'
+ */
+function updateGatewayStatusIndicator(gatewayId, status) {
+    const indicators = document.querySelectorAll(`[data-gateway-id="${gatewayId}"]`);
+    
+    // Định nghĩa màu sắc và title cho từng trạng thái
+    const statusConfig = {
+        'online': {
+            color: '#10b981', // xanh lá
+            title: 'Gateway đang hoạt động'
+        },
+        'offline': {
+            color: '#ef4444', // đỏ  
+            title: 'Gateway mất kết nối'
+        }
+    };
+    
+    const config = statusConfig[status] || statusConfig['offline'];
+    
+    indicators.forEach(indicator => {
+        // Set inline style cho gateway status indicator - giống hệt node
+        indicator.style.cssText = `
+            display: inline-block !important;
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50% !important;
+            position: absolute !important;
+            left: -20px !important;
+            top: 50% !important;
+            margin-top: -4px !important;
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+            background-color: ${config.color} !important;
+        `;
+        
+        // Xóa tất cả class để tránh CSS conflict
+        indicator.className = 'gateway-status-indicator';
+        
+        // Set title
+        indicator.title = config.title;
+    });
+}
+
+/**
+ * Cập nhật trạng thái gateway status indicator
+ */
+async function updateAllGatewayStatusIndicators() {
+    const gatewayData = await fetchGatewayStatus();
+    
+    if (!gatewayData) {
+        // Set tất cả gateway indicators thành offline
+        const allIndicators = document.querySelectorAll('.gateway-status-indicator[data-gateway-id]');
+        allIndicators.forEach(indicator => {
+            const gatewayId = indicator.getAttribute('data-gateway-id');
+            updateGatewayStatusIndicator(gatewayId, 'offline');
+        });
+        return;
+    }
+
+    // Kiểm tra trạng thái gateway
+    const gatewayStatus = getGatewayStatus(gatewayData.lastSeenAt);
+
+    // Cập nhật tất cả indicators
+    const allIndicators = document.querySelectorAll('.gateway-status-indicator[data-gateway-id]');
+    
+    allIndicators.forEach(indicator => {
+        const gatewayId = indicator.getAttribute('data-gateway-id');
+        updateGatewayStatusIndicator(gatewayId, gatewayStatus);
+    });
+
+    // Log chỉ khi status thay đổi
+    if (lastGatewayStatus !== gatewayStatus) {
+        console.log(`🌐 Gateway: ${gatewayStatus}`);
+        lastGatewayStatus = gatewayStatus;
+    }
+}
+
+/**
+ * Khởi tạo gateway status indicators với trạng thái loading
+ */
+function initializeGatewayStatusIndicators() {
+    const allIndicators = document.querySelectorAll('.gateway-status-indicator[data-gateway-id]');
+    
+    allIndicators.forEach(indicator => {
+        // Set inline style loading state - giống hệt node
+        indicator.style.cssText = `
+            display: inline-block !important;
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50% !important;
+            position: absolute !important;
+            left: -20px !important;
+            top: 50% !important;
+            margin-top: -4px !important;
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+            background-color: #6b7280 !important;
+        `;
+        
+        // Reset class
+        indicator.className = 'gateway-status-indicator';
+        indicator.title = 'Đang kiểm tra trạng thái gateway...';
+    });
+}
+
+/**
+ * Bắt đầu kiểm tra trạng thái gateway định kỳ
+ */
+async function startGatewayStatusCheck() {
+    // Dừng interval cũ nếu có
+    if (gatewayStatusCheckInterval) {
+        clearInterval(gatewayStatusCheckInterval);
+    }
+
+    // Khởi tạo indicators
+    initializeGatewayStatusIndicators();
+
+    // Kiểm tra ngay lập tức
+    updateAllGatewayStatusIndicators();
+
+    // Thiết lập kiểm tra định kỳ mỗi 60 giây
+    gatewayStatusCheckInterval = setInterval(() => {
+        updateAllGatewayStatusIndicators();
+    }, 30000);
+}
+
+/**
+ * Dừng kiểm tra trạng thái gateway định kỳ
+ */
+function stopGatewayStatusCheck() {
+    if (gatewayStatusCheckInterval) {
+        clearInterval(gatewayStatusCheckInterval);
+        gatewayStatusCheckInterval = null;
+    }
+}
+
+// Khởi tạo khi DOM loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Delay ngắn để đảm bảo các thành phần khác đã load xong
+    setTimeout(() => {
+        // Chỉ khởi tạo nếu có gateway status indicators
+        const gatewayIndicators = document.querySelectorAll('.gateway-status-indicator[data-gateway-id]');
+        
+        if (gatewayIndicators.length > 0) {
+            startGatewayStatusCheck();
+        }
+    }, 500);
+});
+
+// Dọn dẹp khi trang được unload
+window.addEventListener('beforeunload', () => {
+    stopGatewayStatusCheck();
+});
+
+</script> 

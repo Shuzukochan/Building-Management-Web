@@ -871,4 +871,81 @@ router.get('/device-status', requireAuth, async (req, res) => {
   }
 });
 
+// Gateway status proxy endpoint
+router.get('/gateway-status', requireAuth, async (req, res) => {
+  try {
+    const axios = require('axios');
+    
+    // Get building ID from session to fetch gateway ID
+    let buildingId = 'building_id_1'; // default
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        buildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        buildingId = req.session.selectedBuildingId;
+      }
+    }
+
+    // Get gateway ID from Firebase
+    const gatewaySnapshot = await db.ref(`buildings/${buildingId}/gateway_id`).once('value');
+    const gatewayId = gatewaySnapshot.val();
+    
+    if (!gatewayId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Không có Gateway ID được cấu hình'
+      });
+    }
+
+    // Call gateway status API
+    const GATEWAY_STATUS_API = `https://api.shuzuko.id.vn/api/gateways/${gatewayId}`;
+    
+    // Lấy API token từ environment variable
+    const apiToken = process.env.NODE_QUEUE_API_TOKEN;
+    if (!apiToken) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Thiếu NODE_QUEUE_API_TOKEN trong .env' 
+      });
+    }
+    
+    const response = await axios.get(GATEWAY_STATUS_API, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`
+      },
+      timeout: 10000 // 10 seconds timeout
+    });
+
+    const data = response.data;
+    
+    res.json({
+      success: true,
+      gateway: data || null,
+      gatewayId: gatewayId
+    });
+
+  } catch (error) {
+    console.error('Lỗi khi gọi API trạng thái gateway:', error);
+    
+    // Xử lý lỗi chi tiết hơn
+    let errorMessage = 'Không thể lấy trạng thái gateway';
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = 'Timeout khi gọi API gateway';
+    } else if (error.response) {
+      errorMessage = `API trả về lỗi ${error.response.status}: ${error.response.statusText}`;
+      console.error('API response data:', error.response.data);
+    } else if (error.request) {
+      errorMessage = 'Không thể kết nối tới API gateway';
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
 module.exports = router;

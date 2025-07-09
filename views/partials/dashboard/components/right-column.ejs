@@ -36,9 +36,12 @@
               </div>
               <div class="d-flex gap-2">
                 <% if (currentGatewayId && currentGatewayId !== null && currentGatewayId.trim() !== '') { %>
-                  <button class="btn btn-sm text-white" style="background-color: #fd7e14;" onclick="openGatewayModal()" title="Quản lý Gateway ID">
-                    <i class="fas fa-network-wired"></i> Gateway ID: <%= currentGatewayId %>
-                  </button>
+                  <div class="gateway-button-container d-flex align-items-center gap-2">
+                    <span class="gateway-status-indicator" data-gateway-id="<%= currentGatewayId %>"></span>
+                    <button class="btn btn-sm text-white" style="background-color: #fd7e14;" onclick="openGatewayModal()" title="Quản lý Gateway ID">
+                      <i class="fas fa-network-wired"></i> Gateway ID: <%= currentGatewayId %>
+                    </button>
+                  </div>
                 <% } else { %>
                   <button class="btn btn-outline-warning btn-sm" onclick="openGatewayModal()" title="Thêm Gateway ID">
                     <i class="fas fa-plus"></i> Thêm Gateway ID

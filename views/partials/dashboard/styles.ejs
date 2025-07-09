@@ -2290,4 +2290,34 @@
     }
 
     /* Node Status Indicator - Styled completely via JavaScript inline styles */
+
+    /* Gateway Button Container */
+    .gateway-button-container {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Gateway Status Indicator - Styled completely via JavaScript inline styles giống node */
+    .gateway-status-indicator {
+      /* Base styles - will be overridden by JavaScript */
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #6b7280;
+      position: absolute;
+      left: -20px;
+      top: 50%;
+      margin-top: -4px;
+    }
+
+    /* Gateway Status Colors - For reference (actual styling done in JS) */
+    .gateway-status-indicator.online {
+      background-color: #10b981;
+    }
+
+    .gateway-status-indicator.offline {
+      background-color: #ef4444;
+    }
   </style>
