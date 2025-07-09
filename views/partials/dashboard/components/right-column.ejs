@@ -212,21 +212,24 @@
                                   electricityCurrent = room.nodes[electricityNodeId].lastData.current;
                                 }
                               %>
-                              <button type="button"
-                                 class="quick-action-btn electricity has-node manage-node-btn" 
-                                 data-room-id="<%= room.id %>" 
-                                 data-room-number="<%= room.roomNumber %>" 
-                                 data-node-id="<%= electricityNodeId %>" 
-                                 data-node-type="electricity"
-                                 title="Quản lý node điện: <%= electricityNodeId %><%= electricityBatt !== null ? ' - Pin: ' + electricityBatt + '%' : '' %><%= electricityValue !== null ? ' - Điện: ' + electricityValue + ' kWh' : '' %><%= electricityCurrent !== null ? ' - Dòng: ' + electricityCurrent + 'A' : '' %><%= electricityCurrent !== null && electricityCurrent > 25 ? ' ⚠️ QUÁ DÒNG!' : '' %>">
-                                <i class="fas fa-check"></i> Điện<% if (electricityValue !== null) { %>: <%= electricityValue %> kWh<% } %>
-                                <% if (electricityBatt !== null) { %>
-                                  <span class="node-battery-inline">
-                                    <i class="fas fa-battery-<%= electricityBatt > 75 ? 'full' : electricityBatt > 50 ? 'three-quarters' : electricityBatt > 25 ? 'half' : 'quarter' %>"></i>
-                                    <%= electricityBatt %>%
-                                  </span>
-                                <% } %>
-                              </button>
+                              <div class="node-button-container">
+                                <button type="button"
+                                   class="quick-action-btn electricity has-node manage-node-btn" 
+                                   data-room-id="<%= room.id %>" 
+                                   data-room-number="<%= room.roomNumber %>" 
+                                   data-node-id="<%= electricityNodeId %>" 
+                                   data-node-type="electricity"
+                                   title="Quản lý node điện: <%= electricityNodeId %><%= electricityBatt !== null ? ' - Pin: ' + electricityBatt + '%' : '' %><%= electricityValue !== null ? ' - Điện: ' + electricityValue + ' kWh' : '' %><%= electricityCurrent !== null ? ' - Dòng: ' + electricityCurrent + 'A' : '' %><%= electricityCurrent !== null && electricityCurrent > 25 ? ' ⚠️ QUÁ DÒNG!' : '' %>">
+                                  <i class="fas fa-check"></i> Điện<% if (electricityValue !== null) { %>: <%= electricityValue %> kWh<% } %>
+                                  <% if (electricityBatt !== null) { %>
+                                    <span class="node-battery-inline">
+                                      <i class="fas fa-battery-<%= electricityBatt > 75 ? 'full' : electricityBatt > 50 ? 'three-quarters' : electricityBatt > 25 ? 'half' : 'quarter' %>"></i>
+                                      <%= electricityBatt %>%
+                                    </span>
+                                  <% } %>
+                                </button>
+                                <span class="node-status-indicator" data-node-dev-eui="<%= electricityNodeId %>"></span>
+                              </div>
                           <% } else { %>
                                 <button type="button" class="quick-action-btn electricity" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'electricity')" title="Thêm node điện">
                                   <i class="fas fa-plus"></i> Điện
@@ -246,21 +249,24 @@
                                   waterLeak = room.nodes[waterNodeId].lastData.leak;
                                 }
                               %>
-                              <button type="button"
-                                 class="quick-action-btn water has-node manage-node-btn" 
-                                 data-room-id="<%= room.id %>" 
-                                 data-room-number="<%= room.roomNumber %>" 
-                                 data-node-id="<%= waterNodeId %>" 
-                                 data-node-type="water"
-                                 title="Quản lý node nước: <%= waterNodeId %><%= waterBatt !== null ? ' - Pin: ' + waterBatt + '%' : '' %><%= waterValue !== null ? ' - Nước: ' + waterValue + ' m³' : '' %><%= waterLeak !== null && waterLeak === 1 ? ' 💧 RÒ RỈ NƯỚC!' : '' %>">
-                                <i class="fas fa-check"></i> Nước<% if (waterValue !== null) { %>: <%= waterValue %> m³<% } %>
-                                <% if (waterBatt !== null) { %>
-                                  <span class="node-battery-inline">
-                                    <i class="fas fa-battery-<%= waterBatt > 75 ? 'full' : waterBatt > 50 ? 'three-quarters' : waterBatt > 25 ? 'half' : 'quarter' %>"></i>
-                                    <%= waterBatt %>%
-                                  </span>
-                                <% } %>
-                              </button>
+                              <div class="node-button-container">
+                                <button type="button"
+                                   class="quick-action-btn water has-node manage-node-btn" 
+                                   data-room-id="<%= room.id %>" 
+                                   data-room-number="<%= room.roomNumber %>" 
+                                   data-node-id="<%= waterNodeId %>" 
+                                   data-node-type="water"
+                                   title="Quản lý node nước: <%= waterNodeId %><%= waterBatt !== null ? ' - Pin: ' + waterBatt + '%' : '' %><%= waterValue !== null ? ' - Nước: ' + waterValue + ' m³' : '' %><%= waterLeak !== null && waterLeak === 1 ? ' 💧 RÒ RỈ NƯỚC!' : '' %>">
+                                  <i class="fas fa-check"></i> Nước<% if (waterValue !== null) { %>: <%= waterValue %> m³<% } %>
+                                  <% if (waterBatt !== null) { %>
+                                    <span class="node-battery-inline">
+                                      <i class="fas fa-battery-<%= waterBatt > 75 ? 'full' : waterBatt > 50 ? 'three-quarters' : waterBatt > 25 ? 'half' : 'quarter' %>"></i>
+                                      <%= waterBatt %>%
+                                    </span>
+                                  <% } %>
+                                </button>
+                                <span class="node-status-indicator" data-node-dev-eui="<%= waterNodeId %>"></span>
+                              </div>
                             <% } else { %>
                               <button type="button" class="quick-action-btn water" onclick="openAddNodeModal('<%= room.id %>', '<%= room.roomNumber %>', 'water')" title="Thêm node nước">
                                 <i class="fas fa-plus"></i> Nước
@@ -280,22 +286,25 @@
                                       customValue = node.lastData.value;
                                     }
                                   %>
-                                  <button type="button"
-                                     class="quick-action-btn custom has-node manage-node-btn" 
-                                     data-room-id="<%= room.id %>" 
-                                     data-room-number="<%= room.roomNumber %>" 
-                                     data-node-id="<%= node.id %>" 
-                                     data-node-type="custom"
-                                     data-custom-name="<%= node.name && node.name !== node.id ? node.name : '' %>"
-                                     title="Quản lý node: <%= node.id %><%= customBatt !== null ? ' - Pin: ' + customBatt + '%' : '' %><%= customValue !== null ? ' - Giá trị: ' + customValue : '' %>">
-                                    <i class="fas fa-check"></i> <%= node.name || node.id %><% if (customValue !== null) { %>: <%= customValue %><% } %>
-                                    <% if (customBatt !== null) { %>
-                                      <span class="node-battery-inline">
-                                        <i class="fas fa-battery-<%= customBatt > 75 ? 'full' : customBatt > 50 ? 'three-quarters' : customBatt > 25 ? 'half' : 'quarter' %>"></i>
-                                        <%= customBatt %>%
-                                      </span>
-                                    <% } %>
-                                  </button>
+                                  <div class="node-button-container">
+                                    <button type="button"
+                                       class="quick-action-btn custom has-node manage-node-btn" 
+                                       data-room-id="<%= room.id %>" 
+                                       data-room-number="<%= room.roomNumber %>" 
+                                       data-node-id="<%= node.id %>" 
+                                       data-node-type="custom"
+                                       data-custom-name="<%= node.name && node.name !== node.id ? node.name : '' %>"
+                                       title="Quản lý node: <%= node.id %><%= customBatt !== null ? ' - Pin: ' + customBatt + '%' : '' %><%= customValue !== null ? ' - Giá trị: ' + customValue : '' %>">
+                                      <i class="fas fa-check"></i> <%= node.name || node.id %><% if (customValue !== null) { %>: <%= customValue %><% } %>
+                                      <% if (customBatt !== null) { %>
+                                        <span class="node-battery-inline">
+                                          <i class="fas fa-battery-<%= customBatt > 75 ? 'full' : customBatt > 50 ? 'three-quarters' : customBatt > 25 ? 'half' : 'quarter' %>"></i>
+                                          <%= customBatt %>%
+                                        </span>
+                                      <% } %>
+                                    </button>
+                                    <span class="node-status-indicator" data-node-dev-eui="<%= node.id %>"></span>
+                                  </div>
                                 <% } %>
                               <% }) %>
                             <% } %>

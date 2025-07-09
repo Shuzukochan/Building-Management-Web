@@ -72,12 +72,13 @@ const getSettings = async (req, res) => {
       });
     }
 
-    // Lấy giá điện, giá nước và ngày cập nhật từ Firebase
+    // Lấy giá điện, giá nước, device timeout và ngày cập nhật từ Firebase
     const currentSettings = {
       electricityPrice: buildingData.price_electric || 3000,
       waterPrice: buildingData.price_water || 15000,
       electricityUpdatedAt: buildingData.price_electric_updated_at || null,
       waterUpdatedAt: buildingData.price_water_updated_at || null,
+      deviceTimeout: buildingData.deviceTimeout || 14400,
       calibrationData: {
         electricity: electricityCalibration,
         water: waterCalibration

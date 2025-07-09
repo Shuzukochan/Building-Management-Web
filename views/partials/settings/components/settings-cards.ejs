@@ -58,16 +58,50 @@
     </div>
   </div>
 
-  <!-- Pricing Card -->
-  <div class="settings-card">
-    <div class="settings-card-header"><h5><i class="fas fa-money-bill-wave"></i> Cài đặt giá</h5></div>
-    <div class="settings-card-body">
-      <div class="settings-description">Cài đặt giá điện và nước để tính toán chi phí cho từng phòng.</div>
-      <!-- Electricity Pricing -->
-      <div class="settings-section"><h6><i class="fas fa-bolt" style="color:#f59e0b;"></i> Giá điện</h6><div class="settings-info"><span class="settings-label">Giá hiện tại:</span><span class="settings-value" id="currentElectricityPrice">3.000 VNĐ/kWh</span></div><div class="settings-info"><span class="settings-label">Áp dụng từ:</span><span class="settings-value" id="electricityPriceDate">Chưa có dữ liệu</span></div></div>
-      <!-- Water Pricing -->
-      <div class="settings-section"><h6><i class="fas fa-tint" style="color:#06b6d4;"></i> Giá nước</h6><div class="settings-info"><span class="settings-label">Giá hiện tại:</span><span class="settings-value" id="currentWaterPrice">15.000 VNĐ/m³</span></div><div class="settings-info"><span class="settings-label">Áp dụng từ:</span><span class="settings-value" id="waterPriceDate">Chưa có dữ liệu</span></div><button type="button" class="btn btn-settings" onclick="openPricingModal()"><i class="fas fa-edit"></i> Cập nhật giá</button></div>
-      <div class="settings-alert settings-alert-info"><i class="fas fa-info-circle"></i> <strong>Thông tin:</strong> Thay đổi giá sẽ áp dụng cho việc tính toán các hóa đơn mới.</div>
+  <!-- Cột 2: Pricing + Device Timeout -->
+  <div class="settings-column-2">
+    <!-- Pricing Card -->
+    <div class="settings-card">
+      <div class="settings-card-header"><h5><i class="fas fa-money-bill-wave"></i> Cài đặt giá</h5></div>
+      <div class="settings-card-body">
+        <div class="settings-description">Cài đặt giá điện và nước để tính toán chi phí cho từng phòng.</div>
+        <!-- Electricity Pricing -->
+        <div class="settings-section"><h6><i class="fas fa-bolt" style="color:#f59e0b;"></i> Giá điện</h6><div class="settings-info"><span class="settings-label">Giá hiện tại:</span><span class="settings-value" id="currentElectricityPrice">3.000 VNĐ/kWh</span></div><div class="settings-info"><span class="settings-label">Áp dụng từ:</span><span class="settings-value" id="electricityPriceDate">Chưa có dữ liệu</span></div></div>
+        <!-- Water Pricing -->
+        <div class="settings-section"><h6><i class="fas fa-tint" style="color:#06b6d4;"></i> Giá nước</h6><div class="settings-info"><span class="settings-label">Giá hiện tại:</span><span class="settings-value" id="currentWaterPrice">15.000 VNĐ/m³</span></div><div class="settings-info"><span class="settings-label">Áp dụng từ:</span><span class="settings-value" id="waterPriceDate">Chưa có dữ liệu</span></div><button type="button" class="btn btn-settings" onclick="openPricingModal()"><i class="fas fa-edit"></i> Cập nhật giá</button></div>
+      </div>
+    </div>
+
+    <!-- Device Timeout Card -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <h5><i class="fas fa-clock"></i> Thời gian kiểm tra hoạt động thiết bị</h5>
+      </div>
+      <div class="settings-card-body">
+        <div class="settings-description">Cài đặt thời gian timeout để kiểm tra trạng thái kết nối của các thiết bị IoT.</div>
+        
+        <div class="settings-section">
+          <h6><i class="fas fa-wifi" style="color:#06b6d4;"></i> Cấu hình kiểm tra</h6>
+          
+                  <div class="settings-info">
+          <span class="settings-label">Timeout hiện tại:</span>
+          <span class="settings-value" id="currentDeviceTimeout"><%= currentSettings.deviceTimeout %> giây</span>
+        </div>
+          
+          <div class="row mt-3">
+            <div class="col-md-6">
+              <label for="deviceTimeoutInput" class="form-label">Thời gian timeout (giây):</label>
+                          <input type="number" class="form-control" id="deviceTimeoutInput" 
+                   placeholder="Nhập thời gian (giây)" min="30" max="600" step="10" value="<%= currentSettings.deviceTimeout %>">
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <button type="button" class="btn btn-settings w-100" onclick="updateDeviceTimeout()">
+                <i class="fas fa-save"></i> Cập nhật timeout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

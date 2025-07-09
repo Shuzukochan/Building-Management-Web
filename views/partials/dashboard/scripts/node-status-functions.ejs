@@ -1,0 +1,265 @@
+<script>
+// ==================== NODE STATUS FUNCTIONS ====================
+
+// Global variables
+let nodeStatusCheckInterval = null;
+let deviceTimeoutSeconds = 14400; // default, will be loaded from Firebase
+
+/**
+ * Lấy cấu hình timeout từ Firebase theo building ID
+ * @returns {Promise<number>} Timeout trong giây
+ */
+async function fetchDeviceTimeout() {
+    try {
+        const response = await fetch('/api/device-timeout', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'API trả về không thành công');
+        }
+        
+        return data.deviceTimeout || 60;
+    } catch (error) {
+        console.error('Lỗi khi lấy device timeout:', error);
+        return 60; // fallback to default
+    }
+}
+
+/**
+ * Gọi API proxy nội bộ để lấy trạng thái tất cả thiết bị
+ * @returns {Promise<Array>} Danh sách thiết bị hoặc null nếu lỗi
+ */
+async function fetchDeviceStatus() {
+    try {
+        const response = await fetch('/api/device-status', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'API trả về không thành công');
+        }
+        
+        return data.result || [];
+    } catch (error) {
+        console.error('Lỗi khi gọi API trạng thái thiết bị:', error);
+        return null;
+    }
+}
+
+/**
+ * Kiểm tra trạng thái thiết bị dựa trên lastSeenAt
+ * @param {string} lastSeenAt - Thời gian cuối cùng thiết bị được thấy (ISO string)
+ * @returns {string} 'online', 'warning', hoặc 'offline'
+ */
+function getDeviceStatus(lastSeenAt) {
+    if (!lastSeenAt) return 'offline';
+    
+    const lastSeen = new Date(lastSeenAt);
+    const now = new Date();
+    const diffInSeconds = (now - lastSeen) / 1000;
+    
+    const warningThreshold = deviceTimeoutSeconds * 1.5; // x1.5 = warning
+    const offlineThreshold = deviceTimeoutSeconds * 2;   // x2 = offline
+    
+    if (diffInSeconds <= deviceTimeoutSeconds) {
+        return 'online';
+    } else if (diffInSeconds <= warningThreshold) {
+        return 'warning';
+    } else {
+        return 'offline';
+    }
+}
+
+/**
+ * Cập nhật trạng thái của một node indicator
+ * @param {string} devEui - Device EUI của node
+ * @param {string} status - Trạng thái: 'online', 'warning', 'offline'
+ */
+function updateNodeStatusIndicator(devEui, status) {
+    const indicators = document.querySelectorAll(`[data-node-dev-eui="${devEui}"]`);
+    
+    // Định nghĩa màu sắc và title cho từng trạng thái
+    const statusConfig = {
+        'online': {
+            color: '#10b981', // xanh lá
+            title: 'Thiết bị đang hoạt động'
+        },
+        'warning': {
+            color: '#f59e0b', // vàng/cam
+            title: 'Thiết bị phản hồi chậm - cảnh báo'
+        },
+        'offline': {
+            color: '#ef4444', // đỏ
+            title: 'Thiết bị mất kết nối'
+        }
+    };
+    
+    const config = statusConfig[status] || statusConfig['offline'];
+    
+    indicators.forEach(indicator => {
+        // BYPASS CSS HOÀN TOÀN - dùng inline style
+        indicator.style.cssText = `
+            display: inline-block !important;
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50% !important;
+            position: absolute !important;
+            right: -20px !important;
+            top: 50% !important;
+            margin-top: -4px !important;
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+            background-color: ${config.color} !important;
+        `;
+        
+        // Xóa tất cả class để tránh CSS conflict
+        indicator.className = 'node-status-indicator';
+        
+        // Set title
+        indicator.title = config.title;
+    });
+}
+
+/**
+ * Cập nhật trạng thái tất cả node status indicators
+ */
+async function updateAllNodeStatusIndicators() {
+    const deviceList = await fetchDeviceStatus();
+    
+    if (!deviceList) {
+        console.warn('Không thể lấy trạng thái thiết bị, sẽ thử lại sau.');
+        return;
+    }
+
+    // Tạo map devEui -> trạng thái
+    const deviceStatusMap = {};
+    deviceList.forEach(device => {
+        if (device.devEui && device.lastSeenAt) {
+            deviceStatusMap[device.devEui] = getDeviceStatus(device.lastSeenAt);
+        }
+    });
+
+    // Cập nhật tất cả indicators
+    const allIndicators = document.querySelectorAll('.node-status-indicator[data-node-dev-eui]');
+    
+    allIndicators.forEach(indicator => {
+        const devEui = indicator.getAttribute('data-node-dev-eui');
+        if (devEui && deviceStatusMap.hasOwnProperty(devEui)) {
+            updateNodeStatusIndicator(devEui, deviceStatusMap[devEui]);
+        } else {
+            // Thiết bị không tìm thấy trong API response -> offline
+            updateNodeStatusIndicator(devEui, 'offline');
+        }
+    });
+
+    console.log(`✅ Đã cập nhật trạng thái cho ${allIndicators.length} node(s) - Timeout: ${deviceTimeoutSeconds}s`);
+}
+
+/**
+ * Khởi tạo node status indicators với trạng thái loading
+ */
+function initializeNodeStatusIndicators() {
+    const allIndicators = document.querySelectorAll('.node-status-indicator[data-node-dev-eui]');
+    
+    allIndicators.forEach(indicator => {
+        // BYPASS CSS HOÀN TOÀN - set inline style ngay từ đầu
+        indicator.style.cssText = `
+            display: inline-block !important;
+            width: 8px !important;
+            height: 8px !important;
+            border-radius: 50% !important;
+            position: absolute !important;
+            right: -20px !important;
+            top: 50% !important;
+            margin-top: -4px !important;
+            transition: none !important;
+            animation: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+            background-color: #6b7280 !important;
+        `;
+        
+        // Reset class
+        indicator.className = 'node-status-indicator';
+        indicator.title = 'Đang kiểm tra trạng thái...';
+    });
+
+    console.log(`🔄 Khởi tạo ${allIndicators.length} node status indicator(s)`);
+}
+
+/**
+ * Bắt đầu kiểm tra trạng thái node định kỳ
+ */
+async function startNodeStatusCheck() {
+    // Dừng interval cũ nếu có
+    if (nodeStatusCheckInterval) {
+        clearInterval(nodeStatusCheckInterval);
+    }
+
+    // Lấy timeout từ Firebase trước
+    deviceTimeoutSeconds = await fetchDeviceTimeout();
+    console.log(`🔧 Device timeout được thiết lập: ${deviceTimeoutSeconds}s (Warning: ${deviceTimeoutSeconds * 1.5}s, Offline: ${deviceTimeoutSeconds * 2}s)`);
+
+    // Khởi tạo indicators
+    initializeNodeStatusIndicators();
+
+    // Kiểm tra ngay lập tức
+    updateAllNodeStatusIndicators();
+
+    // Thiết lập kiểm tra định kỳ mỗi 1 phút (60000 ms)
+    nodeStatusCheckInterval = setInterval(() => {
+        updateAllNodeStatusIndicators();
+    }, 10000);
+}
+
+/**
+ * Dừng kiểm tra trạng thái node định kỳ
+ */
+function stopNodeStatusCheck() {
+    if (nodeStatusCheckInterval) {
+        clearInterval(nodeStatusCheckInterval);
+        nodeStatusCheckInterval = null;
+        console.log('⏹️ Đã dừng kiểm tra trạng thái node định kỳ');
+    }
+}
+
+// Khởi tạo khi DOM loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Delay một chút để đảm bảo các thành phần khác đã load xong
+    setTimeout(() => {
+        startNodeStatusCheck();
+    }, 1000);
+});
+
+// Dọn dẹp khi trang được unload
+window.addEventListener('beforeunload', () => {
+    stopNodeStatusCheck();
+});
+</script> 

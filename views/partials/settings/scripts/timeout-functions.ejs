@@ -1,0 +1,118 @@
+<script>
+// ==================== DEVICE TIMEOUT FUNCTIONS ====================
+
+/**
+ * Load device timeout từ UI (đã được render từ server)
+ */
+function getCurrentTimeoutFromUI() {
+    const timeoutInput = document.getElementById('deviceTimeoutInput');
+    return parseInt(timeoutInput.value) || 14400;
+}
+
+/**
+ * Cập nhật device timeout lên Firebase
+ */
+async function updateDeviceTimeout() {
+    try {
+        const timeoutInput = document.getElementById('deviceTimeoutInput');
+        const newTimeout = parseInt(timeoutInput.value);
+        
+        console.log(`🔧 Attempting to update timeout to: ${newTimeout}s`);
+        
+        // Validation
+        if (isNaN(newTimeout) || newTimeout < 30 || newTimeout > 86400) {
+            showToast('Thời gian timeout phải từ 30 đến 86400 giây (24 tiếng)', 'error');
+            return;
+        }
+        
+        // Hiển thị loading
+        const updateBtn = document.querySelector('[onclick="updateDeviceTimeout()"]');
+        const originalText = updateBtn.innerHTML;
+        updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang cập nhật...';
+        updateBtn.disabled = true;
+        
+        console.log(`📡 Calling API PUT /api/device-timeout with timeout: ${newTimeout}`);
+        
+        const response = await fetch('/api/device-timeout', {
+            method: 'PUT',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                deviceTimeout: newTimeout
+            })
+        });
+
+        console.log(`📡 API Response status: ${response.status}`);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`❌ API Error: ${response.status} - ${errorText}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log(`📡 API Response data:`, data);
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Cập nhật không thành công');
+        }
+        
+        // Cập nhật UI với giá trị mới
+        const currentTimeoutEl = document.getElementById('currentDeviceTimeout');
+        
+        if (currentTimeoutEl) currentTimeoutEl.textContent = `${newTimeout} giây`;
+        
+        showToast(`Cập nhật timeout thành công: ${newTimeout} giây`, 'success');
+        console.log(`✅ Device timeout updated: ${newTimeout}s`);
+        
+    } catch (error) {
+        console.error('Lỗi khi cập nhật device timeout:', error);
+        showToast('Lỗi khi cập nhật timeout: ' + error.message, 'error');
+    } finally {
+        // Restore button
+        const updateBtn = document.querySelector('[onclick="updateDeviceTimeout()"]');
+        updateBtn.innerHTML = '<i class="fas fa-save"></i> Cập nhật timeout';
+        updateBtn.disabled = false;
+    }
+}
+
+// Đảm bảo function accessible globally  
+window.updateDeviceTimeout = updateDeviceTimeout;
+console.log('📝 updateDeviceTimeout function defined and assigned to window');
+
+/**
+ * Validation input timeout real-time
+ */
+function validateTimeoutInput() {
+    const input = document.getElementById('deviceTimeoutInput');
+    const value = parseInt(input.value);
+    
+    if (isNaN(value) || value < 30) {
+        input.setCustomValidity('Thời gian tối thiểu là 30 giây');
+    } else if (value > 86400) {
+        input.setCustomValidity('Thời gian tối đa là 86400 giây (24 tiếng)');
+    } else {
+        input.setCustomValidity('');
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Chỉ chạy nếu đang ở trang settings (có element deviceTimeoutInput)
+    const timeoutInput = document.getElementById('deviceTimeoutInput');
+    if (!timeoutInput) {
+        console.log('⏭️ Bỏ qua timeout functions - không phải trang settings');
+        return;
+    }
+    
+    // Thêm validation cho input
+    timeoutInput.addEventListener('input', validateTimeoutInput);
+    timeoutInput.addEventListener('blur', validateTimeoutInput);
+    
+    console.log('🚀 Timeout functions initialized - timeout loaded from server');
+    console.log('🔧 updateDeviceTimeout function available:', typeof window.updateDeviceTimeout);
+});
+
+</script> 

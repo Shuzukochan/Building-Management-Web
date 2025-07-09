@@ -740,4 +740,135 @@ router.put('/admins/:username', requireAuth, async (req, res) => {
   }
 });
 
+// Get device timeout setting from Firebase
+router.get('/device-timeout', requireAuth, async (req, res) => {
+  try {
+    // Get building ID from session
+    let buildingId = 'building_id_1'; // default
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        buildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        buildingId = req.session.selectedBuildingId;
+      }
+    }
+
+    // Get timeout setting from Firebase
+    const timeoutSnapshot = await db.ref(`buildings/${buildingId}/deviceTimeout`).once('value');
+    const deviceTimeout = timeoutSnapshot.val() || 14400; // default 14400 seconds (4 hours)
+
+    res.json({
+      success: true,
+      deviceTimeout: deviceTimeout,
+      buildingId: buildingId
+    });
+
+  } catch (error) {
+    console.error('Lỗi khi lấy device timeout:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Không thể lấy cấu hình timeout: ' + error.message
+    });
+  }
+});
+
+// Update device timeout setting
+router.put('/device-timeout', requireAuth, async (req, res) => {
+  try {
+    const { deviceTimeout } = req.body;
+
+    // Validation
+    if (!deviceTimeout || isNaN(deviceTimeout) || deviceTimeout < 30 || deviceTimeout > 86400) {
+      return res.status(400).json({
+        success: false,
+        error: 'Thời gian timeout phải từ 30 đến 86400 giây (24 tiếng)'
+      });
+    }
+
+    // Get building ID from session
+    let buildingId = 'building_id_1'; // default
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        buildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        buildingId = req.session.selectedBuildingId;
+      }
+    }
+
+    // Update timeout setting in Firebase
+    await db.ref(`buildings/${buildingId}/deviceTimeout`).set(parseInt(deviceTimeout));
+
+    console.log(`✅ Cập nhật device timeout cho building ${buildingId}: ${deviceTimeout}s`);
+
+    res.json({
+      success: true,
+      message: 'Cập nhật thời gian timeout thành công',
+      deviceTimeout: parseInt(deviceTimeout),
+      buildingId: buildingId
+    });
+
+  } catch (error) {
+    console.error('Lỗi khi cập nhật device timeout:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Không thể cập nhật timeout: ' + error.message
+    });
+  }
+});
+
+// Device status proxy endpoint (để tránh CORS)
+router.get('/device-status', requireAuth, async (req, res) => {
+  try {
+    const axios = require('axios');
+    const DEVICE_STATUS_API = 'https://api.shuzuko.id.vn/api/devices?limit=1000&applicationId=b9949d55-b7e4-49ad-91db-0edd67ade465';
+    
+    // Lấy API token từ environment variable
+    const apiToken = process.env.NODE_QUEUE_API_TOKEN;
+    if (!apiToken) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Thiếu NODE_QUEUE_API_TOKEN trong .env' 
+      });
+    }
+    
+    const response = await axios.get(DEVICE_STATUS_API, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`
+      },
+      timeout: 10000 // 10 seconds timeout
+    });
+
+    const data = response.data;
+    
+    res.json({
+      success: true,
+      result: data.result || [],
+      totalCount: data.totalCount || 0
+    });
+
+  } catch (error) {
+    console.error('Lỗi khi gọi API trạng thái thiết bị:', error);
+    
+    // Xử lý lỗi chi tiết hơn
+    let errorMessage = 'Không thể lấy trạng thái thiết bị';
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = 'Timeout khi gọi API thiết bị';
+    } else if (error.response) {
+      errorMessage = `API trả về lỗi ${error.response.status}: ${error.response.statusText}`;
+      console.error('API response data:', error.response.data);
+    } else if (error.request) {
+      errorMessage = 'Không thể kết nối tới API thiết bị';
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
 module.exports = router;
