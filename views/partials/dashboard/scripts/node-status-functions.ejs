@@ -227,8 +227,15 @@ async function startNodeStatusCheck() {
     deviceTimeoutSeconds = await fetchDeviceTimeout();
     console.log(`🔧 Device timeout được thiết lập: ${deviceTimeoutSeconds}s (Warning: ${deviceTimeoutSeconds * 1.5}s, Offline: ${deviceTimeoutSeconds * 2}s)`);
 
-    // Khởi tạo indicators
-    initializeNodeStatusIndicators();
+    // Đảm bảo indicators đã có loading state
+    const allIndicators = document.querySelectorAll('.node-status-indicator[data-node-dev-eui]');
+    const hasLoadingState = Array.from(allIndicators).some(indicator => 
+        indicator.style.backgroundColor === 'rgb(107, 114, 128)' // #6b7280 
+    );
+    
+    if (!hasLoadingState && allIndicators.length > 0) {
+        initializeNodeStatusIndicators();
+    }
 
     // Kiểm tra ngay lập tức
     updateAllNodeStatusIndicators();
@@ -252,10 +259,13 @@ function stopNodeStatusCheck() {
 
 // Khởi tạo khi DOM loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Delay một chút để đảm bảo các thành phần khác đã load xong
+    // Khởi tạo loading state ngay lập tức
+    initializeNodeStatusIndicators();
+    
+    // Delay ngắn để đảm bảo các thành phần khác đã load xong
     setTimeout(() => {
         startNodeStatusCheck();
-    }, 1000);
+    }, 500);
 });
 
 // Dọn dẹp khi trang được unload

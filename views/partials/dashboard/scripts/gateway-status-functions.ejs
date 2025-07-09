@@ -12,8 +12,6 @@ const GATEWAY_TIMEOUT_SECONDS = 30; // Cứng 30 giây như yêu cầu
  */
 async function fetchGatewayStatus() {
     try {
-        // console.log('📡 Calling gateway status API...');
-        
         const response = await fetch('/api/gateway-status', {
             method: 'GET',
             headers: {
@@ -22,38 +20,22 @@ async function fetchGatewayStatus() {
             }
         });
 
-        // console.log(`📡 API Response status: ${response.status}`);
-
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`❌ Gateway API Error: ${response.status} - ${errorText}`);
-            
-            // Try to parse error response for more details
-            try {
-                const errorData = JSON.parse(errorText);
-                console.error(`🔍 Gateway API Error Details:`, errorData);
-                if (errorData.debug) {
-                    console.error(`🔍 Gateway API Debug Info:`, errorData.debug);
-                }
-            } catch (parseError) {
-                console.error(`🔍 Gateway API Raw Error Response:`, errorText);
-            }
-            
+            console.error(`Gateway API Error: ${response.status} - ${errorText}`);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
-        // console.log('📡 Raw API response:', data);
         
         if (!data.success) {
-            console.error('❌ API returned success: false', data);
+            console.error('API returned success: false', data);
             throw new Error(data.error || 'API trả về không thành công');
         }
         
-        // console.log('📡 Gateway data:', data.gateway);
         return data.gateway || null;
     } catch (error) {
-        console.error('❌ Lỗi khi gọi API trạng thái gateway:', error);
+        console.error('Lỗi khi gọi API trạng thái gateway:', error);
         return null;
     }
 }
@@ -153,7 +135,6 @@ async function updateAllGatewayStatusIndicators() {
 
     // Log chỉ khi status thay đổi
     if (lastGatewayStatus !== gatewayStatus) {
-        console.log(`🌐 Gateway: ${gatewayStatus}`);
         lastGatewayStatus = gatewayStatus;
     }
 }
