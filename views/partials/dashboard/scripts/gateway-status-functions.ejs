@@ -26,7 +26,19 @@ async function fetchGatewayStatus() {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`❌ API Error: ${response.status} - ${errorText}`);
+            console.error(`❌ Gateway API Error: ${response.status} - ${errorText}`);
+            
+            // Try to parse error response for more details
+            try {
+                const errorData = JSON.parse(errorText);
+                console.error(`🔍 Gateway API Error Details:`, errorData);
+                if (errorData.debug) {
+                    console.error(`🔍 Gateway API Debug Info:`, errorData.debug);
+                }
+            } catch (parseError) {
+                console.error(`🔍 Gateway API Raw Error Response:`, errorText);
+            }
+            
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 

@@ -887,28 +887,38 @@ router.get('/gateway-status', requireAuth, async (req, res) => {
       }
     }
 
+    console.log(`🔍 Gateway API Debug - Building ID: ${buildingId}`);
+
     // Get gateway ID from Firebase
     const gatewaySnapshot = await db.ref(`buildings/${buildingId}/gateway_id`).once('value');
     const gatewayId = gatewaySnapshot.val();
     
+    console.log(`🔍 Gateway API Debug - Gateway ID from Firebase: ${gatewayId}`);
+    
     if (!gatewayId) {
+      console.log(`❌ No Gateway ID found for building: ${buildingId}`);
       return res.status(400).json({
         success: false,
-        error: 'Không có Gateway ID được cấu hình'
+        error: `Không có Gateway ID được cấu hình cho building ${buildingId}`
       });
     }
 
     // Call gateway status API
     const GATEWAY_STATUS_API = `https://api.shuzuko.id.vn/api/gateways/${gatewayId}`;
     
+    console.log(`🔍 Gateway API Debug - Calling URL: ${GATEWAY_STATUS_API}`);
+    
     // Lấy API token từ environment variable
     const apiToken = process.env.NODE_QUEUE_API_TOKEN;
     if (!apiToken) {
+      console.log(`❌ Missing NODE_QUEUE_API_TOKEN in environment`);
       return res.status(500).json({ 
         success: false, 
         error: 'Thiếu NODE_QUEUE_API_TOKEN trong .env' 
       });
     }
+    
+    console.log(`🔍 Gateway API Debug - API Token exists: ${apiToken ? 'Yes' : 'No'}`);
     
     const response = await axios.get(GATEWAY_STATUS_API, {
       headers: {
@@ -919,7 +929,11 @@ router.get('/gateway-status', requireAuth, async (req, res) => {
       timeout: 10000 // 10 seconds timeout
     });
 
+    console.log(`🔍 Gateway API Debug - External API Response Status: ${response.status}`);
+    
     const data = response.data;
+    
+    console.log(`🔍 Gateway API Debug - External API Response Data:`, data);
     
     res.json({
       success: true,
@@ -928,22 +942,75 @@ router.get('/gateway-status', requireAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Lỗi khi gọi API trạng thái gateway:', error);
+    console.error('❌ Gateway API Error Full:', error);
     
     // Xử lý lỗi chi tiết hơn
     let errorMessage = 'Không thể lấy trạng thái gateway';
+    let statusCode = 500;
+    
     if (error.code === 'ECONNABORTED') {
       errorMessage = 'Timeout khi gọi API gateway';
+      console.log('🕒 Gateway API Timeout');
     } else if (error.response) {
-      errorMessage = `API trả về lỗi ${error.response.status}: ${error.response.statusText}`;
-      console.error('API response data:', error.response.data);
+      statusCode = error.response.status;
+      errorMessage = `External API trả về lỗi ${error.response.status}: ${error.response.statusText}`;
+      console.error('🔍 Gateway API Response Error Status:', error.response.status);
+      console.error('🔍 Gateway API Response Error Data:', error.response.data);
+      console.error('🔍 Gateway API Response Error Headers:', error.response.headers);
     } else if (error.request) {
       errorMessage = 'Không thể kết nối tới API gateway';
+      console.error('🔍 Gateway API Request Error:', error.request);
+    } else {
+      console.error('🔍 Gateway API Other Error:', error.message);
     }
     
+    res.status(statusCode).json({
+      success: false,
+      error: errorMessage,
+      debug: {
+        errorType: error.code || 'unknown',
+        statusCode: error.response?.status || null,
+        gatewayId: req.gatewayId || 'not set'
+      }
+    });
+  }
+});
+
+// Debug endpoint to check current gateway ID
+router.get('/debug/gateway-info', requireAuth, async (req, res) => {
+  try {
+    // Get building ID from session
+    let buildingId = 'building_id_1'; // default
+    
+    if (req.session.admin) {
+      if (req.session.admin.role === 'admin') {
+        buildingId = req.session.admin.building_ids || 'building_id_1';
+      } else if (req.session.admin.role === 'super_admin' && req.session.selectedBuildingId) {
+        buildingId = req.session.selectedBuildingId;
+      }
+    }
+
+    // Get gateway ID from Firebase
+    const gatewaySnapshot = await db.ref(`buildings/${buildingId}/gateway_id`).once('value');
+    const gatewayId = gatewaySnapshot.val();
+    
+    res.json({
+      success: true,
+      buildingId: buildingId,
+      gatewayId: gatewayId,
+      hasGatewayId: !!gatewayId,
+      sessionInfo: {
+        adminRole: req.session.admin?.role || 'none',
+        buildingIds: req.session.admin?.building_ids || 'none',
+        selectedBuildingId: req.session.selectedBuildingId || 'none'
+      }
+    });
+
+  } catch (error) {
+    console.error('Debug gateway info error:', error);
     res.status(500).json({
       success: false,
-      error: errorMessage
+      error: error.message
     });
   }
 });

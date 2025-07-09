@@ -1,0 +1,58 @@
+<script>
+// ==================== TEMP GATEWAY DEBUG ====================
+// Để debug gateway issue trên server Linux
+
+window.debugGatewayInfo = async function() {
+    try {
+        console.log('🔍 === GATEWAY DEBUG INFO START ===');
+        
+        // Test debug endpoint
+        const response = await fetch('/api/debug/gateway-info', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('📡 Debug API Response status:', response.status);
+        console.log('📡 Debug API Response ok:', response.ok);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Debug API Error:', errorText);
+            return;
+        }
+
+        const data = await response.json();
+        console.log('📡 Gateway Debug Info:', JSON.stringify(data, null, 2));
+        
+        if (data.success) {
+            console.log(`🏢 Building ID: ${data.buildingId}`);
+            console.log(`🌐 Gateway ID: ${data.gatewayId || 'NOT SET'}`);
+            console.log(`✅ Has Gateway ID: ${data.hasGatewayId}`);
+            console.log(`👤 Session Info:`, data.sessionInfo);
+            
+            if (!data.hasGatewayId) {
+                console.warn('⚠️ NO GATEWAY ID CONFIGURED - This is why you get 404!');
+                console.log('💡 Solution: Go to Dashboard and add a Gateway ID first');
+            } else {
+                console.log('✅ Gateway ID exists, issue might be with external API');
+            }
+        }
+        
+        console.log('🔍 === GATEWAY DEBUG INFO END ===');
+        
+    } catch (error) {
+        console.error('❌ Gateway debug error:', error);
+    }
+};
+
+// Auto-run debug
+setTimeout(() => {
+    console.log('🚀 Running gateway debug info...');
+    window.debugGatewayInfo();
+}, 1000);
+
+console.log('🔧 Gateway debug loaded. Call window.debugGatewayInfo() manually if needed');
+</script> 
