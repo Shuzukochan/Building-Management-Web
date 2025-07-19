@@ -1,93 +1,143 @@
-# Building Management Web Application
+# 🏢 Building Management System
 
-## 📁 Cấu trúc dự án
+A smart building management system with real-time electricity/water consumption monitoring, room management, payment processing, and automated notifications.
 
-```
-Building-Management-Web/
-├── app.js                          # Main application file (Express server)
-├── package.json                    # Dependencies và scripts
-├── firebase-admin.json             # Firebase admin credentials
-├── backup/                         # 📦 File gốc để tham khảo
-│   ├── index.original.js           # File server gốc (78KB)
-│   ├── dashboard.original.ejs      # Dashboard gốc (185KB)
-│   ├── dashboard-scripts.original.ejs
-│   └── all-modals.original.ejs
-├── config/                         # ⚙️ Cấu hình
-│   └── database.js                 # Firebase config
-├── controllers/                    # 🎮 Controllers
-│   ├── statisticsController.js
-│   ├── paymentController.js
-│   └── notificationController.js
-├── routes/                         # 🛣️ API routes
-│   ├── api.js                      # API endpoints
-│   └── rooms.js                    # Room management routes
-├── views/                          # 🎨 Templates
-│   ├── dashboard.ejs               # Main dashboard (42 lines)
-│   ├── payments.ejs                # Payment management
-│   ├── statistic.ejs               # Statistics page
-│   ├── login.ejs                   # Login page
-│   └── partials/                   # 🧩 Page-based components
-│       ├── layout/                 # 🏗️ Global layout
-│       │   ├── head.ejs            # HTML head
-│       │   └── sidebar.ejs         # Navigation sidebar
-│       ├── dashboard/              # 📊 Dashboard-specific
-│       │   ├── components/         # UI components
-│       │   │   ├── left-column.ejs # Statistics & feedback
-│       │   │   └── right-column.ejs# Rooms table
-│       │   ├── modals/             # Modal dialogs
-│       │   │   ├── add-room-modal.ejs
-│       │   │   ├── manage-phone-modal.ejs
-│       │   │   └── ...
-│       │   ├── scripts/            # JavaScript modules
-│       │   │   ├── global-variables.ejs
-│       │   │   ├── feedback-functions.ejs
-│       │   │   ├── phone-management.ejs
-│       │   │   └── ...
-│       │   ├── styles.ejs          # Dashboard styles
-│       │   ├── modals.ejs          # Modal aggregator
-│       │   └── scripts.ejs         # Script aggregator
-│       └── shared/                 # 🔄 Shared across pages
-│           ├── modals/             # Common modals
-│           ├── scripts/            # Common scripts
-│           │   └── firebase-config.ejs
-│           └── styles/             # Common styles
-└── public/                         # 📁 Static files
-    ├── css/
-    ├── js/
-    └── images/
-```
+## ✨ Key Features
 
-## 🚀 Khởi chạy
+### 🏠 Room Management
+- Add, edit, delete rooms
+- Assign phone numbers to rooms
+- Real-time room status monitoring
+- Tenant information management
 
+### 📊 Consumption Monitoring
+- **Electricity**: Monitor power, voltage, current
+- **Water**: Measure flow rate, detect leaks
+- **Custom nodes**: Support custom sensors
+- **Real-time**: Live data updates
+- **Charts**: Daily/monthly/yearly statistics
+
+### 💰 Payment Management
+- Automatic monthly billing
+- Payment status tracking
+- Tiered pricing calculation
+- Outstanding balance reports
+
+### 🔔 Notification System
+- **FCM**: Push notifications to devices
+- **Broadcast**: Building-wide announcements
+- **Alerts**: Water leaks, electrical overload
+- **Feedback**: Real-time feedback system
+
+### ⚙️ System Settings
+- **Calibration**: Sensor calibration
+- **Pricing**: Electricity/water pricing
+- **Gateway**: Gateway device management
+- **Admin**: Role-based administration
+
+## 🛠️ Technology Stack
+
+### Backend
+- **Node.js** - Runtime environment
+- **Express.js** - Web framework
+- **EJS** - Template engine
+- **Firebase Admin SDK** - Database & FCM
+- **Express Session** - Authentication
+
+### Frontend
+- **Bootstrap 5** - UI framework
+- **Chart.js** - Statistics charts
+- **Font Awesome** - Icons
+- **jQuery** - DOM manipulation
+
+### Database & Services
+- **Firebase Realtime Database** - Main database
+- **Firebase Cloud Messaging** - Push notifications
+- **Firebase Authentication** - Authentication
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js >= 14.0.0
+- npm >= 6.0.0
+- Firebase project
+
+### Step 1: Clone repository
 ```bash
-# Cài đặt dependencies
-npm install
-
-# Chạy server
-node app.js
+git clone https://github.com/your-username/building-management-web.git
+cd building-management-web
 ```
 
-## 📋 Tính năng chính
+### Step 2: Install dependencies
+```bash
+npm install
+```
 
-- ✅ **Quản lý phòng**: Thêm, sửa, xóa phòng
-- ✅ **Quản lý số điện thoại**: Gán/thay đổi SĐT cho phòng
-- ✅ **Quản lý nodes**: Điện, nước, custom nodes
-- ✅ **Thống kê**: Theo dõi tiêu thụ điện/nước
-- ✅ **Thanh toán**: Quản lý hóa đơn hàng tháng
-- ✅ **Thông báo**: Gửi FCM notifications
-- ✅ **Feedback**: Hệ thống góp ý realtime
+### Step 3: Environment setup
+Create `.env` file from `.env.example` and fill in your Firebase credentials.
 
-## 🔧 Kiến trúc
+### Step 4: Run application
+```bash
+# Development mode
+npm run dev
 
-### Page-based Architecture
-- **Page-specific**: Mỗi page có folder riêng (dashboard/, payments/, statistics/)
-- **Components**: UI components được nhóm theo page
-- **Scripts**: JavaScript modules được tổ chức theo chức năng
-- **Modals**: Modal dialogs được nhóm theo page
-- **Shared**: Components dùng chung giữa các pages
+# Production mode
+npm start
+```
 
-### API Structure
-- **RESTful APIs**: `/api/feedback`, `/api/phone-numbers`, etc.
-- **Firebase Integration**: Realtime database + FCM
-- **Authentication**: Session-based auth
+Application will run at: `http://localhost:3000`
+
+## 🔧 Firebase Setup
+
+### 1. Create Firebase Project
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create new project
+3. Enable Realtime Database
+4. Enable Cloud Messaging
+
+### 2. Create Service Account
+1. Go to Project Settings > Service Accounts
+2. Generate service account key
+3. Download JSON file
+4. Copy credentials to `.env` file
+
+## 🚀 Deployment
+### VPS/Dedicated Server
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start application
+pm2 start app.js --name "building-management"
+
+# Save PM2 configuration
+pm2 save
+pm2 startup
+```
+
+## 🤝 Contributing
+
+1. Fork the project
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+## 📝 License
+
+This project is distributed under the ISC license. See `LICENSE` file for details.
+
+## 📞 Support
+
+- **Email**: support@example.com
+- **Issues**: [GitHub Issues](https://github.com/your-username/building-management-web/issues)
+- **Documentation**: [Wiki](https://github.com/your-username/building-management-web/wiki)
+
+## 🙏 Acknowledgments
+
+Thank you for using Building Management System! If this project is helpful, please give us a ⭐ on GitHub.
+
+---
+
+**Note**: This is a demo project. Please configure appropriate security measures before using in production environment.
 
