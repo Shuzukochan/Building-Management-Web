@@ -1,6 +1,6 @@
 # 🏢 Building Management System
 
-A smart building management system with real-time electricity/water consumption monitoring, room management, payment processing, and automated notifications.
+A smart building management system with real-time electricity/water consumption monitoring, room management, payment processing, and notifications.
 
 ## ✨ Key Features
 
