@@ -64,7 +64,7 @@ A smart building management system with real-time electricity/water consumption 
 
 ### Step 1: Clone repository
 ```bash
-git clone https://github.com/your-username/building-management-web.git
+git clone https://github.com/Shuzukochan/building-management-web.git
 cd building-management-web
 ```
 
@@ -129,9 +129,8 @@ This project is distributed under the ISC license. See `LICENSE` file for detail
 
 ## 📞 Support
 
-- **Email**: support@example.com
-- **Issues**: [GitHub Issues](https://github.com/your-username/building-management-web/issues)
-- **Documentation**: [Wiki](https://github.com/your-username/building-management-web/wiki)
+- **Email**: shuzukochan@gmail.com
+- **Issues**: [GitHub Issues](https://github.com/Shuzukochan/building-management-web/issues)
 
 ## 🙏 Acknowledgments
 
