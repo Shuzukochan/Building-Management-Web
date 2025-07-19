@@ -2,10 +2,6 @@
 
 A smart building management system with real-time electricity/water consumption monitoring, room management, payment processing, and automated notifications.
 
-![Dashboard Preview](https://via.placeholder.com/800x400/4A90E2/FFFFFF?text=Dashboard+Preview)
-![Room Management](https://via.placeholder.com/400x300/50C878/FFFFFF?text=Room+Management)
-![Payment System](https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=Payment+System)
-
 ## ✨ Key Features
 
 ### 🏠 Room Management
@@ -122,17 +118,24 @@ pm2 startup
 
 ## 📱 Screenshots
 
-### Dashboard Overview
-![Dashboard](https://via.placeholder.com/600x400/4A90E2/FFFFFF?text=Dashboard+Overview)
+### Login Page
 
-### Room Management Interface
-![Room Management](https://via.placeholder.com/600x400/50C878/FFFFFF?text=Room+Management+Interface)
+<img width="1914" height="941" alt="image" src="https://github.com/user-attachments/assets/48d9fb6b-a3aa-49ff-b783-c6f29080e100" />
+
+### Dashboard 
+<img width="1914" height="939" alt="image" src="https://github.com/user-attachments/assets/69c038b0-435f-44f4-8d11-70cb26ca6cf2" />
+
+### Statistics
+<img width="1913" height="939" alt="image" src="https://github.com/user-attachments/assets/23a8bd06-83df-492c-992a-18af21a081f8" />
 
 ### Payment Tracking
-![Payment Tracking](https://via.placeholder.com/600x400/FF6B35/FFFFFF?text=Payment+Tracking)
+<img width="1913" height="936" alt="image" src="https://github.com/user-attachments/assets/8fc628e4-f8ff-4700-9174-921850ed2ad5" />
 
-### Real-time Statistics
-![Statistics](https://via.placeholder.com/600x400/9B59B6/FFFFFF?text=Real-time+Statistics)
+### Calibration
+<img width="1915" height="938" alt="image" src="https://github.com/user-attachments/assets/7d83d879-3431-467e-84c3-ef5e3ca94101" />
+
+### Admin Management
+<img width="1914" height="937" alt="image" src="https://github.com/user-attachments/assets/7c5933dd-b4f7-4e00-8c1f-b7a431efdd23" />
 
 ## 🤝 Contributing
 
