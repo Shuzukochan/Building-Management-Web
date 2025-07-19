@@ -2,6 +2,10 @@
 
 A smart building management system with real-time electricity/water consumption monitoring, room management, payment processing, and automated notifications.
 
+![Dashboard Preview](https://via.placeholder.com/800x400/4A90E2/FFFFFF?text=Dashboard+Preview)
+![Room Management](https://via.placeholder.com/400x300/50C878/FFFFFF?text=Room+Management)
+![Payment System](https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=Payment+System)
+
 ## ✨ Key Features
 
 ### 🏠 Room Management
@@ -64,7 +68,7 @@ A smart building management system with real-time electricity/water consumption 
 
 ### Step 1: Clone repository
 ```bash
-git clone https://github.com/your-username/building-management-web.git
+git clone https://github.com/Shuzukochan/building-management-web.git
 cd building-management-web
 ```
 
@@ -102,6 +106,7 @@ Application will run at: `http://localhost:3000`
 4. Copy credentials to `.env` file
 
 ## 🚀 Deployment
+
 ### VPS/Dedicated Server
 ```bash
 # Install PM2
@@ -114,6 +119,20 @@ pm2 start app.js --name "building-management"
 pm2 save
 pm2 startup
 ```
+
+## 📱 Screenshots
+
+### Dashboard Overview
+![Dashboard](https://via.placeholder.com/600x400/4A90E2/FFFFFF?text=Dashboard+Overview)
+
+### Room Management Interface
+![Room Management](https://via.placeholder.com/600x400/50C878/FFFFFF?text=Room+Management+Interface)
+
+### Payment Tracking
+![Payment Tracking](https://via.placeholder.com/600x400/FF6B35/FFFFFF?text=Payment+Tracking)
+
+### Real-time Statistics
+![Statistics](https://via.placeholder.com/600x400/9B59B6/FFFFFF?text=Real-time+Statistics)
 
 ## 🤝 Contributing
 
@@ -129,9 +148,8 @@ This project is distributed under the ISC license. See `LICENSE` file for detail
 
 ## 📞 Support
 
-- **Email**: support@example.com
-- **Issues**: [GitHub Issues](https://github.com/your-username/building-management-web/issues)
-- **Documentation**: [Wiki](https://github.com/your-username/building-management-web/wiki)
+- **Email**: shuzukochan@gmail.com
+- **Issues**: [GitHub Issues](https://github.com/Shuzukochan/building-management-web/issues)
 
 ## 🙏 Acknowledgments
 
@@ -140,4 +158,3 @@ Thank you for using Building Management System! If this project is helpful, plea
 ---
 
 **Note**: This is a demo project. Please configure appropriate security measures before using in production environment.
-
