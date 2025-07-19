@@ -119,23 +119,22 @@ pm2 startup
 ## 📱 Screenshots
 
 ### Login Page
-
-<img width="1914" height="941" alt="image" src="https://github.com/user-attachments/assets/48d9fb6b-a3aa-49ff-b783-c6f29080e100" />
+<img width="800" alt="Login Page" src="https://github.com/user-attachments/assets/48d9fb6b-a3aa-49ff-b783-c6f29080e100" />
 
 ### Dashboard 
-<img width="1914" height="939" alt="image" src="https://github.com/user-attachments/assets/69c038b0-435f-44f4-8d11-70cb26ca6cf2" />
+<img width="800" alt="Dashboard" src="https://github.com/user-attachments/assets/69c038b0-435f-44f4-8d11-70cb26ca6cf2" />
 
 ### Statistics
-<img width="1913" height="939" alt="image" src="https://github.com/user-attachments/assets/23a8bd06-83df-492c-992a-18af21a081f8" />
+<img width="800" alt="Statistics" src="https://github.com/user-attachments/assets/23a8bd06-83df-492c-992a-18af21a081f8" />
 
 ### Payment Tracking
-<img width="1913" height="936" alt="image" src="https://github.com/user-attachments/assets/8fc628e4-f8ff-4700-9174-921850ed2ad5" />
+<img width="800" alt="Payment Tracking" src="https://github.com/user-attachments/assets/8fc628e4-f8ff-4700-9174-921850ed2ad5" />
 
 ### Calibration
-<img width="1915" height="938" alt="image" src="https://github.com/user-attachments/assets/7d83d879-3431-467e-84c3-ef5e3ca94101" />
+<img width="800" alt="Calibration" src="https://github.com/user-attachments/assets/7d83d879-3431-467e-84c3-ef5e3ca94101" />
 
 ### Admin Management
-<img width="1914" height="937" alt="image" src="https://github.com/user-attachments/assets/7c5933dd-b4f7-4e00-8c1f-b7a431efdd23" />
+<img width="800" alt="Admin Management" src="https://github.com/user-attachments/assets/7c5933dd-b4f7-4e00-8c1f-b7a431efdd23" />
 
 ## 🤝 Contributing
 
